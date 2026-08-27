@@ -66,10 +66,11 @@ cd frontend && npm install && npm run dev
 ## Roadmap
 
 El objetivo es que los tres módulos dejen de ser CRUD aislado y modelen el flujo
-real de la red: **Depósito Central → Viedma (fábrica) → puntos de venta**, con un
-chofer que transporta y actores con permisos distintos (dueños, depósito, fábrica,
-venta, chofer). Viedma mantiene un stock propio de insumos que se repone desde el
-depósito y baja al fabricar.
+real de la red: **Depósito Central → Viedma → puntos de venta**, con un chofer que
+transporta y actores con permisos distintos (dueños, depósito, fábrica, venta,
+chofer). Viedma es a la vez fábrica y punto de venta: pide insumos al depósito,
+mantiene su propio stock (que baja al fabricar) y despacha productos a las otras
+sucursales, además de vender al público. Una sucursal puede cumplir más de un rol.
 
 ### ✅ Fase 1 — Máquina de estados del pedido
 
@@ -80,14 +81,14 @@ depósito y baja al fabricar.
 ### Fase 2 — Autenticación y roles
 
 - [ ] Login y sesión
-- [ ] Roles: dueño, depósito, fábrica, venta, chofer
+- [ ] Roles: dueño, depósito, fábrica, venta, chofer (una sucursal puede tener varios — Viedma es fábrica y venta)
 - [ ] Autorización por endpoint y en la UI
 - [ ] Cada transición de estado habilitada según el rol: el origen prepara, el chofer despacha y entrega, el destino confirma la recepción
 
 ### Fase 3 — Pedidos unificados y hoja de ruta del chofer
 
 - [ ] `pedidos.tipo` (`INSUMOS` | `PRODUCTOS`), con el detalle apuntando a insumo o a producto
-- [ ] Validación de origen/destino según el tipo (insumos: depósito → fábrica; productos: fábrica → venta)
+- [ ] Validación de origen/destino según el rol (insumos: depósito → fábrica; productos: fábrica → otra sucursal de venta)
 - [ ] Hoja de ruta del chofer: pedidos a levantar y entregar, con las acciones de estado
 - [ ] Pantalla de recepción: confirmar lo recibido y registrar diferencias contra lo despachado
 
