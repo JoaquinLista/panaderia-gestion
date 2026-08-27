@@ -14,6 +14,7 @@ export const getPedidos = async (req, res, next) => {
 
 /**
  * POST /api/pedidos
+ * Crea un pedido de INSUMOS o PRODUCTOS con su detalle.
  */
 export const postPedido = async (req, res, next) => {
   try {
@@ -30,7 +31,7 @@ export const postPedido = async (req, res, next) => {
         .json({ error: 'El pedido debe incluir un arreglo "detalles" con al menos un ítem' });
     }
 
-    const pedido = await crearPedido(req.body);
+    const pedido = await crearPedido(req.body, req.usuario);
     res.status(201).json(pedido);
   } catch (error) {
     next(error);
@@ -39,17 +40,19 @@ export const postPedido = async (req, res, next) => {
 
 /**
  * PUT /api/pedidos/:id/estado
- * Cambia el estado de un pedido validando la transición.
+ * Cambia el estado de un pedido validando la transición y el rol.
+ * Al pasar a RECIBIDO acepta un arreglo opcional `recepcion`
+ * con { detalle_id, cantidad_recibida } por línea.
  */
 export const putEstadoPedido = async (req, res, next) => {
   try {
-    const { estado } = req.body ?? {};
+    const { estado, recepcion } = req.body ?? {};
 
     if (!estado || String(estado).trim() === '') {
       return res.status(400).json({ error: 'El campo "estado" es obligatorio' });
     }
 
-    const pedido = await cambiarEstadoPedido(req.params.id, estado, req.usuario);
+    const pedido = await cambiarEstadoPedido(req.params.id, estado, req.usuario, { recepcion });
     res.json(pedido);
   } catch (error) {
     next(error);

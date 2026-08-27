@@ -54,9 +54,9 @@ además exigen un rol (ver **Usuarios y roles**).
 | GET | `/api/productos` | Catálogo de productos | sesión |
 | GET | `/api/insumos` | Insumos con flag `bajo_stock` | sesión |
 | POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) | `DEPOSITO` |
-| GET | `/api/pedidos` | Pedidos con su detalle | sesión |
-| POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) | `FABRICA` / `VENTA` |
-| PUT | `/api/pedidos/:id/estado` | Cambia el estado validando transición y rol | según transición |
+| GET | `/api/pedidos` | Pedidos con su detalle (unificado `item_*`) | sesión |
+| POST | `/api/pedidos` | Alta de pedido `INSUMOS` o `PRODUCTOS` con detalle (transaccional) | `FABRICA` / `VENTA` |
+| PUT | `/api/pedidos/:id/estado` | Cambia el estado (valida transición y rol); a `RECIBIDO` acepta `recepcion[]` con lo recibido por línea | según transición |
 
 ## Usuarios y roles
 
@@ -113,12 +113,13 @@ sucursales, además de vender al público. Una sucursal puede cumplir más de un
 - [x] Cada transición de estado habilitada según el rol: el origen prepara, el chofer despacha y entrega, el destino confirma la recepción
 - [ ] Pendiente para más adelante: roles múltiples por sucursal (Viedma como fábrica + venta), invitación de usuarios, recuperación de contraseña
 
-### Fase 3 — Pedidos unificados y hoja de ruta del chofer
+### ✅ Fase 3 — Pedidos unificados y hoja de ruta del chofer
 
-- [ ] `pedidos.tipo` (`INSUMOS` | `PRODUCTOS`), con el detalle apuntando a insumo o a producto
-- [ ] Validación de origen/destino según el rol (insumos: depósito → fábrica; productos: fábrica → otra sucursal de venta)
-- [ ] Hoja de ruta del chofer: pedidos a levantar y entregar, con las acciones de estado
-- [ ] Pantalla de recepción: confirmar lo recibido y registrar diferencias contra lo despachado
+- [x] `pedidos.tipo` (`INSUMOS` | `PRODUCTOS`), con el detalle apuntando a insumo o a producto (`CHECK` XOR)
+- [x] Validación de origen/destino y de quién crea (insumos: depósito → fábrica, lo pide la fábrica; productos: fábrica → venta, lo pide la venta)
+- [x] Formulario de nuevo pedido rol-aware (fábrica pide insumos, venta pide productos, dueño elige todo)
+- [x] Hoja de ruta del chofer: pedidos para retirar y en camino, con las acciones de estado
+- [x] Recepción: al confirmar se registra `cantidad_recibida` por línea (diferencias contra lo pedido)
 
 ### Fase 4 — Stock de insumos por bolsa
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPost, apiPut } from './api.js';
 import { useAuth, etiquetaRol, Login } from './auth.jsx';
 
@@ -6,6 +6,19 @@ const ESTADOS_PEDIDO = ['PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO'
 
 const ROLES_CREAN_PEDIDOS = new Set(['FABRICA', 'VENTA', 'DUENIO']);
 const ROLES_GESTIONAN_INSUMOS = new Set(['DEPOSITO', 'DUENIO']);
+const ROLES_HOJA_RUTA = new Set(['CHOFER', 'DUENIO']);
+
+// Espejo de backend/src/domain/tipoPedido.js
+const REGLA_TIPO = {
+  INSUMOS: { tipoOrigen: 'DEPOSITO', tipoDestino: 'FABRICA', catalogo: 'insumos', idCampo: 'insumo_id' },
+  PRODUCTOS: { tipoOrigen: 'FABRICA', tipoDestino: 'VENTA', catalogo: 'productos', idCampo: 'producto_id' },
+};
+
+const TIPOS_POR_ROL = {
+  FABRICA: ['INSUMOS'],
+  VENTA: ['PRODUCTOS'],
+  DUENIO: ['INSUMOS', 'PRODUCTOS'],
+};
 
 // Espejo de backend/src/domain/autorizacionPedido.js: quién puede cada transición.
 const REGLAS_TRANSICION = {
@@ -35,6 +48,8 @@ const ESTADO_BADGE = {
   RECIBIDO: 'badge-ok',
   CANCELADO: 'badge-danger',
 };
+
+const TIPO_BADGE = { INSUMOS: 'badge-warn', PRODUCTOS: 'badge-info' };
 
 // Espejo de la máquina de estados del backend (domain/estadoPedido.js).
 const SIGUIENTE_ESTADO = {
@@ -71,30 +86,30 @@ function nombreSucursal(sucursales, id) {
   return s ? s.nombre : `#${id}`;
 }
 
+function detalleTexto(d) {
+  const base = `${d.item_nombre} — ${Number(d.cantidad)} ${d.item_unidad}`;
+  if (d.cantidad_recibida != null && Number(d.cantidad_recibida) !== Number(d.cantidad)) {
+    return `${base} · recibido ${Number(d.cantidad_recibida)}`;
+  }
+  return base;
+}
+
 /* ------------------------------------------------------------------ */
-/*  Tablero de Pedidos                                                 */
+/*  Hook compartido de pedidos                                         */
 /* ------------------------------------------------------------------ */
 
-function TableroPedidos({ sucursales, productos, usuario }) {
-  const puedeCrear = ROLES_CREAN_PEDIDOS.has(usuario.rol);
+function usePedidos() {
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [okMsg, setOkMsg] = useState('');
-  const [enviando, setEnviando] = useState(false);
-
-  const [origen, setOrigen] = useState('');
-  const [destino, setDestino] = useState('');
-  const [estado, setEstado] = useState('PENDIENTE');
-  const [items, setItems] = useState([{ producto_id: '', cantidad: '' }]);
   const [estadoEnCurso, setEstadoEnCurso] = useState(null);
 
-  const cargarPedidos = useCallback(async () => {
+  const cargar = useCallback(async () => {
     setCargando(true);
     setError('');
     try {
-      const data = await apiGet('/pedidos');
-      setPedidos(data);
+      setPedidos(await apiGet('/pedidos'));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -103,63 +118,120 @@ function TableroPedidos({ sucursales, productos, usuario }) {
   }, []);
 
   useEffect(() => {
-    cargarPedidos();
-  }, [cargarPedidos]);
+    cargar();
+  }, [cargar]);
+
+  const cambiarEstado = useCallback(
+    async (pedidoId, nuevoEstado, opciones) => {
+      if (
+        nuevoEstado === 'CANCELADO' &&
+        !window.confirm(`¿Cancelar el pedido #${pedidoId}? Esta acción no se puede deshacer.`)
+      ) {
+        return false;
+      }
+      setError('');
+      setOkMsg('');
+      setEstadoEnCurso(pedidoId);
+      try {
+        await apiPut(`/pedidos/${pedidoId}/estado`, { estado: nuevoEstado, ...opciones });
+        setOkMsg(`Pedido #${pedidoId}: estado actualizado a ${nuevoEstado.replace('_', ' ')}.`);
+        await cargar();
+        return true;
+      } catch (e) {
+        setError(e.message);
+        return false;
+      } finally {
+        setEstadoEnCurso(null);
+      }
+    },
+    [cargar]
+  );
+
+  return { pedidos, cargando, error, okMsg, estadoEnCurso, cargar, cambiarEstado };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Formulario de nuevo pedido (rol-aware)                             */
+/* ------------------------------------------------------------------ */
+
+function FormularioNuevoPedido({ usuario, sucursales, productos, insumos, onCreado }) {
+  const esDuenio = usuario.rol === 'DUENIO';
+  const tiposDisponibles = TIPOS_POR_ROL[usuario.rol] ?? [];
+
+  const [tipo, setTipo] = useState(tiposDisponibles[0] ?? 'PRODUCTOS');
+  const [origenDuenio, setOrigenDuenio] = useState('');
+  const [destinoDuenio, setDestinoDuenio] = useState('');
+  const [estado, setEstado] = useState('PENDIENTE');
+  const [items, setItems] = useState([{ item_id: '', cantidad: '' }]);
+  const [error, setError] = useState('');
+  const [okMsg, setOkMsg] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  const regla = REGLA_TIPO[tipo];
+  const catalogo = tipo === 'INSUMOS' ? insumos : productos;
+
+  const sucsOrigen = useMemo(
+    () => sucursales.filter((s) => s.tipo === regla.tipoOrigen),
+    [sucursales, regla.tipoOrigen]
+  );
+  const sucsDestino = useMemo(
+    () => sucursales.filter((s) => s.tipo === regla.tipoDestino),
+    [sucursales, regla.tipoDestino]
+  );
+
+  // Origen/destino efectivos: fijos por rol, o elegidos por el dueño.
+  const origenId = esDuenio ? Number(origenDuenio) : sucsOrigen[0]?.id;
+  const destinoId = esDuenio ? Number(destinoDuenio) : usuario.sucursal_id;
 
   useEffect(() => {
-    if (sucursales.length >= 2) {
-      setOrigen((prev) => prev || String(sucursales[0].id));
-      setDestino((prev) => prev || String(sucursales[1].id));
-    }
-  }, [sucursales]);
+    // al cambiar de tipo se resetea el detalle y la selección del dueño
+    setItems([{ item_id: '', cantidad: '' }]);
+    setOrigenDuenio('');
+    setDestinoDuenio('');
+  }, [tipo]);
 
-  const actualizarItem = (idx, campo, valor) => {
+  const actualizarItem = (idx, campo, valor) =>
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it)));
-  };
-
-  const agregarItem = () => setItems((prev) => [...prev, { producto_id: '', cantidad: '' }]);
-
+  const agregarItem = () => setItems((prev) => [...prev, { item_id: '', cantidad: '' }]);
   const quitarItem = (idx) =>
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
-
-  const resetForm = () => {
-    setEstado('PENDIENTE');
-    setItems([{ producto_id: '', cantidad: '' }]);
-  };
 
   const enviar = async (evt) => {
     evt.preventDefault();
     setError('');
     setOkMsg('');
 
-    if (!origen || !destino) {
-      setError('Seleccioná sucursal de origen y destino.');
+    if (!origenId || !destinoId) {
+      setError('Falta la sucursal de origen o de destino.');
       return;
     }
-    if (origen === destino) {
+    if (origenId === Number(destinoId)) {
       setError('El origen y el destino deben ser distintos.');
       return;
     }
     const detalles = items
-      .filter((it) => it.producto_id && Number(it.cantidad) > 0)
-      .map((it) => ({ producto_id: Number(it.producto_id), cantidad: Number(it.cantidad) }));
-
+      .filter((it) => it.item_id && Number(it.cantidad) > 0)
+      .map((it) => ({ [regla.idCampo]: Number(it.item_id), cantidad: Number(it.cantidad) }));
     if (detalles.length === 0) {
-      setError('Agregá al menos un producto con cantidad mayor a 0.');
+      setError(`Agregá al menos un ${regla.catalogo === 'insumos' ? 'insumo' : 'producto'} con cantidad.`);
       return;
     }
 
+    const payload = {
+      tipo,
+      sucursal_origen_id: origenId,
+      sucursal_destino_id: Number(destinoId),
+      detalles,
+    };
+    if (esDuenio) payload.estado = estado;
+
     setEnviando(true);
     try {
-      await apiPost('/pedidos', {
-        sucursal_origen_id: Number(origen),
-        sucursal_destino_id: Number(destino),
-        estado,
-        detalles,
-      });
+      await apiPost('/pedidos', payload);
       setOkMsg('Pedido registrado correctamente.');
-      resetForm();
-      await cargarPedidos();
+      setItems([{ item_id: '', cantidad: '' }]);
+      setEstado('PENDIENTE');
+      onCreado?.();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -167,25 +239,191 @@ function TableroPedidos({ sucursales, productos, usuario }) {
     }
   };
 
-  const cambiarEstado = async (pedidoId, nuevoEstado) => {
-    if (
-      nuevoEstado === 'CANCELADO' &&
-      !window.confirm(`¿Cancelar el pedido #${pedidoId}? Esta acción no se puede deshacer.`)
-    ) {
-      return;
-    }
-    setError('');
-    setOkMsg('');
-    setEstadoEnCurso(pedidoId);
-    try {
-      await apiPut(`/pedidos/${pedidoId}/estado`, { estado: nuevoEstado });
-      setOkMsg(`Pedido #${pedidoId}: estado actualizado a ${nuevoEstado.replace('_', ' ')}.`);
-      await cargarPedidos();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setEstadoEnCurso(null);
-    }
+  const nombreCatalogo = tipo === 'INSUMOS' ? 'Insumos' : 'Productos';
+
+  return (
+    <>
+      <p className="subtitle">
+        {tipo === 'INSUMOS'
+          ? 'Pedido de insumos al Depósito Central.'
+          : 'Pedido de productos a la fábrica.'}
+      </p>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {okMsg && <div className="alert alert-ok">{okMsg}</div>}
+
+      <form onSubmit={enviar}>
+        {tiposDisponibles.length > 1 && (
+          <>
+            <label htmlFor="np-tipo">Tipo de pedido</label>
+            <select id="np-tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              {tiposDisponibles.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {esDuenio ? (
+          <>
+            <label htmlFor="np-origen">Sucursal de origen ({regla.tipoOrigen})</label>
+            <select
+              id="np-origen"
+              value={origenDuenio}
+              onChange={(e) => setOrigenDuenio(e.target.value)}
+              required
+            >
+              <option value="">Seleccionar…</option>
+              {sucsOrigen.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="np-destino">Sucursal de destino ({regla.tipoDestino})</label>
+            <select
+              id="np-destino"
+              value={destinoDuenio}
+              onChange={(e) => setDestinoDuenio(e.target.value)}
+              required
+            >
+              <option value="">Seleccionar…</option>
+              {sucsDestino.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="np-estado">Estado inicial</label>
+            <select id="np-estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
+              {ESTADOS_PEDIDO.map((es) => (
+                <option key={es} value={es}>
+                  {es.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <p className="ruta-linea">
+            {nombreSucursal(sucursales, origenId)} → {nombreSucursal(sucursales, destinoId)}
+          </p>
+        )}
+
+        <label>{nombreCatalogo}</label>
+        {items.map((it, idx) => (
+          <div className="detalle-row" key={idx}>
+            <select
+              value={it.item_id}
+              onChange={(e) => actualizarItem(idx, 'item_id', e.target.value)}
+              aria-label={nombreCatalogo}
+            >
+              <option value="">{tipo === 'INSUMOS' ? 'Insumo…' : 'Producto…'}</option>
+              {catalogo.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Cant."
+              value={it.cantidad}
+              onChange={(e) => actualizarItem(idx, 'cantidad', e.target.value)}
+              aria-label="Cantidad"
+            />
+            <button type="button" onClick={() => quitarItem(idx)} aria-label="Quitar ítem">
+              ×
+            </button>
+          </div>
+        ))}
+        <button type="button" className="link" onClick={agregarItem}>
+          + Agregar {tipo === 'INSUMOS' ? 'insumo' : 'producto'}
+        </button>
+
+        <div style={{ marginTop: 16 }}>
+          <button type="submit" className="primary" disabled={enviando}>
+            {enviando ? 'Registrando…' : 'Registrar pedido'}
+          </button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Editor de recepción                                                */
+/* ------------------------------------------------------------------ */
+
+function FilaRecepcion({ pedido, colSpan, onConfirmar, onCancelar, ocupado }) {
+  const [cantidades, setCantidades] = useState(() =>
+    Object.fromEntries(pedido.detalles.map((d) => [d.id, String(Number(d.cantidad))]))
+  );
+
+  const confirmar = () => {
+    const recepcion = pedido.detalles.map((d) => ({
+      detalle_id: d.id,
+      cantidad_recibida: Number(cantidades[d.id]),
+    }));
+    onConfirmar(recepcion);
+  };
+
+  return (
+    <tr className="recepcion-row">
+      <td colSpan={colSpan}>
+        <div className="recepcion-panel">
+          <strong>Recepción del pedido #{pedido.id}</strong>
+          <p className="muted">Ajustá lo que llegó realmente; por defecto es lo pedido.</p>
+          {pedido.detalles.map((d) => (
+            <div className="recepcion-linea" key={d.id}>
+              <span>
+                {d.item_nombre} (pedido {Number(d.cantidad)} {d.item_unidad})
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={cantidades[d.id]}
+                onChange={(e) =>
+                  setCantidades((prev) => ({ ...prev, [d.id]: e.target.value }))
+                }
+                aria-label={`Cantidad recibida de ${d.item_nombre}`}
+              />
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button type="button" className="primary" disabled={ocupado} onClick={confirmar}>
+              Confirmar recepción
+            </button>
+            <button type="button" className="link" onClick={onCancelar}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tablero de Pedidos                                                 */
+/* ------------------------------------------------------------------ */
+
+function TableroPedidos({ sucursales, productos, insumos, usuario }) {
+  const puedeCrear = ROLES_CREAN_PEDIDOS.has(usuario.rol);
+  const { pedidos, cargando, error, okMsg, estadoEnCurso, cargar, cambiarEstado } = usePedidos();
+  const [recibiendo, setRecibiendo] = useState(null);
+
+  const COLS = 8;
+
+  const confirmarRecepcion = async (pedidoId, recepcion) => {
+    const ok = await cambiarEstado(pedidoId, 'RECIBIDO', { recepcion });
+    if (ok) setRecibiendo(null);
   };
 
   return (
@@ -194,194 +432,236 @@ function TableroPedidos({ sucursales, productos, usuario }) {
       {okMsg && <div className="alert alert-ok">{okMsg}</div>}
 
       <div className="grid-2">
-      <div className="card">
-        <h2>Nuevo pedido</h2>
-        {!puedeCrear ? (
-          <p className="subtitle">
-            Tu rol ({etiquetaRol(usuario.rol)}) no crea pedidos. Podés ver el listado y
-            actuar sobre los estados que te correspondan.
-          </p>
-        ) : (
-        <>
-        <p className="subtitle">Registrá un movimiento de productos entre sucursales.</p>
-
-        <form onSubmit={enviar}>
-          <label htmlFor="origen">Sucursal de origen</label>
-          <select
-            id="origen"
-            value={origen}
-            onChange={(e) => setOrigen(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar…</option>
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre} ({s.tipo})
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor="destino">Sucursal de destino</label>
-          <select
-            id="destino"
-            value={destino}
-            onChange={(e) => setDestino(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar…</option>
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre} ({s.tipo})
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor="estado">Estado inicial</label>
-          <select id="estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
-            {ESTADOS_PEDIDO.map((es) => (
-              <option key={es} value={es}>
-                {es.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-
-          <label>Productos</label>
-          {items.map((it, idx) => (
-            <div className="detalle-row" key={idx}>
-              <select
-                value={it.producto_id}
-                onChange={(e) => actualizarItem(idx, 'producto_id', e.target.value)}
-                aria-label="Producto"
-              >
-                <option value="">Producto…</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Cant."
-                value={it.cantidad}
-                onChange={(e) => actualizarItem(idx, 'cantidad', e.target.value)}
-                aria-label="Cantidad"
-              />
-              <button type="button" onClick={() => quitarItem(idx)} aria-label="Quitar ítem">
-                ×
-              </button>
-            </div>
-          ))}
-          <button type="button" className="link" onClick={agregarItem}>
-            + Agregar producto
-          </button>
-
-          <div style={{ marginTop: 16 }}>
-            <button type="submit" className="primary" disabled={enviando}>
-              {enviando ? 'Registrando…' : 'Registrar pedido'}
-            </button>
-          </div>
-        </form>
-        </>
-        )}
-      </div>
-
-      <div className="card">
-        <div className="row-between">
-          <div>
-            <h2>Pedidos registrados</h2>
-            <p className="subtitle">{pedidos.length} pedido(s) en el sistema.</p>
-          </div>
-          <button className="link" onClick={cargarPedidos}>
-            Actualizar
-          </button>
+        <div className="card">
+          <h2>Nuevo pedido</h2>
+          {puedeCrear ? (
+            <FormularioNuevoPedido
+              usuario={usuario}
+              sucursales={sucursales}
+              productos={productos}
+              insumos={insumos}
+              onCreado={cargar}
+            />
+          ) : (
+            <p className="subtitle">
+              Tu rol ({etiquetaRol(usuario.rol)}) no crea pedidos. Podés ver el listado y
+              actuar sobre los estados que te correspondan.
+            </p>
+          )}
         </div>
 
-        {cargando ? (
-          <div className="empty">Cargando pedidos…</div>
-        ) : pedidos.length === 0 ? (
-          <div className="empty">Todavía no hay pedidos cargados.</div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Origen</th>
-                  <th>Destino</th>
-                  <th>Detalle</th>
-                  <th>Estado</th>
-                  <th>Fecha</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pedidos.map((p) => {
-                  const avance = SIGUIENTE_ESTADO[p.estado];
-                  const puedeAvanzar = avance && puedeTransicionarUI(usuario, p, avance);
-                  const puedeCancelar =
-                    PUEDE_CANCELARSE.has(p.estado) && puedeTransicionarUI(usuario, p, 'CANCELADO');
-                  return (
-                  <tr key={p.id}>
-                    <td>{p.id}</td>
-                    <td>{p.sucursal_origen_nombre || nombreSucursal(sucursales, p.sucursal_origen_id)}</td>
-                    <td>{p.sucursal_destino_nombre || nombreSucursal(sucursales, p.sucursal_destino_id)}</td>
-                    <td>
-                      {p.detalles && p.detalles.length > 0 ? (
-                        <ul className="detalle-list">
-                          {p.detalles.map((d) => (
-                            <li key={d.id}>
-                              {d.producto_nombre} — {Number(d.cantidad)} {d.producto_unidad}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="muted">Sin detalle</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge ${ESTADO_BADGE[p.estado] || 'badge-muted'}`}>
-                        {String(p.estado).replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td>{formatFecha(p.fecha_creacion)}</td>
-                    <td>
-                      <div className="acciones-pedido">
-                        {puedeAvanzar && (
-                          <button
-                            type="button"
-                            className="link"
-                            disabled={estadoEnCurso === p.id}
-                            onClick={() => cambiarEstado(p.id, avance)}
-                          >
-                            {ETIQUETA_AVANCE[avance]}
-                          </button>
-                        )}
-                        {puedeCancelar && (
-                          <button
-                            type="button"
-                            className="link link-danger"
-                            disabled={estadoEnCurso === p.id}
-                            onClick={() => cambiarEstado(p.id, 'CANCELADO')}
-                          >
-                            Cancelar
-                          </button>
-                        )}
-                        {!puedeAvanzar && !puedeCancelar && <span className="muted">—</span>}
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="card">
+          <div className="row-between">
+            <div>
+              <h2>Pedidos registrados</h2>
+              <p className="subtitle">{pedidos.length} pedido(s) en el sistema.</p>
+            </div>
+            <button className="link" onClick={cargar}>
+              Actualizar
+            </button>
           </div>
-        )}
-      </div>
+
+          {cargando ? (
+            <div className="empty">Cargando pedidos…</div>
+          ) : pedidos.length === 0 ? (
+            <div className="empty">Todavía no hay pedidos cargados.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Tipo</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Detalle</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pedidos.map((p) => {
+                    const avance = SIGUIENTE_ESTADO[p.estado];
+                    const puedeAvanzar = avance && puedeTransicionarUI(usuario, p, avance);
+                    const puedeCancelar =
+                      PUEDE_CANCELARSE.has(p.estado) &&
+                      puedeTransicionarUI(usuario, p, 'CANCELADO');
+                    const avanzarEsRecepcion = avance === 'RECIBIDO';
+                    return (
+                      <React.Fragment key={p.id}>
+                        <tr>
+                          <td>{p.id}</td>
+                          <td>
+                            <span className={`badge ${TIPO_BADGE[p.tipo] || 'badge-muted'}`}>
+                              {p.tipo}
+                            </span>
+                          </td>
+                          <td>
+                            {p.sucursal_origen_nombre ||
+                              nombreSucursal(sucursales, p.sucursal_origen_id)}
+                          </td>
+                          <td>
+                            {p.sucursal_destino_nombre ||
+                              nombreSucursal(sucursales, p.sucursal_destino_id)}
+                          </td>
+                          <td>
+                            {p.detalles && p.detalles.length > 0 ? (
+                              <ul className="detalle-list">
+                                {p.detalles.map((d) => (
+                                  <li key={d.id}>{detalleTexto(d)}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <span className="muted">Sin detalle</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`badge ${ESTADO_BADGE[p.estado] || 'badge-muted'}`}>
+                              {String(p.estado).replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td>{formatFecha(p.fecha_creacion)}</td>
+                          <td>
+                            <div className="acciones-pedido">
+                              {puedeAvanzar && !avanzarEsRecepcion && (
+                                <button
+                                  type="button"
+                                  className="link"
+                                  disabled={estadoEnCurso === p.id}
+                                  onClick={() => cambiarEstado(p.id, avance)}
+                                >
+                                  {ETIQUETA_AVANCE[avance]}
+                                </button>
+                              )}
+                              {puedeAvanzar && avanzarEsRecepcion && (
+                                <button
+                                  type="button"
+                                  className="link"
+                                  disabled={estadoEnCurso === p.id}
+                                  onClick={() =>
+                                    setRecibiendo((cur) => (cur === p.id ? null : p.id))
+                                  }
+                                >
+                                  {recibiendo === p.id ? 'Cerrar' : 'Confirmar recepción'}
+                                </button>
+                              )}
+                              {puedeCancelar && (
+                                <button
+                                  type="button"
+                                  className="link link-danger"
+                                  disabled={estadoEnCurso === p.id}
+                                  onClick={() => cambiarEstado(p.id, 'CANCELADO')}
+                                >
+                                  Cancelar
+                                </button>
+                              )}
+                              {!puedeAvanzar && !puedeCancelar && (
+                                <span className="muted">—</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {recibiendo === p.id && (
+                          <FilaRecepcion
+                            pedido={p}
+                            colSpan={COLS}
+                            ocupado={estadoEnCurso === p.id}
+                            onConfirmar={(recepcion) => confirmarRecepcion(p.id, recepcion)}
+                            onCancelar={() => setRecibiendo(null)}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hoja de ruta del chofer                                            */
+/* ------------------------------------------------------------------ */
+
+function HojaDeRuta({ usuario }) {
+  const { pedidos, cargando, error, okMsg, estadoEnCurso, cargar, cambiarEstado } = usePedidos();
+
+  const paraRetirar = pedidos.filter((p) => p.estado === 'EN_PREPARACION');
+  const enCamino = pedidos.filter((p) => p.estado === 'DESPACHADO');
+
+  const Tarjeta = ({ p, accion, etiqueta }) => (
+    <div className="ruta-card">
+      <div className="ruta-card-head">
+        <span className={`badge ${TIPO_BADGE[p.tipo] || 'badge-muted'}`}>{p.tipo}</span>
+        <span className="muted">#{p.id}</span>
+      </div>
+      <p className="ruta-linea">
+        {p.sucursal_origen_nombre} → {p.sucursal_destino_nombre}
+      </p>
+      <ul className="detalle-list">
+        {p.detalles.map((d) => (
+          <li key={d.id}>{detalleTexto(d)}</li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="primary"
+        disabled={estadoEnCurso === p.id || !puedeTransicionarUI(usuario, p, accion)}
+        onClick={() => cambiarEstado(p.id, accion)}
+      >
+        {etiqueta}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="card">
+      <div className="row-between">
+        <div>
+          <h2>Hoja de ruta</h2>
+          <p className="subtitle">Pedidos listos para retirar y entregas en curso.</p>
+        </div>
+        <button className="link" onClick={cargar}>
+          Actualizar
+        </button>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {okMsg && <div className="alert alert-ok">{okMsg}</div>}
+
+      {cargando ? (
+        <div className="empty">Cargando…</div>
+      ) : (
+        <>
+          <h3 className="ruta-titulo">Para retirar ({paraRetirar.length})</h3>
+          {paraRetirar.length === 0 ? (
+            <div className="empty">Nada listo para retirar.</div>
+          ) : (
+            <div className="ruta-grid">
+              {paraRetirar.map((p) => (
+                <Tarjeta key={p.id} p={p} accion="DESPACHADO" etiqueta="Despachar" />
+              ))}
+            </div>
+          )}
+
+          <h3 className="ruta-titulo">En camino ({enCamino.length})</h3>
+          {enCamino.length === 0 ? (
+            <div className="empty">No hay entregas en curso.</div>
+          ) : (
+            <div className="ruta-grid">
+              {enCamino.map((p) => (
+                <Tarjeta key={p.id} p={p} accion="ENTREGADO" etiqueta="Marcar entregado" />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -486,66 +766,66 @@ function GestionInsumos({ usuario }) {
             consultar el listado.
           </p>
         ) : (
-        <>
-        <p className="subtitle">
-          Si el nombre ya existe se actualiza su stock; si no, se crea uno nuevo.
-        </p>
+          <>
+            <p className="subtitle">
+              Si el nombre ya existe se actualiza su stock; si no, se crea uno nuevo.
+            </p>
 
-        {error && <div className="alert alert-error">{error}</div>}
-        {okMsg && <div className="alert alert-ok">{okMsg}</div>}
+            {error && <div className="alert alert-error">{error}</div>}
+            {okMsg && <div className="alert alert-ok">{okMsg}</div>}
 
-        <form onSubmit={enviar}>
-          <label htmlFor="ins-nombre">Nombre</label>
-          <input
-            id="ins-nombre"
-            type="text"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej: Harina 000"
-            required
-          />
+            <form onSubmit={enviar}>
+              <label htmlFor="ins-nombre">Nombre</label>
+              <input
+                id="ins-nombre"
+                type="text"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej: Harina 000"
+                required
+              />
 
-          <label htmlFor="ins-stock">Stock actual</label>
-          <input
-            id="ins-stock"
-            type="number"
-            min="0"
-            step="0.01"
-            value={stockActual}
-            onChange={(e) => setStockActual(e.target.value)}
-            required
-          />
+              <label htmlFor="ins-stock">Stock actual</label>
+              <input
+                id="ins-stock"
+                type="number"
+                min="0"
+                step="0.01"
+                value={stockActual}
+                onChange={(e) => setStockActual(e.target.value)}
+                required
+              />
 
-          <label htmlFor="ins-min">Stock mínimo</label>
-          <input
-            id="ins-min"
-            type="number"
-            min="0"
-            step="0.01"
-            value={stockMinimo}
-            onChange={(e) => setStockMinimo(e.target.value)}
-            placeholder="Opcional"
-          />
+              <label htmlFor="ins-min">Stock mínimo</label>
+              <input
+                id="ins-min"
+                type="number"
+                min="0"
+                step="0.01"
+                value={stockMinimo}
+                onChange={(e) => setStockMinimo(e.target.value)}
+                placeholder="Opcional"
+              />
 
-          <label htmlFor="ins-unidad">Unidad de medida</label>
-          <input
-            id="ins-unidad"
-            type="text"
-            value={unidad}
-            onChange={(e) => setUnidad(e.target.value)}
-            placeholder="kg, l, unidad…"
-          />
+              <label htmlFor="ins-unidad">Unidad de medida</label>
+              <input
+                id="ins-unidad"
+                type="text"
+                value={unidad}
+                onChange={(e) => setUnidad(e.target.value)}
+                placeholder="kg, l, unidad…"
+              />
 
-          <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
-            <button type="submit" className="primary" disabled={enviando}>
-              {enviando ? 'Guardando…' : 'Guardar insumo'}
-            </button>
-            <button type="button" className="link" onClick={limpiar}>
-              Limpiar
-            </button>
-          </div>
-        </form>
-        </>
+              <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
+                <button type="submit" className="primary" disabled={enviando}>
+                  {enviando ? 'Guardando…' : 'Guardar insumo'}
+                </button>
+                <button type="button" className="link" onClick={limpiar}>
+                  Limpiar
+                </button>
+              </div>
+            </form>
+          </>
         )}
       </div>
 
@@ -696,30 +976,39 @@ function RedSucursales({ sucursales }) {
 /*  App raíz                                                           */
 /* ------------------------------------------------------------------ */
 
-const TABS = [
-  { id: 'pedidos', label: 'Tablero de Pedidos' },
-  { id: 'insumos', label: 'Stock e Insumos' },
-  { id: 'red', label: 'Red de Sucursales' },
-];
+const TAB_PEDIDOS = { id: 'pedidos', label: 'Tablero de Pedidos' };
+const TAB_RUTA = { id: 'ruta', label: 'Hoja de Ruta' };
+const TAB_INSUMOS = { id: 'insumos', label: 'Stock e Insumos' };
+const TAB_RED = { id: 'red', label: 'Red de Sucursales' };
 
 export default function App() {
   const { usuario, cargando, logout } = useAuth();
   const [tab, setTab] = useState('pedidos');
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [insumos, setInsumos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
 
   useEffect(() => {
     if (!usuario) return;
     (async () => {
       try {
-        const [s, p] = await Promise.all([apiGet('/sucursales'), apiGet('/productos')]);
+        const [s, p, i] = await Promise.all([
+          apiGet('/sucursales'),
+          apiGet('/productos'),
+          apiGet('/insumos'),
+        ]);
         setSucursales(s);
         setProductos(p);
+        setInsumos(i);
       } catch (e) {
         setErrorGlobal(e.message);
       }
     })();
+  }, [usuario]);
+
+  useEffect(() => {
+    if (usuario?.rol === 'CHOFER') setTab('ruta');
   }, [usuario]);
 
   if (cargando) {
@@ -733,6 +1022,13 @@ export default function App() {
   if (!usuario) {
     return <Login />;
   }
+
+  const tabs = [
+    TAB_PEDIDOS,
+    ...(ROLES_HOJA_RUTA.has(usuario.rol) ? [TAB_RUTA] : []),
+    TAB_INSUMOS,
+    TAB_RED,
+  ];
 
   return (
     <div className="app">
@@ -759,7 +1055,7 @@ export default function App() {
       {errorGlobal && <div className="alert alert-error">{errorGlobal}</div>}
 
       <nav className="tabs">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             className={`tab-btn ${tab === t.id ? 'active' : ''}`}
@@ -771,8 +1067,14 @@ export default function App() {
       </nav>
 
       {tab === 'pedidos' && (
-        <TableroPedidos sucursales={sucursales} productos={productos} usuario={usuario} />
+        <TableroPedidos
+          sucursales={sucursales}
+          productos={productos}
+          insumos={insumos}
+          usuario={usuario}
+        />
       )}
+      {tab === 'ruta' && ROLES_HOJA_RUTA.has(usuario.rol) && <HojaDeRuta usuario={usuario} />}
       {tab === 'insumos' && <GestionInsumos usuario={usuario} />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}
     </div>

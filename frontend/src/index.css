@@ -467,3 +467,78 @@ tbody tr:hover {
   align-items: center;
   gap: 12px;
 }
+
+/* ---- Hoja de ruta ---- */
+
+.ruta-titulo {
+  margin: 18px 0 10px;
+  font-size: 0.95rem;
+}
+
+.ruta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.ruta-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: #faf8f2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ruta-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ruta-linea {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ruta-card .detalle-list {
+  flex: 1;
+}
+
+.ruta-card button.primary {
+  width: 100%;
+}
+
+/* ---- Panel de recepción ---- */
+
+.recepcion-row td {
+  background: #faf8f2;
+}
+
+.recepcion-panel {
+  padding: 6px 2px;
+}
+
+.recepcion-panel .muted {
+  font-size: 0.82rem;
+  margin: 2px 0 10px;
+}
+
+.recepcion-linea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.recepcion-linea span {
+  font-size: 0.85rem;
+}
+
+.recepcion-linea input {
+  width: 110px;
+  margin: 0;
+}

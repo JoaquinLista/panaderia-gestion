@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS insumos (
 
 CREATE TABLE IF NOT EXISTS pedidos (
     id                   SERIAL PRIMARY KEY,
+    tipo                 VARCHAR(20) NOT NULL DEFAULT 'PRODUCTOS'
+                         CHECK (tipo IN ('INSUMOS', 'PRODUCTOS')),
     sucursal_origen_id   INTEGER NOT NULL REFERENCES sucursales(id),
     sucursal_destino_id  INTEGER NOT NULL REFERENCES sucursales(id),
     estado               VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
@@ -37,11 +39,16 @@ CREATE TABLE IF NOT EXISTS pedidos (
     fecha_creacion       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Cada línea referencia un producto O un insumo (según pedidos.tipo), nunca ambos.
 CREATE TABLE IF NOT EXISTS detalles_pedido (
-    id           SERIAL PRIMARY KEY,
-    pedido_id    INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
-    producto_id  INTEGER NOT NULL REFERENCES productos(id),
-    cantidad     NUMERIC(12,2) NOT NULL CHECK (cantidad > 0)
+    id                SERIAL PRIMARY KEY,
+    pedido_id         INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+    producto_id       INTEGER REFERENCES productos(id),
+    insumo_id         INTEGER REFERENCES insumos(id),
+    cantidad          NUMERIC(12,2) NOT NULL CHECK (cantidad > 0),
+    cantidad_recibida NUMERIC(12,2) CHECK (cantidad_recibida IS NULL OR cantidad_recibida >= 0),
+    CONSTRAINT detalles_pedido_item_xor
+        CHECK ((producto_id IS NOT NULL) <> (insumo_id IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -80,6 +87,18 @@ ALTER TABLE pedidos ADD  CONSTRAINT pedidos_estado_check
 -- La tabla `usuarios` y sus datos semilla se crean más arriba con CREATE TABLE
 -- IF NOT EXISTS / INSERT ... ON CONFLICT: sobre una base ya existente basta con
 -- volver a correr esas sentencias (o recrear el volumen).
+
+-- Pedidos unificados (INSUMOS | PRODUCTOS) y detalle polimórfico.
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) NOT NULL DEFAULT 'PRODUCTOS';
+ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_tipo_check;
+ALTER TABLE pedidos ADD  CONSTRAINT pedidos_tipo_check CHECK (tipo IN ('INSUMOS', 'PRODUCTOS'));
+
+ALTER TABLE detalles_pedido ALTER COLUMN producto_id DROP NOT NULL;
+ALTER TABLE detalles_pedido ADD COLUMN IF NOT EXISTS insumo_id INTEGER REFERENCES insumos(id);
+ALTER TABLE detalles_pedido ADD COLUMN IF NOT EXISTS cantidad_recibida NUMERIC(12,2);
+ALTER TABLE detalles_pedido DROP CONSTRAINT IF EXISTS detalles_pedido_item_xor;
+ALTER TABLE detalles_pedido ADD  CONSTRAINT detalles_pedido_item_xor
+    CHECK ((producto_id IS NOT NULL) <> (insumo_id IS NOT NULL));
 
 -- -------------------------------------------------------------
 --  Datos iniciales (DML idempotente)
