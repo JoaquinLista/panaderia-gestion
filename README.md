@@ -65,8 +65,47 @@ cd frontend && npm install && npm run dev
 
 ## Roadmap
 
-- [x] Máquina de estados del pedido (`PENDIENTE → EN_PREPARACION → DESPACHADO → ENTREGADO → RECIBIDO`, con `CANCELADO` desde los estados previos al despacho) y validación de transiciones
-- [ ] Descontar stock de insumos al despachar un pedido (receta producto → insumos)
-- [ ] Stock por sucursal (hoy el stock es global)
-- [ ] Autenticación y roles (depósito vs sucursal)
-- [ ] Tests (backend + frontend)
+El objetivo es que los tres módulos dejen de ser CRUD aislado y modelen el flujo
+real de la red: **Depósito Central → Viedma (fábrica) → puntos de venta**, con un
+chofer que transporta y actores con permisos distintos (dueños, depósito, fábrica,
+venta, chofer). Viedma mantiene un stock propio de insumos que se repone desde el
+depósito y baja al fabricar.
+
+### ✅ Fase 1 — Máquina de estados del pedido
+
+- [x] Estados `PENDIENTE → EN_PREPARACION → DESPACHADO → ENTREGADO → RECIBIDO`, con `CANCELADO` desde los estados previos al despacho
+- [x] Validación de transiciones y endpoint `PUT /api/pedidos/:id/estado`
+- [x] Acciones de avance y cancelación en el frontend
+
+### Fase 2 — Autenticación y roles
+
+- [ ] Login y sesión
+- [ ] Roles: dueño, depósito, fábrica, venta, chofer
+- [ ] Autorización por endpoint y en la UI
+- [ ] Cada transición de estado habilitada según el rol: el origen prepara, el chofer despacha y entrega, el destino confirma la recepción
+
+### Fase 3 — Pedidos unificados y hoja de ruta del chofer
+
+- [ ] `pedidos.tipo` (`INSUMOS` | `PRODUCTOS`), con el detalle apuntando a insumo o a producto
+- [ ] Validación de origen/destino según el tipo (insumos: depósito → fábrica; productos: fábrica → venta)
+- [ ] Hoja de ruta del chofer: pedidos a levantar y entregar, con las acciones de estado
+- [ ] Pantalla de recepción: confirmar lo recibido y registrar diferencias contra lo despachado
+
+### Fase 4 — Stock de insumos por bolsa
+
+- [ ] Presentación por insumo (kg por bolsa); el stock se cuenta en bolsas cerradas
+- [ ] Stock por ubicación, sólo en Depósito Central y Viedma
+- [ ] Ingreso de bolsas al depósito (compra a proveedor)
+- [ ] La recepción de un pedido de insumos suma stock en Viedma; el despacho lo resta en el depósito
+- [ ] Acción "abrir bolsa" en Viedma (descuenta una bolsa) y alerta de pocas bolsas
+
+### Fase 5 — Receta y producción
+
+- [ ] Receta producto → insumos (en kg, como referencia)
+- [ ] Registro de tandas de producción
+
+### Fase 6 — Tests
+
+- [ ] Backend: máquina de estados, movimientos de stock, validaciones
+- [ ] Frontend: componentes y flujos
+- [ ] End-to-end de los flujos críticos
