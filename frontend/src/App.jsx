@@ -15,9 +15,9 @@ async function apiGet(path) {
   return res.json();
 }
 
-async function apiPost(path, payload) {
+async function apiSend(method, path, payload) {
   const res = await fetch(`${API}${path}`, {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
@@ -28,14 +28,36 @@ async function apiPost(path, payload) {
   return body;
 }
 
+const apiPost = (path, payload) => apiSend('POST', path, payload);
+const apiPut = (path, payload) => apiSend('PUT', path, payload);
+
 const ESTADOS_PEDIDO = ['PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO'];
 
 const ESTADO_BADGE = {
   PENDIENTE: 'badge-warn',
   EN_PREPARACION: 'badge-info',
   DESPACHADO: 'badge-info',
-  ENTREGADO: 'badge-ok',
+  ENTREGADO: 'badge-info',
+  RECIBIDO: 'badge-ok',
+  CANCELADO: 'badge-danger',
 };
+
+// Espejo de la máquina de estados del backend (domain/estadoPedido.js).
+const SIGUIENTE_ESTADO = {
+  PENDIENTE: 'EN_PREPARACION',
+  EN_PREPARACION: 'DESPACHADO',
+  DESPACHADO: 'ENTREGADO',
+  ENTREGADO: 'RECIBIDO',
+};
+
+const ETIQUETA_AVANCE = {
+  EN_PREPARACION: 'Marcar en preparación',
+  DESPACHADO: 'Despachar',
+  ENTREGADO: 'Marcar entregado',
+  RECIBIDO: 'Confirmar recepción',
+};
+
+const PUEDE_CANCELARSE = new Set(['PENDIENTE', 'EN_PREPARACION']);
 
 function formatFecha(valor) {
   if (!valor) return '—';
@@ -70,6 +92,7 @@ function TableroPedidos({ sucursales, productos }) {
   const [destino, setDestino] = useState('');
   const [estado, setEstado] = useState('PENDIENTE');
   const [items, setItems] = useState([{ producto_id: '', cantidad: '' }]);
+  const [estadoEnCurso, setEstadoEnCurso] = useState(null);
 
   const cargarPedidos = useCallback(async () => {
     setCargando(true);
@@ -146,6 +169,27 @@ function TableroPedidos({ sucursales, productos }) {
       setError(e.message);
     } finally {
       setEnviando(false);
+    }
+  };
+
+  const cambiarEstado = async (pedidoId, nuevoEstado) => {
+    if (
+      nuevoEstado === 'CANCELADO' &&
+      !window.confirm(`¿Cancelar el pedido #${pedidoId}? Esta acción no se puede deshacer.`)
+    ) {
+      return;
+    }
+    setError('');
+    setOkMsg('');
+    setEstadoEnCurso(pedidoId);
+    try {
+      await apiPut(`/pedidos/${pedidoId}/estado`, { estado: nuevoEstado });
+      setOkMsg(`Pedido #${pedidoId}: estado actualizado a ${nuevoEstado.replace('_', ' ')}.`);
+      await cargarPedidos();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setEstadoEnCurso(null);
     }
   };
 
@@ -265,6 +309,7 @@ function TableroPedidos({ sucursales, productos }) {
                   <th>Detalle</th>
                   <th>Estado</th>
                   <th>Fecha</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,6 +337,33 @@ function TableroPedidos({ sucursales, productos }) {
                       </span>
                     </td>
                     <td>{formatFecha(p.fecha_creacion)}</td>
+                    <td>
+                      <div className="acciones-pedido">
+                        {SIGUIENTE_ESTADO[p.estado] && (
+                          <button
+                            type="button"
+                            className="link"
+                            disabled={estadoEnCurso === p.id}
+                            onClick={() => cambiarEstado(p.id, SIGUIENTE_ESTADO[p.estado])}
+                          >
+                            {ETIQUETA_AVANCE[SIGUIENTE_ESTADO[p.estado]]}
+                          </button>
+                        )}
+                        {PUEDE_CANCELARSE.has(p.estado) && (
+                          <button
+                            type="button"
+                            className="link link-danger"
+                            disabled={estadoEnCurso === p.id}
+                            onClick={() => cambiarEstado(p.id, 'CANCELADO')}
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                        {!SIGUIENTE_ESTADO[p.estado] && !PUEDE_CANCELARSE.has(p.estado) && (
+                          <span className="muted">—</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

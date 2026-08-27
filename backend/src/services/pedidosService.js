@@ -1,25 +1,31 @@
 import { query, getClient } from '../config/db.js';
+import {
+  ESTADOS,
+  ESTADOS_INICIALES,
+  esEstadoValido,
+  esEstadoInicialValido,
+  esEstadoFinal,
+  puedeTransicionar,
+  transicionesDesde,
+} from '../domain/estadoPedido.js';
 
-const ESTADOS_VALIDOS = ['PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO'];
+const PEDIDO_SELECT = `
+  SELECT p.id,
+         p.estado,
+         p.fecha_creacion,
+         p.sucursal_origen_id,
+         p.sucursal_destino_id,
+         so.nombre AS sucursal_origen_nombre,
+         sd.nombre AS sucursal_destino_nombre
+    FROM pedidos p
+    JOIN sucursales so ON so.id = p.sucursal_origen_id
+    JOIN sucursales sd ON sd.id = p.sucursal_destino_id`;
 
 /**
- * Lista todos los pedidos con la info de sus sucursales y el detalle de productos.
+ * Dado un conjunto de filas de pedido, les adjunta su arreglo `detalles`.
+ * @param {Array<object>} pedidos
  */
-export const listarPedidos = async () => {
-  const { rows: pedidos } = await query(
-    `SELECT p.id,
-            p.estado,
-            p.fecha_creacion,
-            p.sucursal_origen_id,
-            p.sucursal_destino_id,
-            so.nombre AS sucursal_origen_nombre,
-            sd.nombre AS sucursal_destino_nombre
-       FROM pedidos p
-       JOIN sucursales so ON so.id = p.sucursal_origen_id
-       JOIN sucursales sd ON sd.id = p.sucursal_destino_id
-      ORDER BY p.fecha_creacion DESC, p.id DESC`
-  );
-
+const adjuntarDetalles = async (pedidos) => {
   if (pedidos.length === 0) return [];
 
   const ids = pedidos.map((p) => p.id);
@@ -50,6 +56,25 @@ export const listarPedidos = async () => {
 };
 
 /**
+ * Lista todos los pedidos con la info de sus sucursales y el detalle de productos.
+ */
+export const listarPedidos = async () => {
+  const { rows } = await query(`${PEDIDO_SELECT} ORDER BY p.fecha_creacion DESC, p.id DESC`);
+  return adjuntarDetalles(rows);
+};
+
+/**
+ * Recupera un pedido completo por id, o `null` si no existe.
+ * @param {number} id
+ */
+export const obtenerPedidoPorId = async (id) => {
+  const { rows } = await query(`${PEDIDO_SELECT} WHERE p.id = $1`, [id]);
+  if (rows.length === 0) return null;
+  const [pedido] = await adjuntarDetalles(rows);
+  return pedido;
+};
+
+/**
  * Crea un pedido junto con sus detalles dentro de una transacción.
  * @param {{
  *   sucursal_origen_id: number,
@@ -74,8 +99,8 @@ export const crearPedido = async (data) => {
     err.status = 400;
     throw err;
   }
-  if (!ESTADOS_VALIDOS.includes(estado)) {
-    const err = new Error(`Estado inválido. Válidos: ${ESTADOS_VALIDOS.join(', ')}`);
+  if (!esEstadoInicialValido(estado)) {
+    const err = new Error(`Estado inicial inválido. Válidos: ${ESTADOS_INICIALES.join(', ')}`);
     err.status = 400;
     throw err;
   }
@@ -109,23 +134,22 @@ export const crearPedido = async (data) => {
     const { rows: pedidoRows } = await client.query(
       `INSERT INTO pedidos (sucursal_origen_id, sucursal_destino_id, estado)
        VALUES ($1, $2, $3)
-       RETURNING id, estado, fecha_creacion, sucursal_origen_id, sucursal_destino_id`,
+       RETURNING id`,
       [origenId, destinoId, estado]
     );
-    const pedido = pedidoRows[0];
+    const pedidoId = pedidoRows[0].id;
 
     for (const d of detalles) {
       await client.query(
         `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad)
          VALUES ($1, $2, $3)`,
-        [pedido.id, Number(d.producto_id), Number(d.cantidad)]
+        [pedidoId, Number(d.producto_id), Number(d.cantidad)]
       );
     }
 
     await client.query('COMMIT');
 
-    const [creado] = (await listarPedidosPorIds([pedido.id]));
-    return creado;
+    return obtenerPedidoPorId(pedidoId);
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -135,48 +159,66 @@ export const crearPedido = async (data) => {
 };
 
 /**
- * Helper interno: recupera pedidos completos por un conjunto de ids.
- * @param {number[]} ids
+ * Cambia el estado de un pedido validando la transición contra la máquina de estados.
+ * @param {number|string} id       id del pedido
+ * @param {string}        nuevoEstado
+ * @throws error con `.status` 400 (estado inválido), 404 (no existe) o 409 (transición inválida)
  */
-const listarPedidosPorIds = async (ids) => {
-  const { rows: pedidos } = await query(
-    `SELECT p.id,
-            p.estado,
-            p.fecha_creacion,
-            p.sucursal_origen_id,
-            p.sucursal_destino_id,
-            so.nombre AS sucursal_origen_nombre,
-            sd.nombre AS sucursal_destino_nombre
-       FROM pedidos p
-       JOIN sucursales so ON so.id = p.sucursal_origen_id
-       JOIN sucursales sd ON sd.id = p.sucursal_destino_id
-      WHERE p.id = ANY($1::int[])
-      ORDER BY p.id DESC`,
-    [ids]
-  );
+export const cambiarEstadoPedido = async (id, nuevoEstado) => {
+  const pedidoId = Number(id);
+  const estado = String(nuevoEstado ?? '').trim().toUpperCase();
 
-  const { rows: detalles } = await query(
-    `SELECT dp.id,
-            dp.pedido_id,
-            dp.producto_id,
-            dp.cantidad,
-            pr.nombre        AS producto_nombre,
-            pr.unidad_medida AS producto_unidad
-       FROM detalles_pedido dp
-       JOIN productos pr ON pr.id = dp.producto_id
-      WHERE dp.pedido_id = ANY($1::int[])
-      ORDER BY dp.id ASC`,
-    [ids]
-  );
-
-  const detallesPorPedido = new Map();
-  for (const d of detalles) {
-    if (!detallesPorPedido.has(d.pedido_id)) detallesPorPedido.set(d.pedido_id, []);
-    detallesPorPedido.get(d.pedido_id).push(d);
+  if (!Number.isInteger(pedidoId) || pedidoId <= 0) {
+    const err = new Error('El id de pedido debe ser un entero positivo');
+    err.status = 400;
+    throw err;
+  }
+  if (!esEstadoValido(estado)) {
+    const err = new Error(`Estado inválido. Válidos: ${ESTADOS.join(', ')}`);
+    err.status = 400;
+    throw err;
   }
 
-  return pedidos.map((p) => ({
-    ...p,
-    detalles: detallesPorPedido.get(p.id) ?? [],
-  }));
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      'SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE',
+      [pedidoId]
+    );
+    if (rows.length === 0) {
+      const err = new Error(`No existe el pedido #${pedidoId}`);
+      err.status = 404;
+      throw err;
+    }
+
+    const estadoActual = rows[0].estado;
+
+    if (estadoActual === estado) {
+      const err = new Error(`El pedido #${pedidoId} ya está en estado ${estado}`);
+      err.status = 409;
+      throw err;
+    }
+    if (!puedeTransicionar(estadoActual, estado)) {
+      const err = new Error(
+        esEstadoFinal(estadoActual)
+          ? `El pedido #${pedidoId} está en un estado final (${estadoActual}) y no admite cambios de estado`
+          : `Transición inválida ${estadoActual} → ${estado}. ` +
+            `Desde ${estadoActual} sólo se puede pasar a: ${transicionesDesde(estadoActual).join(', ')}`
+      );
+      err.status = 409;
+      throw err;
+    }
+
+    await client.query('UPDATE pedidos SET estado = $1 WHERE id = $2', [estado, pedidoId]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  return obtenerPedidoPorId(pedidoId);
 };

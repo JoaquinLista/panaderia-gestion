@@ -51,6 +51,7 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) |
 | GET | `/api/pedidos` | Pedidos con su detalle |
 | POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) |
+| PUT | `/api/pedidos/:id/estado` | Cambia el estado del pedido validando la transición |
 
 ## Desarrollo fuera de Docker
 
@@ -64,7 +65,7 @@ cd frontend && npm install && npm run dev
 
 ## Roadmap
 
-- [ ] Máquina de estados del pedido (`PENDIENTE → EN_PREPARACION → DESPACHADO → ENTREGADO`) con validación de transiciones
+- [x] Máquina de estados del pedido (`PENDIENTE → EN_PREPARACION → DESPACHADO → ENTREGADO → RECIBIDO`, con `CANCELADO` desde los estados previos al despacho) y validación de transiciones
 - [ ] Descontar stock de insumos al despachar un pedido (receta producto → insumos)
 - [ ] Stock por sucursal (hoy el stock es global)
 - [ ] Autenticación y roles (depósito vs sucursal)
