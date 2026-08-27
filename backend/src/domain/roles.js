@@ -2,7 +2,8 @@
  * Roles de usuario.
  *
  * - DUENIO   : acceso total, sin sucursal asociada. Puede hacer cualquier acción.
- * - DEPOSITO : opera el Depósito Central (stock de insumos, preparar pedidos de insumos).
+ * - DEPOSITO : opera el Depósito Central (prepara los pedidos de insumos). NO ve el
+ *              stock: sólo lo agrega o lo saca (movimientos), sin conocer los totales.
  * - FABRICA  : opera una sucursal que fabrica (Viedma): pide insumos, prepara y
  *              despacha pedidos de productos.
  * - VENTA    : opera un punto de venta: pide productos y confirma recepciones.
@@ -17,7 +18,7 @@ export const ROLES_CON_SUCURSAL = ['DEPOSITO', 'FABRICA', 'VENTA'];
 /** Roles que pueden crear pedidos. */
 export const ROLES_CREAN_PEDIDOS = ['FABRICA', 'VENTA'];
 
-/** Roles que pueden cargar / actualizar stock de insumos. */
-export const ROLES_GESTIONAN_INSUMOS = ['DEPOSITO'];
+/** Roles que ven el stock de insumos (cantidades, mínimos, alertas). Sólo el dueño. */
+export const ROLES_VEN_STOCK = ['DUENIO'];
 
 export const esRolValido = (rol) => ROLES.includes(rol);

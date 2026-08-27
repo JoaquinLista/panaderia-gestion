@@ -52,8 +52,9 @@ además exigen un rol (ver **Usuarios y roles**).
 | GET | `/api/auth/me` | Usuario de la sesión actual | sesión |
 | GET | `/api/sucursales` | Lista de sucursales | sesión |
 | GET | `/api/productos` | Catálogo de productos | sesión |
-| GET | `/api/insumos` | Insumos con flag `bajo_stock` | sesión |
-| POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) | `DEPOSITO` |
+| GET | `/api/insumos/catalogo` | Insumos sin stock (para armar pedidos) | sesión |
+| GET | `/api/insumos` | Insumos con stock y flag `bajo_stock` | `DUENIO` |
+| POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) | `DUENIO` |
 | GET | `/api/pedidos` | Pedidos con su detalle (unificado `item_*`) | sesión |
 | POST | `/api/pedidos` | Alta de pedido `INSUMOS` o `PRODUCTOS` con detalle (transaccional) | `FABRICA` / `VENTA` |
 | PUT | `/api/pedidos/:id/estado` | Cambia el estado (valida transición y rol); a `RECIBIDO` acepta `recepcion[]` con lo recibido por línea | según transición |
@@ -62,13 +63,16 @@ además exigen un rol (ver **Usuarios y roles**).
 
 La red se opera con cuentas de rol único:
 
-| Rol | Qué hace | Sucursal |
-|-----|----------|----------|
-| `DUENIO` | Acceso total, puede cualquier acción | — |
-| `DEPOSITO` | Stock de insumos, prepara pedidos de insumos | Depósito Central |
-| `FABRICA` | Pide insumos, prepara y despacha productos | Viedma |
-| `VENTA` | Pide productos, confirma recepciones | un punto de venta |
-| `CHOFER` | Marca los pedidos como despachados y entregados | — |
+| Rol | Qué hace | Sucursal | Ve el stock |
+|-----|----------|----------|:-:|
+| `DUENIO` | Acceso total, puede cualquier acción | — | sí |
+| `DEPOSITO` | Prepara los pedidos de insumos; agrega/saca stock sin ver los totales | Depósito Central | no |
+| `FABRICA` | Pide insumos, prepara y despacha productos, confirma sus recepciones | Viedma | no |
+| `VENTA` | Pide productos, confirma recepciones | un punto de venta | no |
+| `CHOFER` | Marca los pedidos como despachados y entregados | — | no |
+
+El **stock de insumos** (cantidades, mínimos y alertas) sólo lo ve el dueño. El
+resto arma pedidos contra el catálogo (`/api/insumos/catalogo`, sin cantidades).
 
 Transiciones de estado según rol: el **origen** prepara (`EN_PREPARACION`), el
 **chofer** despacha y entrega (`DESPACHADO`, `ENTREGADO`), el **destino** confirma
@@ -125,9 +129,9 @@ sucursales, además de vender al público. Una sucursal puede cumplir más de un
 
 - [ ] Presentación por insumo (kg por bolsa); el stock se cuenta en bolsas cerradas
 - [ ] Stock por ubicación, sólo en Depósito Central y Viedma
-- [ ] Ingreso de bolsas al depósito (compra a proveedor)
+- [ ] Ingreso de bolsas al depósito (compra) y egreso: el rol `DEPOSITO` registra movimientos sin ver los totales
 - [ ] La recepción de un pedido de insumos suma stock en Viedma; el despacho lo resta en el depósito
-- [ ] Acción "abrir bolsa" en Viedma (descuenta una bolsa) y alerta de pocas bolsas
+- [ ] Acción "abrir bolsa" en Viedma (descuenta una bolsa) y alerta de pocas bolsas (sólo dueño)
 
 ### Fase 5 — Receta y producción
 

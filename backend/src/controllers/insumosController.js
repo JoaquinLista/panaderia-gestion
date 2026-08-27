@@ -1,7 +1,24 @@
-import { listarInsumos, guardarInsumo } from '../services/insumosService.js';
+import {
+  listarInsumos,
+  listarCatalogoInsumos,
+  guardarInsumo,
+} from '../services/insumosService.js';
+
+/**
+ * GET /api/insumos/catalogo
+ * Sólo nombres y unidades, para armar pedidos. Cualquier sesión.
+ */
+export const getCatalogoInsumos = async (req, res, next) => {
+  try {
+    res.json(await listarCatalogoInsumos());
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * GET /api/insumos
+ * Incluye stock actual/mínimo y `bajo_stock`. Sólo DUENIO.
  */
 export const getInsumos = async (req, res, next) => {
   try {

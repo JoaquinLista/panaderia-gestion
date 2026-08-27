@@ -5,7 +5,7 @@ import { useAuth, etiquetaRol, Login } from './auth.jsx';
 const ESTADOS_PEDIDO = ['PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO'];
 
 const ROLES_CREAN_PEDIDOS = new Set(['FABRICA', 'VENTA', 'DUENIO']);
-const ROLES_GESTIONAN_INSUMOS = new Set(['DEPOSITO', 'DUENIO']);
+const ROLES_VEN_STOCK = new Set(['DUENIO']);
 const ROLES_HOJA_RUTA = new Set(['CHOFER', 'DUENIO']);
 
 // Espejo de backend/src/domain/tipoPedido.js
@@ -670,7 +670,7 @@ function HojaDeRuta({ usuario }) {
 /* ------------------------------------------------------------------ */
 
 function GestionInsumos({ usuario }) {
-  const puedeGestionar = ROLES_GESTIONAN_INSUMOS.has(usuario.rol);
+  const puedeGestionar = ROLES_VEN_STOCK.has(usuario.rol);
   const [insumos, setInsumos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -993,10 +993,11 @@ export default function App() {
     if (!usuario) return;
     (async () => {
       try {
+        // Catálogo sin stock: hace falta para armar pedidos de insumos.
         const [s, p, i] = await Promise.all([
           apiGet('/sucursales'),
           apiGet('/productos'),
-          apiGet('/insumos'),
+          apiGet('/insumos/catalogo'),
         ]);
         setSucursales(s);
         setProductos(p);
@@ -1026,7 +1027,7 @@ export default function App() {
   const tabs = [
     TAB_PEDIDOS,
     ...(ROLES_HOJA_RUTA.has(usuario.rol) ? [TAB_RUTA] : []),
-    TAB_INSUMOS,
+    ...(ROLES_VEN_STOCK.has(usuario.rol) ? [TAB_INSUMOS] : []),
     TAB_RED,
   ];
 
@@ -1075,7 +1076,7 @@ export default function App() {
         />
       )}
       {tab === 'ruta' && ROLES_HOJA_RUTA.has(usuario.rol) && <HojaDeRuta usuario={usuario} />}
-      {tab === 'insumos' && <GestionInsumos usuario={usuario} />}
+      {tab === 'insumos' && ROLES_VEN_STOCK.has(usuario.rol) && <GestionInsumos usuario={usuario} />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}
     </div>
   );

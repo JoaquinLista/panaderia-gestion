@@ -1,6 +1,18 @@
 import { query } from '../config/db.js';
 
 /**
+ * Catálogo de insumos SIN datos de stock (id, nombre, unidad).
+ * Lo puede consultar cualquier usuario porque hace falta para armar pedidos
+ * de insumos; el stock en sí sólo lo ven los dueños.
+ */
+export const listarCatalogoInsumos = async () => {
+  const { rows } = await query(
+    `SELECT id, nombre, unidad_medida FROM insumos ORDER BY nombre ASC`
+  );
+  return rows;
+};
+
+/**
  * Lista todos los insumos e incluye una bandera calculada `bajo_stock`.
  */
 export const listarInsumos = async () => {
