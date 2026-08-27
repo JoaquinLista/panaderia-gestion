@@ -1,4 +1,4 @@
-import { listarPedidos, crearPedido } from '../services/pedidosService.js';
+import { listarPedidos, crearPedido, cambiarEstadoPedido } from '../services/pedidosService.js';
 
 /**
  * GET /api/pedidos
@@ -32,6 +32,25 @@ export const postPedido = async (req, res, next) => {
 
     const pedido = await crearPedido(req.body);
     res.status(201).json(pedido);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/pedidos/:id/estado
+ * Cambia el estado de un pedido validando la transición.
+ */
+export const putEstadoPedido = async (req, res, next) => {
+  try {
+    const { estado } = req.body ?? {};
+
+    if (!estado || String(estado).trim() === '') {
+      return res.status(400).json({ error: 'El campo "estado" es obligatorio' });
+    }
+
+    const pedido = await cambiarEstadoPedido(req.params.id, estado);
+    res.json(pedido);
   } catch (error) {
     next(error);
   }

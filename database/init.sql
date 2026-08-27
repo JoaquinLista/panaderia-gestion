@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     sucursal_origen_id   INTEGER NOT NULL REFERENCES sucursales(id),
     sucursal_destino_id  INTEGER NOT NULL REFERENCES sucursales(id),
     estado               VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
-                         CHECK (estado IN ('PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO')),
+                         CHECK (estado IN ('PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO', 'RECIBIDO', 'CANCELADO')),
     fecha_creacion       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -46,6 +46,19 @@ CREATE TABLE IF NOT EXISTS detalles_pedido (
 
 CREATE INDEX IF NOT EXISTS idx_detalles_pedido_pedido_id ON detalles_pedido (pedido_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_estado           ON pedidos (estado);
+
+-- -------------------------------------------------------------
+--  Migraciones idempotentes
+--  Ajustes sobre bases creadas con una versión anterior del schema.
+--  En instalaciones nuevas ya quedan aplicadas por los CREATE de arriba;
+--  este script sólo corre al inicializar el volumen, así que para una base
+--  ya existente hay que ejecutarlas a mano (o recrear el volumen).
+-- -------------------------------------------------------------
+
+-- Ampliar el CHECK de pedidos.estado para incluir 'RECIBIDO' y 'CANCELADO'.
+ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_estado_check;
+ALTER TABLE pedidos ADD  CONSTRAINT pedidos_estado_check
+    CHECK (estado IN ('PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO', 'RECIBIDO', 'CANCELADO'));
 
 -- -------------------------------------------------------------
 --  Datos iniciales (DML idempotente)
