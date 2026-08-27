@@ -49,7 +49,7 @@ export const putEstadoPedido = async (req, res, next) => {
       return res.status(400).json({ error: 'El campo "estado" es obligatorio' });
     }
 
-    const pedido = await cambiarEstadoPedido(req.params.id, estado);
+    const pedido = await cambiarEstadoPedido(req.params.id, estado, req.usuario);
     res.json(pedido);
   } catch (error) {
     next(error);

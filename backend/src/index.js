@@ -1,8 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
 import pool from './config/db.js';
+import { requireAuth } from './middleware/auth.js';
+import authRoutes from './routes/authRoutes.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
 import insumosRoutes from './routes/insumosRoutes.js';
 import pedidosRoutes from './routes/pedidosRoutes.js';
@@ -14,11 +17,14 @@ const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
 
 // ---- Middlewares globales ----
-app.use(cors());
+// El frontend se sirve del mismo origen (proxy de nginx / vite), así que CORS
+// sólo aplica a clientes externos; con cookies de sesión hace falta credentials.
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// ---- Healthcheck ----
+// ---- Healthcheck (público) ----
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -28,11 +34,14 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// ---- Rutas de negocio ----
-app.use('/api/sucursales', sucursalesRoutes);
-app.use('/api/insumos', insumosRoutes);
-app.use('/api/pedidos', pedidosRoutes);
-app.use('/api/productos', productosRoutes);
+// ---- Autenticación (público salvo /me) ----
+app.use('/api/auth', authRoutes);
+
+// ---- Rutas de negocio (requieren sesión) ----
+app.use('/api/sucursales', requireAuth, sucursalesRoutes);
+app.use('/api/insumos', requireAuth, insumosRoutes);
+app.use('/api/pedidos', requireAuth, pedidosRoutes);
+app.use('/api/productos', requireAuth, productosRoutes);
 
 // ---- 404 ----
 app.use((req, res) => {

@@ -44,8 +44,25 @@ CREATE TABLE IF NOT EXISTS detalles_pedido (
     cantidad     NUMERIC(12,2) NOT NULL CHECK (cantidad > 0)
 );
 
+CREATE TABLE IF NOT EXISTS usuarios (
+    id             SERIAL PRIMARY KEY,
+    email          VARCHAR(160) NOT NULL UNIQUE,
+    password_hash  VARCHAR(255) NOT NULL,
+    nombre         VARCHAR(120) NOT NULL,
+    rol            VARCHAR(20)  NOT NULL CHECK (rol IN ('DUENIO', 'DEPOSITO', 'FABRICA', 'VENTA', 'CHOFER')),
+    sucursal_id    INTEGER REFERENCES sucursales(id),
+    activo         BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- DUENIO y CHOFER no dependen de una sucursal; el resto sí.
+    CONSTRAINT usuarios_sucursal_por_rol CHECK (
+        (rol IN ('DUENIO', 'CHOFER') AND sucursal_id IS NULL) OR
+        (rol IN ('DEPOSITO', 'FABRICA', 'VENTA') AND sucursal_id IS NOT NULL)
+    )
+);
+
 CREATE INDEX IF NOT EXISTS idx_detalles_pedido_pedido_id ON detalles_pedido (pedido_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_estado           ON pedidos (estado);
+CREATE INDEX IF NOT EXISTS idx_usuarios_email            ON usuarios (email);
 
 -- -------------------------------------------------------------
 --  Migraciones idempotentes
@@ -59,6 +76,10 @@ CREATE INDEX IF NOT EXISTS idx_pedidos_estado           ON pedidos (estado);
 ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_estado_check;
 ALTER TABLE pedidos ADD  CONSTRAINT pedidos_estado_check
     CHECK (estado IN ('PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO', 'RECIBIDO', 'CANCELADO'));
+
+-- La tabla `usuarios` y sus datos semilla se crean más arriba con CREATE TABLE
+-- IF NOT EXISTS / INSERT ... ON CONFLICT: sobre una base ya existente basta con
+-- volver a correr esas sentencias (o recrear el volumen).
 
 -- -------------------------------------------------------------
 --  Datos iniciales (DML idempotente)
@@ -82,3 +103,16 @@ INSERT INTO productos (nombre, unidad_medida) VALUES
     ('Medialunas',   'docena'),
     ('Pan Baguette', 'unidad')
 ON CONFLICT (nombre) DO NOTHING;
+
+-- Usuarios semilla. Contraseña de todos: "panaderia123" (sólo para desarrollo).
+-- El hash es bcrypt; cualquier hash válido de esa contraseña sirve.
+INSERT INTO usuarios (email, password_hash, nombre, rol, sucursal_id) VALUES
+    ('duenio1@panaderia.test',    '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Dueño 1',              'DUENIO',   NULL),
+    ('duenio2@panaderia.test',    '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Dueño 2',              'DUENIO',   NULL),
+    ('chofer@panaderia.test',     '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Chofer',               'CHOFER',   NULL),
+    ('deposito@panaderia.test',   '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Operador de Depósito', 'DEPOSITO', (SELECT id FROM sucursales WHERE nombre = 'Depósito Central')),
+    ('viedma@panaderia.test',     '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Encargado Viedma',     'FABRICA',  (SELECT id FROM sucursales WHERE nombre = 'Panadería Viedma')),
+    ('estrada@panaderia.test',    '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Encargado Estrada',    'VENTA',    (SELECT id FROM sucursales WHERE nombre = 'Panadería Estrada')),
+    ('patagonico@panaderia.test', '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Encargado Patagónico', 'VENTA',    (SELECT id FROM sucursales WHERE nombre = 'Panadería Patagónico')),
+    ('elcafe@panaderia.test',     '$2a$10$xXl8a8aZKzbrhdstwUHgS.9MJa4.zsmumfb2K5BTM5odSD.lvst2K', 'Encargado El Café',    'VENTA',    (SELECT id FROM sucursales WHERE nombre = 'Panadería El Café'))
+ON CONFLICT (email) DO NOTHING;

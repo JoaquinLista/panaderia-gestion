@@ -40,18 +40,45 @@ curl -s http://localhost/api/health     # {"status":"ok","db":"up"}
 
 ## API
 
-Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
+Base `/api` — el frontend usa rutas relativas (proxy de Nginx). Salvo `/api/health`
+y `/api/auth/login`, todas las rutas requieren sesión (cookie httpOnly). Algunas
+además exigen un rol (ver **Usuarios y roles**).
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/api/health` | Estado del servicio y de la base |
-| GET | `/api/sucursales` | Lista de sucursales |
-| GET | `/api/productos` | Catálogo de productos |
-| GET | `/api/insumos` | Insumos con flag `bajo_stock` |
-| POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) |
-| GET | `/api/pedidos` | Pedidos con su detalle |
-| POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) |
-| PUT | `/api/pedidos/:id/estado` | Cambia el estado del pedido validando la transición |
+| Método | Ruta | Descripción | Requiere |
+|--------|------|-------------|----------|
+| GET | `/api/health` | Estado del servicio y de la base | — |
+| POST | `/api/auth/login` | Inicia sesión, setea la cookie | — |
+| POST | `/api/auth/logout` | Cierra la sesión | — |
+| GET | `/api/auth/me` | Usuario de la sesión actual | sesión |
+| GET | `/api/sucursales` | Lista de sucursales | sesión |
+| GET | `/api/productos` | Catálogo de productos | sesión |
+| GET | `/api/insumos` | Insumos con flag `bajo_stock` | sesión |
+| POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) | `DEPOSITO` |
+| GET | `/api/pedidos` | Pedidos con su detalle | sesión |
+| POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) | `FABRICA` / `VENTA` |
+| PUT | `/api/pedidos/:id/estado` | Cambia el estado validando transición y rol | según transición |
+
+## Usuarios y roles
+
+La red se opera con cuentas de rol único:
+
+| Rol | Qué hace | Sucursal |
+|-----|----------|----------|
+| `DUENIO` | Acceso total, puede cualquier acción | — |
+| `DEPOSITO` | Stock de insumos, prepara pedidos de insumos | Depósito Central |
+| `FABRICA` | Pide insumos, prepara y despacha productos | Viedma |
+| `VENTA` | Pide productos, confirma recepciones | un punto de venta |
+| `CHOFER` | Marca los pedidos como despachados y entregados | — |
+
+Transiciones de estado según rol: el **origen** prepara (`EN_PREPARACION`), el
+**chofer** despacha y entrega (`DESPACHADO`, `ENTREGADO`), el **destino** confirma
+(`RECIBIDO`) o cancela. El dueño puede forzar cualquier transición válida.
+
+Usuarios semilla (contraseña `panaderia123`, sólo desarrollo):
+
+`duenio1@panaderia.test` · `duenio2@panaderia.test` · `deposito@panaderia.test` ·
+`viedma@panaderia.test` · `estrada@panaderia.test` · `patagonico@panaderia.test` ·
+`elcafe@panaderia.test` · `chofer@panaderia.test`
 
 ## Desarrollo fuera de Docker
 
@@ -78,12 +105,13 @@ sucursales, además de vender al público. Una sucursal puede cumplir más de un
 - [x] Validación de transiciones y endpoint `PUT /api/pedidos/:id/estado`
 - [x] Acciones de avance y cancelación en el frontend
 
-### Fase 2 — Autenticación y roles
+### ✅ Fase 2 — Autenticación y roles
 
-- [ ] Login y sesión
-- [ ] Roles: dueño, depósito, fábrica, venta, chofer (una sucursal puede tener varios — Viedma es fábrica y venta)
-- [ ] Autorización por endpoint y en la UI
-- [ ] Cada transición de estado habilitada según el rol: el origen prepara, el chofer despacha y entrega, el destino confirma la recepción
+- [x] Login y sesión (JWT en cookie httpOnly, hash bcrypt)
+- [x] Roles de usuario: dueño, depósito, fábrica, venta, chofer
+- [x] Autorización por endpoint y en la UI
+- [x] Cada transición de estado habilitada según el rol: el origen prepara, el chofer despacha y entrega, el destino confirma la recepción
+- [ ] Pendiente para más adelante: roles múltiples por sucursal (Viedma como fábrica + venta), invitación de usuarios, recuperación de contraseña
 
 ### Fase 3 — Pedidos unificados y hoja de ruta del chofer
 

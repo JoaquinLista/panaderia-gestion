@@ -8,6 +8,10 @@ import {
   puedeTransicionar,
   transicionesDesde,
 } from '../domain/estadoPedido.js';
+import {
+  usuarioPuedeTransicionar,
+  describirAutorizacion,
+} from '../domain/autorizacionPedido.js';
 
 const PEDIDO_SELECT = `
   SELECT p.id,
@@ -159,12 +163,14 @@ export const crearPedido = async (data) => {
 };
 
 /**
- * Cambia el estado de un pedido validando la transición contra la máquina de estados.
+ * Cambia el estado de un pedido validando la transición y el permiso del usuario.
  * @param {number|string} id       id del pedido
  * @param {string}        nuevoEstado
- * @throws error con `.status` 400 (estado inválido), 404 (no existe) o 409 (transición inválida)
+ * @param {{ rol: string, sucursal_id: number|null }} usuario  quien realiza el cambio
+ * @throws error con `.status` 400 (estado inválido), 403 (rol sin permiso),
+ *         404 (no existe) o 409 (transición inválida)
  */
-export const cambiarEstadoPedido = async (id, nuevoEstado) => {
+export const cambiarEstadoPedido = async (id, nuevoEstado, usuario) => {
   const pedidoId = Number(id);
   const estado = String(nuevoEstado ?? '').trim().toUpperCase();
 
@@ -184,7 +190,8 @@ export const cambiarEstadoPedido = async (id, nuevoEstado) => {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      'SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE',
+      `SELECT estado, sucursal_origen_id, sucursal_destino_id
+         FROM pedidos WHERE id = $1 FOR UPDATE`,
       [pedidoId]
     );
     if (rows.length === 0) {
@@ -193,7 +200,8 @@ export const cambiarEstadoPedido = async (id, nuevoEstado) => {
       throw err;
     }
 
-    const estadoActual = rows[0].estado;
+    const pedido = rows[0];
+    const estadoActual = pedido.estado;
 
     if (estadoActual === estado) {
       const err = new Error(`El pedido #${pedidoId} ya está en estado ${estado}`);
@@ -208,6 +216,14 @@ export const cambiarEstadoPedido = async (id, nuevoEstado) => {
             `Desde ${estadoActual} sólo se puede pasar a: ${transicionesDesde(estadoActual).join(', ')}`
       );
       err.status = 409;
+      throw err;
+    }
+    if (!usuarioPuedeTransicionar(usuario, pedido, estado)) {
+      const err = new Error(
+        `Tu rol (${usuario?.rol ?? 'sin sesión'}) no puede pasar el pedido a ${estado}. ` +
+          `Lo hace: ${describirAutorizacion(estado)}`
+      );
+      err.status = 403;
       throw err;
     }
 

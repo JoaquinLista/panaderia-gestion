@@ -38,6 +38,9 @@ services:
       POSTGRES_DB: panaderias
       POSTGRES_USER: panaderias
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env (cp .env.example .env)}
+      JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en .env (cp .env.example .env)}
+      # Poner en true detrás de HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "3000:3000"
     depends_on:

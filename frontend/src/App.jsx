@@ -1,37 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
-const API = '/api';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers de red                                                     */
-/* ------------------------------------------------------------------ */
-
-async function apiGet(path) {
-  const res = await fetch(`${API}${path}`);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Error ${res.status} al consultar ${path}`);
-  }
-  return res.json();
-}
-
-async function apiSend(method, path, payload) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(body.error || `Error ${res.status} al enviar a ${path}`);
-  }
-  return body;
-}
-
-const apiPost = (path, payload) => apiSend('POST', path, payload);
-const apiPut = (path, payload) => apiSend('PUT', path, payload);
+import { apiGet, apiPost, apiPut } from './api.js';
+import { useAuth, etiquetaRol, Login } from './auth.jsx';
 
 const ESTADOS_PEDIDO = ['PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO'];
+
+const ROLES_CREAN_PEDIDOS = new Set(['FABRICA', 'VENTA', 'DUENIO']);
+const ROLES_GESTIONAN_INSUMOS = new Set(['DEPOSITO', 'DUENIO']);
+
+// Espejo de backend/src/domain/autorizacionPedido.js: quién puede cada transición.
+const REGLAS_TRANSICION = {
+  EN_PREPARACION: { posicion: 'origen', roles: ['FABRICA', 'DEPOSITO'] },
+  DESPACHADO: { posicion: 'global', roles: ['CHOFER'] },
+  ENTREGADO: { posicion: 'global', roles: ['CHOFER'] },
+  RECIBIDO: { posicion: 'destino', roles: ['FABRICA', 'VENTA'] },
+  CANCELADO: { posicion: 'destino', roles: ['FABRICA', 'VENTA'] },
+};
+
+function puedeTransicionarUI(usuario, pedido, hacia) {
+  if (!usuario) return false;
+  if (usuario.rol === 'DUENIO') return true;
+  const regla = REGLAS_TRANSICION[hacia];
+  if (!regla || !regla.roles.includes(usuario.rol)) return false;
+  if (regla.posicion === 'global') return true;
+  const objetivo =
+    regla.posicion === 'origen' ? pedido.sucursal_origen_id : pedido.sucursal_destino_id;
+  return Number(usuario.sucursal_id) === Number(objetivo);
+}
 
 const ESTADO_BADGE = {
   PENDIENTE: 'badge-warn',
@@ -81,7 +75,8 @@ function nombreSucursal(sucursales, id) {
 /*  Tablero de Pedidos                                                 */
 /* ------------------------------------------------------------------ */
 
-function TableroPedidos({ sucursales, productos }) {
+function TableroPedidos({ sucursales, productos, usuario }) {
+  const puedeCrear = ROLES_CREAN_PEDIDOS.has(usuario.rol);
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -194,13 +189,21 @@ function TableroPedidos({ sucursales, productos }) {
   };
 
   return (
-    <div className="grid-2">
+    <>
+      {error && <div className="alert alert-error">{error}</div>}
+      {okMsg && <div className="alert alert-ok">{okMsg}</div>}
+
+      <div className="grid-2">
       <div className="card">
         <h2>Nuevo pedido</h2>
+        {!puedeCrear ? (
+          <p className="subtitle">
+            Tu rol ({etiquetaRol(usuario.rol)}) no crea pedidos. Podés ver el listado y
+            actuar sobre los estados que te correspondan.
+          </p>
+        ) : (
+        <>
         <p className="subtitle">Registrá un movimiento de productos entre sucursales.</p>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {okMsg && <div className="alert alert-ok">{okMsg}</div>}
 
         <form onSubmit={enviar}>
           <label htmlFor="origen">Sucursal de origen</label>
@@ -281,6 +284,8 @@ function TableroPedidos({ sucursales, productos }) {
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
 
       <div className="card">
@@ -313,7 +318,12 @@ function TableroPedidos({ sucursales, productos }) {
                 </tr>
               </thead>
               <tbody>
-                {pedidos.map((p) => (
+                {pedidos.map((p) => {
+                  const avance = SIGUIENTE_ESTADO[p.estado];
+                  const puedeAvanzar = avance && puedeTransicionarUI(usuario, p, avance);
+                  const puedeCancelar =
+                    PUEDE_CANCELARSE.has(p.estado) && puedeTransicionarUI(usuario, p, 'CANCELADO');
+                  return (
                   <tr key={p.id}>
                     <td>{p.id}</td>
                     <td>{p.sucursal_origen_nombre || nombreSucursal(sucursales, p.sucursal_origen_id)}</td>
@@ -339,17 +349,17 @@ function TableroPedidos({ sucursales, productos }) {
                     <td>{formatFecha(p.fecha_creacion)}</td>
                     <td>
                       <div className="acciones-pedido">
-                        {SIGUIENTE_ESTADO[p.estado] && (
+                        {puedeAvanzar && (
                           <button
                             type="button"
                             className="link"
                             disabled={estadoEnCurso === p.id}
-                            onClick={() => cambiarEstado(p.id, SIGUIENTE_ESTADO[p.estado])}
+                            onClick={() => cambiarEstado(p.id, avance)}
                           >
-                            {ETIQUETA_AVANCE[SIGUIENTE_ESTADO[p.estado]]}
+                            {ETIQUETA_AVANCE[avance]}
                           </button>
                         )}
-                        {PUEDE_CANCELARSE.has(p.estado) && (
+                        {puedeCancelar && (
                           <button
                             type="button"
                             className="link link-danger"
@@ -359,19 +369,19 @@ function TableroPedidos({ sucursales, productos }) {
                             Cancelar
                           </button>
                         )}
-                        {!SIGUIENTE_ESTADO[p.estado] && !PUEDE_CANCELARSE.has(p.estado) && (
-                          <span className="muted">—</span>
-                        )}
+                        {!puedeAvanzar && !puedeCancelar && <span className="muted">—</span>}
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -379,7 +389,8 @@ function TableroPedidos({ sucursales, productos }) {
 /*  Gestión de Stock e Insumos                                         */
 /* ------------------------------------------------------------------ */
 
-function GestionInsumos() {
+function GestionInsumos({ usuario }) {
+  const puedeGestionar = ROLES_GESTIONAN_INSUMOS.has(usuario.rol);
   const [insumos, setInsumos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -469,6 +480,13 @@ function GestionInsumos() {
     <div className="grid-2">
       <div className="card">
         <h2>Cargar / actualizar insumo</h2>
+        {!puedeGestionar ? (
+          <p className="subtitle">
+            Tu rol ({etiquetaRol(usuario.rol)}) no gestiona el stock de insumos. Podés
+            consultar el listado.
+          </p>
+        ) : (
+        <>
         <p className="subtitle">
           Si el nombre ya existe se actualiza su stock; si no, se crea uno nuevo.
         </p>
@@ -527,6 +545,8 @@ function GestionInsumos() {
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
 
       <div className="card">
@@ -585,9 +605,11 @@ function GestionInsumos() {
                         )}
                       </td>
                       <td>
-                        <button className="link" onClick={() => elegirInsumo(i)}>
-                          Editar
-                        </button>
+                        {puedeGestionar && (
+                          <button className="link" onClick={() => elegirInsumo(i)}>
+                            Editar
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -681,12 +703,14 @@ const TABS = [
 ];
 
 export default function App() {
+  const { usuario, cargando, logout } = useAuth();
   const [tab, setTab] = useState('pedidos');
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
 
   useEffect(() => {
+    if (!usuario) return;
     (async () => {
       try {
         const [s, p] = await Promise.all([apiGet('/sucursales'), apiGet('/productos')]);
@@ -696,15 +720,39 @@ export default function App() {
         setErrorGlobal(e.message);
       }
     })();
-  }, []);
+  }, [usuario]);
+
+  if (cargando) {
+    return (
+      <div className="app">
+        <div className="empty">Cargando…</div>
+      </div>
+    );
+  }
+
+  if (!usuario) {
+    return <Login />;
+  }
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="logo">🥐</div>
-        <div>
+        <div className="app-header-titles">
           <h1>Red de Panaderías · Gestión Interna</h1>
           <p>Pedidos entre sucursales · Control de insumos · Mapa operacional</p>
+        </div>
+        <div className="app-user">
+          <div className="app-user-info">
+            <strong>{usuario.nombre}</strong>
+            <span>
+              {etiquetaRol(usuario.rol)}
+              {usuario.sucursal_nombre ? ` · ${usuario.sucursal_nombre}` : ''}
+            </span>
+          </div>
+          <button type="button" className="link" onClick={logout}>
+            Salir
+          </button>
         </div>
       </header>
 
@@ -722,8 +770,10 @@ export default function App() {
         ))}
       </nav>
 
-      {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
-      {tab === 'insumos' && <GestionInsumos />}
+      {tab === 'pedidos' && (
+        <TableroPedidos sucursales={sucursales} productos={productos} usuario={usuario} />
+      )}
+      {tab === 'insumos' && <GestionInsumos usuario={usuario} />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}
     </div>
   );
