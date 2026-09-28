@@ -276,3 +276,35 @@ producción en el horizonte (Sprint 6), eso no escala.
 - **Unit** (`tests/unit/migrar.test.js`): parámetros del runner, log y que la conexión se libere aunque falle.
 - **Integración** (`tests/integracion/migraciones.test.js`, `npm run test:integracion`): contra un Postgres real crea una base vacía y aplica todo, verifica que una segunda corrida no hace nada, y prueba el índice único y el CHECK de roles. Además crea una base con el `init.sql` del TP2 (fixture) con un pedido cargado, migra y comprueba que el pedido sigue ahí y las sucursales se renombraron.
 - **CI**: job nuevo `Migraciones · Postgres real` con un servicio Postgres. El smoke test de Docker ahora valida también que el backend crea el esquema solo, porque la base arranca vacía.
+
+## La Fueguina Stats — Sprint 2 · PR 2: login en el backend (#5)
+
+### Contrato de la API
+
+`POST /api/auth/login`, `POST /api/auth/logout` y `GET /api/auth/me`, documentados en
+el README. Login y `/me` devuelven lo mismo: usuario, sucursal del día y lista de
+permisos. Con eso Dev 2 arma la pantalla de login y la interfaz por rol sin esperar
+al PR 3.
+
+### Decisiones
+
+| Decisión | Por qué |
+|----------|---------|
+| JWT (`jsonwebtoken`, HS256) en cookie `httpOnly`, `SameSite=Strict`, `Path=/api`, 12 h | El JavaScript de la página no puede leer la sesión y el navegador no la manda desde otros sitios. 12 h es un turno. |
+| El token sólo guarda el id y la sucursal del día | Rol, permisos y si está activo se leen de la base en cada request: desactivar a alguien corta su sesión al instante, sin esperar a que venza. |
+| Contraseñas con `scrypt` de `node:crypto`, salt propio y parámetros guardados en el hash | Sin dependencias nativas en la imagen alpine; los parámetros guardados permiten endurecerlos más adelante. |
+| Mismo error y mismo tiempo de respuesta si el usuario no existe, la clave está mal o está desactivado | No se puede averiguar qué usuarios existen. Si el usuario no existe se verifica igual contra un hash ficticio. |
+| 5 intentos fallidos por minuto por IP (`express-rate-limit`); los ingresos correctos no cuentan | Frena la fuerza bruta sin molestar a quien entra bien. `trust proxy` sólo acepta la IP que manda Nginx desde la red interna. |
+| La empleada elige la sucursal al entrar; el galpón no se puede elegir | Las empleadas rotan y el galpón no tiene personal (definición del PM). Admin y chofer no tienen sucursal del día. |
+| Matriz de permisos en `domain/permisos.js` desde este PR | `/me` ya devuelve los permisos. El PR 3 los hace cumplir en cada ruta. |
+| Admin inicial con `ADMIN_USUARIO` / `ADMIN_PASSWORD` | Se crea sólo si no hay ningún admin. No hay contraseñas en el código ni en migraciones. |
+| `JWT_SECRET` obligatorio (32+ caracteres) | Sin él el backend no arranca y el compose no levanta. En CI se genera uno descartable con `openssl rand -hex 32`. |
+| `COOKIE_SECURE` configurable | En producción la cookie es `Secure` (sólo HTTPS). El compose local la apaga porque corre en `http://localhost`. |
+| Las rutas de negocio todavía **no** piden sesión | Si se cerraran ahora, la app actual (sin pantalla de login) dejaría de funcionar en `main`. Se cierran en el PR 3, después de que entre la pantalla de login (PR 4). |
+
+### Cómo se prueba
+
+- **Unit**: contraseñas (hash, salt, hashes inválidos), matriz de permisos completa, configuración, y el servicio (tokens vencidos, con otro secreto o sin firma, usuario desactivado, admin inicial).
+- **API** (`tests/api/auth.test.js`): login por rol, cookie con sus atributos, 400/401/429, `/me` con y sin cookie, sesión cortada al desactivar, logout.
+- **Integración** (`tests/integracion/auth.test.js`): contra Postgres real crea el admin inicial una sola vez, entra sin distinguir mayúsculas y con una sucursal real.
+- **CI**: el smoke test de Docker verifica el 401 sin sesión y que el admin inicial entra y `/me` responde con su rol.
