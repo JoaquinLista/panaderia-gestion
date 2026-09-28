@@ -3,14 +3,14 @@
 # =============================================================
 
 # ---- Etapa 1: dependencias ----
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 # Los archivos de dependencias primero: capa cacheable, solo se rehace si cambian.
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 # ---- Etapa 2: runtime ----
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 LABEL org.opencontainers.image.source="https://github.com/JoaquinLista/panaderia-gestion"
 ENV NODE_ENV=production
 WORKDIR /app
