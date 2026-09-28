@@ -29,6 +29,14 @@ export default defineConfig({
       include: ['src/**/*.{js,jsx}'],
       exclude: ['src/main.jsx', 'src/test/**', 'src/**/*.test.{js,jsx}'],
       reporter: ['text', 'html', 'lcov', 'json-summary'],
+      // Umbral mínimo: si la cobertura baja de acá, `npm run test:coverage` falla
+      // y el pipeline bloquea el merge. Ver decisiones.md (Sprint 1).
+      thresholds: {
+        lines: 70,
+        statements: 70,
+        functions: 70,
+        branches: 70,
+      },
     },
   },
 });

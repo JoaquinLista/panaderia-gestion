@@ -76,6 +76,10 @@ cd backend && npm test          # o npm run test:coverage
 cd frontend && npm test
 ```
 
+`npm run test:coverage` falla si la cobertura baja de **80%** (backend) o **70%**
+(frontend). El pipeline de CI (`.github/workflows/ci.yml`) corre lo mismo en cada PR,
+construye las imágenes Docker y hace un smoke test del sistema levantado.
+
 Los tests del backend no necesitan base de datos: la capa `config/db.js` se reemplaza
 por un doble de prueba. La app Express vive en `src/app.js` (sin `listen`) para poder
 probarla con Supertest; `src/index.js` sólo la arranca.
@@ -85,7 +89,7 @@ probarla con Supertest; `src/index.js` sólo la arranca.
 Cada sprint dura una semana y termina con algo demostrable.
 
 - [x] **Sprint 0 — Fundaciones:** templates de issues y PR, `CONTRIBUTING.md`, ESLint + Prettier, Vitest con primeros tests, Dependabot, sucursales reales.
-- [ ] **Sprint 1 — CI + tests con umbral:** GitHub Actions (lint, tests, build), coverage mínimo que bloquea el merge.
+- [x] **Sprint 1 — CI + tests con umbral:** GitHub Actions (lint, formato, tests, build, Docker + smoke test), coverage mínimo (80% backend, 70% frontend) que bloquea el merge.
 - [ ] **Sprint 2 — Login y roles:** dueña/socio, empleada de sucursal, galpón, chofer. Migraciones versionadas.
 - [ ] **Sprint 3 — Cierre de caja:** formulario mobile por sucursal (Z, efectivo, posnet, QR, gastos locales).
 - [ ] **Sprint 4 — Contenedores en el pipeline + e2e:** imágenes en GHCR, escaneo Trivy, Playwright contra el compose.

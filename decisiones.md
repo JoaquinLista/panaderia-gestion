@@ -204,3 +204,42 @@ producción antes de necesitarlo.
 - Crear el tablero en **GitHub Projects** y asociarle los issues del backlog.
 - Activar la **protección de `main`** (requerir PR y checks). Tiene más sentido en el
   Sprint 1, cuando exista el pipeline que genera esos checks.
+
+---
+
+## La Fueguina Stats — Sprint 1: CI y umbral de coverage (2026-09-28)
+
+### El pipeline (`.github/workflows/ci.yml`)
+
+```
+PR o push a main
+  ├─ test (backend)   npm ci → lint → formato → tests + coverage
+  ├─ test (frontend)  npm ci → lint → formato → tests + coverage → build
+  └─ docker           (si los dos anteriores pasan)
+        docker compose build → up --wait → smoke test → down -v
+```
+
+| Decisión | Por qué |
+|----------|---------|
+| **GitHub Actions** | El pipeline vive en el repo como YAML (Pipelines as Code): se versiona, se revisa en PRs y cualquiera puede ver qué pasos corre. No hay que mantener un servidor de CI. |
+| **Matrix** `backend` / `frontend` | Un mismo job definido una vez, dos ejecuciones en paralelo. Menos YAML repetido y feedback más rápido. `fail-fast: false` para ver los errores de los dos lados en la misma corrida. |
+| **`npm ci`** con caché de npm | Instala exactamente lo del lockfile (builds reproducibles). La caché evita bajar todo en cada corrida. |
+| **Umbral de coverage** en `vitest.config.js` / `vite.config.js` | El umbral vive en la configuración de tests, no en el YAML: el mismo comando falla en tu máquina y en el pipeline. Backend **80%**, frontend **70%** (líneas, sentencias, funciones y ramas). Se comprobó que con un umbral de 99.9% el comando termina con error. |
+| Excluidos del coverage: `index.js`, `config/db.js`, `main.jsx` | Son arranque e infraestructura (abrir puerto, crear el pool de Postgres, montar React). Se prueban con el sistema levantado (job `docker` ahora, Playwright en el Sprint 4). Excluir lo que no tiene lógica evita escribir tests vacíos sólo para subir el número. |
+| **Job `docker`** con smoke test | Verifica lo que los unit tests no ven: que las imágenes construyen, que los contenedores arrancan sanos (`--wait` usa los healthchecks del compose) y que el frontend llega al backend y el backend a la base. Es la semilla de los e2e del Sprint 4. |
+| `permissions: contents: read` | Mínimo privilegio: el token del pipeline sólo puede leer el repo. Si una dependencia maliciosa corriera en CI, no podría pushear ni crear releases. |
+| `concurrency` con `cancel-in-progress` | Si pusheás dos veces seguidas, la corrida vieja se cancela. Ahorra minutos y el check refleja siempre el último commit. |
+| Resumen de coverage en el job | La tabla de cobertura aparece en la página de la corrida (Job Summary) y el HTML completo queda como artifact 14 días. |
+
+### Tests nuevos
+
+Para superar el umbral se testeó lo que faltaba, no se bajó la vara:
+
+- Backend (52 tests, ~96%): endpoints de sucursales, productos e insumos (incluido el 500 cuando la base falla), validaciones del alta de insumos y el armado del detalle de pedidos.
+- Frontend (30 tests, ~95%): tablero de pedidos (validaciones, alta con varios productos, avance y cancelación de estado con confirmación, errores del backend), stock de insumos (alerta de bajo stock, edición, validaciones, guardado) y red de sucursales. Se usa una API falsa en memoria (`src/test/apiFalsa.js`) y `@testing-library/user-event`, que simula clicks y tipeo como una persona.
+
+### Lo que hace que el umbral "frene el merge"
+
+El pipeline en rojo sólo avisa. Para que **bloquee**, `main` necesita una regla de
+protección que exija los checks. Eso se configura en GitHub (Settings → Branches) y
+queda documentado en `CONTRIBUTING.md`.

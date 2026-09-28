@@ -44,3 +44,15 @@ Levantar todo el sistema:
 cp .env.example .env
 docker compose up -d --build
 ```
+
+## Protección de `main` (configuración en GitHub)
+
+En **Settings → Branches → Add branch ruleset** (o _Add rule_) para `main`:
+
+- Requerir pull request antes de mergear.
+- Requerir que pasen los checks: `backend · lint, tests y coverage`,
+  `frontend · lint, tests y coverage` y `Docker · build y smoke test`.
+- Requerir que la rama esté actualizada con `main`.
+- Bloquear force push y borrado.
+
+Con esto, un PR que baje la cobertura del umbral o rompa el build no se puede mergear.
