@@ -2,8 +2,9 @@ import dotenv from 'dotenv';
 
 import app from './app.js';
 import pool from './config/db.js';
+import { aplicarMigraciones } from './db/migrar.js';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -28,6 +29,9 @@ const esperarBaseDeDatos = async (reintentos = 15, esperaMs = 2000) => {
 
 const iniciar = async () => {
   await esperarBaseDeDatos();
+  // El esquema se actualiza antes de aceptar tráfico: si una migración falla,
+  // el backend no arranca y el healthcheck lo marca como caído.
+  await aplicarMigraciones();
   app.listen(PORT, () => {
     console.log(`[server] API escuchando en http://0.0.0.0:${PORT}`);
   });

@@ -1,4 +1,7 @@
 # =============================================================
+#  Snapshot de la entrega v0.1.0 (TP2): usa la imagen de la base con
+#  init.sql. Desde el Sprint 2 el esquema lo crean las migraciones del
+#  backend, así que este archivo sólo sirve con los tags v0.1.0.
 #  Igual que docker-compose.yml pero BAJA las imágenes del registry
 #  en vez de construirlas. Levanta el sistema sin el código fuente:
 #    cp .env.example .env   # y editar la contraseña

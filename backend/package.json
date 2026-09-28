@@ -12,7 +12,10 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "migrate": "node src/db/migrarCli.js",
+    "migrate:nueva": "node-pg-migrate create --migration-file-language sql --migrations-dir migrations",
+    "test:integracion": "vitest run --config vitest.integracion.config.js"
   },
   "engines": {
     "node": ">=22"
@@ -21,6 +24,7 @@
     "cors": "^2.8.5",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "node-pg-migrate": "^9.0.0",
     "pg": "^8.12.0"
   },
   "devDependencies": {
