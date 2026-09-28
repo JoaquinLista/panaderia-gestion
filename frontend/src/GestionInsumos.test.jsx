@@ -33,7 +33,7 @@ const abrirInsumos = async (rutasExtra = {}) => {
     ...rutasExtra,
   });
   render(<App />);
-  await user.click(screen.getByRole('button', { name: 'Stock e Insumos' }));
+  await user.click(await screen.findByRole('button', { name: 'Stock e Insumos' }));
   return { user, fetchMock };
 };
 

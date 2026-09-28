@@ -6,9 +6,11 @@ import { vi } from 'vitest';
  * Devuelve el mock para poder inspeccionar las llamadas.
  */
 export function apiFalsa(rutas) {
+  // Por defecto hay una sesión de admin abierta; un test puede pisar la ruta.
+  const todas = { 'GET /api/auth/me': () => [200, sesionAdmin], ...rutas };
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, opciones = {}) => {
     const metodo = opciones.method ?? 'GET';
-    const handler = rutas[`${metodo} ${url}`];
+    const handler = todas[`${metodo} ${url}`];
     const body = opciones.body ? JSON.parse(opciones.body) : undefined;
     const [status, respuesta] = handler
       ? handler(body)
@@ -28,3 +30,15 @@ export const productos = [
   { id: 1, nombre: 'Medialunas', unidad_medida: 'docena' },
   { id: 2, nombre: 'Pan Baguette', unidad_medida: 'unidad' },
 ];
+
+export const sesionAdmin = {
+  usuario: { id: 1, usuario: 'dueña', nombre: 'Marta', rol: 'ADMIN', puedeCerrarCaja: false },
+  sucursal: null,
+  permisos: ['sucursales:ver', 'pedidos:ver', 'usuarios:administrar'],
+};
+
+export const sesionEmpleada = {
+  usuario: { id: 2, usuario: 'lucia', nombre: 'Lucía', rol: 'EMPLEADA', puedeCerrarCaja: false },
+  sucursal: { id: 2, nombre: 'Estrada', tipo: 'VENTA' },
+  permisos: ['sucursales:ver', 'pedidos:ver', 'pedidos:crear'],
+};
