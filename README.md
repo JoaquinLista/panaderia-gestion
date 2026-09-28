@@ -31,11 +31,12 @@ Requisitos: Docker + Docker Compose.
 ```bash
 git clone https://github.com/JoaquinLista/panaderia-gestion.git
 cd panaderia-gestion
-cp .env.example .env          # editá POSTGRES_PASSWORD
+cp .env.example .env          # completá POSTGRES_PASSWORD, JWT_SECRET y el admin inicial
 docker compose up -d --build
 ```
 
-Abrir **http://localhost**.
+Abrir **http://localhost**. El primer usuario es el admin de `ADMIN_USUARIO` /
+`ADMIN_PASSWORD`: el backend lo crea al arrancar si todavía no hay ningún admin.
 
 ### Verificar
 
@@ -51,6 +52,9 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/health` | Estado del servicio y de la base |
+| POST | `/api/auth/login` | Inicia sesión: `{ usuario, password, sucursalId? }` (la empleada elige la sucursal del día). Deja la cookie `sesion` |
+| POST | `/api/auth/logout` | Cierra la sesión (borra la cookie) |
+| GET | `/api/auth/me` | Usuario, sucursal del día y permisos de la sesión; 401 sin sesión |
 | GET | `/api/sucursales` | Lista de sucursales |
 | GET | `/api/productos` | Catálogo de productos |
 | GET | `/api/insumos` | Insumos con flag `bajo_stock` |
@@ -58,6 +62,20 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/pedidos` | Pedidos con su detalle |
 | POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) |
 | PUT | `/api/pedidos/:id/estado` | Cambia el estado del pedido validando la transición |
+
+Respuesta de login y de `/me`:
+
+```json
+{
+  "usuario": { "id": 2, "usuario": "lucia", "nombre": "Lucía", "rol": "EMPLEADA", "puedeCerrarCaja": false },
+  "sucursal": { "id": 3, "nombre": "Estrada", "tipo": "VENTA" },
+  "permisos": ["sucursales:ver", "productos:ver", "pedidos:ver", "pedidos:crear"]
+}
+```
+
+Errores del login: `400` si faltan datos o la sucursal no es válida, `401` con el
+mensaje genérico "Usuario o contraseña incorrectos" y `429` después de 5 intentos
+fallidos en un minuto desde la misma IP.
 
 ## Desarrollo fuera de Docker
 
@@ -75,7 +93,7 @@ cd frontend && npm install && npm run dev
 cd backend && npm test          # o npm run test:coverage
 cd frontend && npm test
 
-# Migraciones contra un Postgres real (crea y borra bases de prueba)
+# Migraciones y login contra un Postgres real (crea y borra bases de prueba)
 cd backend && TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres npm run test:integracion
 ```
 
