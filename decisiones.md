@@ -308,3 +308,21 @@ al PR 3.
 - **API** (`tests/api/auth.test.js`): login por rol, cookie con sus atributos, 400/401/429, `/me` con y sin cookie, sesión cortada al desactivar, logout.
 - **Integración** (`tests/integracion/auth.test.js`): contra Postgres real crea el admin inicial una sola vez, entra sin distinguir mayúsculas y con una sucursal real.
 - **CI**: el smoke test de Docker verifica el 401 sin sesión y que el admin inicial entra y `/me` responde con su rol.
+
+## La Fueguina Stats — Sprint 2 · PR 4: pantalla de login (#5)
+
+Se adelanta al PR 3 a propósito: primero tiene que existir la pantalla de login y
+recién después se cierran las rutas de la API. Así `main` nunca queda con una app
+que no puede entrar.
+
+| Decisión | Por qué |
+|----------|---------|
+| `AuthProvider` consulta `/api/auth/me` al abrir la app | La cookie viaja sola: si la sesión sigue vigente (12 h), se entra directo sin volver a tipear. |
+| Cualquier 401 de la API vuelve al login | `lib/api.js` dispara un evento y el `AuthProvider` borra la sesión. No hace falta revisar el 401 en cada pantalla. |
+| La sucursal del día es un desplegable opcional, sin el galpón | El frontend no sabe el rol antes de entrar. "No aplica" para dueños y chofer; si una empleada lo deja así, el backend responde "Elegí la sucursal donde trabajás hoy". |
+| Campos de 16 px y botón a lo ancho | Pensado para el celular: con menos de 16 px el navegador del teléfono hace zoom al tocar el campo. |
+| La contraseña no se borra si el login falla | Si sólo faltaba la sucursal, la empleada no tiene que volver a escribirla. |
+| `tienePermiso(sesion, accion)` en `auth/contexto.js` | Lo usa el PR 5 para mostrar sólo las pestañas y botones de cada rol. |
+
+Tests nuevos: login de dueña y empleada, errores del backend, validación, sesión
+abierta al recargar, cerrar sesión y volver al login ante un 401.

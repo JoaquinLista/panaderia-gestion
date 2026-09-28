@@ -2,8 +2,17 @@
 
 const API = '/api';
 
+// Se dispara cuando la API responde 401: la sesión venció o la cerraron.
+// AuthProvider lo escucha y vuelve a mostrar la pantalla de login.
+export const EVENTO_SESION_VENCIDA = 'lafueguina:sesion-vencida';
+
+const avisarSiVencio = (res) => {
+  if (res.status === 401) window.dispatchEvent(new Event(EVENTO_SESION_VENCIDA));
+};
+
 export async function apiGet(path) {
   const res = await fetch(`${API}${path}`);
+  avisarSiVencio(res);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Error ${res.status} al consultar ${path}`);
@@ -17,6 +26,7 @@ export async function apiSend(method, path, payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  avisarSiVencio(res);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(body.error || `Error ${res.status} al enviar a ${path}`);
