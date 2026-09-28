@@ -81,9 +81,45 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  migraciones:
+    name: Migraciones · Postgres real
+    runs-on: ubuntu-latest
+    # Postgres de servicio: un contenedor que vive sólo durante este job.
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Migraciones desde cero y sobre el esquema del TP2
+        run: npm run test:integracion
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+
   docker:
     name: Docker · build y smoke test
-    needs: test
+    needs: [test, migraciones]
     runs-on: ubuntu-latest
     env:
       # Contraseña descartable: la base sólo vive durante este job.
