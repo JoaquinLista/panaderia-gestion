@@ -1,0 +1,39 @@
+name: Reportar un problema
+description: Algo no funciona como debería.
+title: '[Bug] '
+labels: ['bug']
+body:
+  - type: textarea
+    id: que-paso
+    attributes:
+      label: ¿Qué pasó?
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: ¿Qué esperabas que pasara?
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Entré como empleada de Estrada
+        2. Cargué el cierre con efectivo 0
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: entorno
+    attributes:
+      label: Entorno
+      options:
+        - Local (docker compose)
+        - Staging
+        - Producción
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Capturas o logs

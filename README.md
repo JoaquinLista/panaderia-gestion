@@ -1,8 +1,14 @@
-# Panadería · Gestión Interna
+# La Fueguina Stats
 
-Sistema cliente-servidor para la gestión interna de una red de panaderías
-(4 sucursales de venta/fábrica + 1 depósito central): pedidos de productos entre
-sucursales y control de stock de insumos.
+Sistema de gestión para La Fueguina SRL: 4 sucursales (Viedma/Chacra, que además es
+la cuadra de producción, Estrada, Café y Patagonia) y el Galpón Central.
+
+El MVP (v1.0) digitaliza el **cierre de caja diario**, los **gastos y retiros de socios**
+y un **dashboard para los dueños** en el celular. El código actual de pedidos entre
+sucursales e insumos es la base de la fase 2 (galpón y chofer).
+
+Cómo trabajamos: [`CONTRIBUTING.md`](CONTRIBUTING.md). Decisiones de diseño:
+[`decisiones.md`](decisiones.md).
 
 > Proyecto personal. Nació como la app del TP2 de Ingeniería del Software 3
 > (repo de la materia: `JoaquinLista/insgsoft3-tp01`) y sigue acá su desarrollo
@@ -63,50 +69,32 @@ cd backend && npm install && cp .env.example .env && npm run dev
 cd frontend && npm install && npm run dev
 ```
 
+## Tests
+
+```bash
+cd backend && npm test          # o npm run test:coverage
+cd frontend && npm test
+```
+
+`npm run test:coverage` falla si la cobertura baja de **80%** (backend) o **70%**
+(frontend). El pipeline de CI (`.github/workflows/ci.yml`) corre lo mismo en cada PR,
+construye las imágenes Docker y hace un smoke test del sistema levantado.
+
+Los tests del backend no necesitan base de datos: la capa `config/db.js` se reemplaza
+por un doble de prueba. La app Express vive en `src/app.js` (sin `listen`) para poder
+probarla con Supertest; `src/index.js` sólo la arranca.
+
 ## Roadmap
 
-El objetivo es que los tres módulos dejen de ser CRUD aislado y modelen el flujo
-real de la red: **Depósito Central → Viedma → puntos de venta**, con un chofer que
-transporta y actores con permisos distintos (dueños, depósito, fábrica, venta,
-chofer). Viedma es a la vez fábrica y punto de venta: pide insumos al depósito,
-mantiene su propio stock (que baja al fabricar) y despacha productos a las otras
-sucursales, además de vender al público. Una sucursal puede cumplir más de un rol.
+Cada sprint dura una semana y termina con algo demostrable.
 
-### ✅ Fase 1 — Máquina de estados del pedido
-
-- [x] Estados `PENDIENTE → EN_PREPARACION → DESPACHADO → ENTREGADO → RECIBIDO`, con `CANCELADO` desde los estados previos al despacho
-- [x] Validación de transiciones y endpoint `PUT /api/pedidos/:id/estado`
-- [x] Acciones de avance y cancelación en el frontend
-
-### Fase 2 — Autenticación y roles
-
-- [ ] Login y sesión
-- [ ] Roles: dueño, depósito, fábrica, venta, chofer (una sucursal puede tener varios — Viedma es fábrica y venta)
-- [ ] Autorización por endpoint y en la UI
-- [ ] Cada transición de estado habilitada según el rol: el origen prepara, el chofer despacha y entrega, el destino confirma la recepción
-
-### Fase 3 — Pedidos unificados y hoja de ruta del chofer
-
-- [ ] `pedidos.tipo` (`INSUMOS` | `PRODUCTOS`), con el detalle apuntando a insumo o a producto
-- [ ] Validación de origen/destino según el rol (insumos: depósito → fábrica; productos: fábrica → otra sucursal de venta)
-- [ ] Hoja de ruta del chofer: pedidos a levantar y entregar, con las acciones de estado
-- [ ] Pantalla de recepción: confirmar lo recibido y registrar diferencias contra lo despachado
-
-### Fase 4 — Stock de insumos por bolsa
-
-- [ ] Presentación por insumo (kg por bolsa); el stock se cuenta en bolsas cerradas
-- [ ] Stock por ubicación, sólo en Depósito Central y Viedma
-- [ ] Ingreso de bolsas al depósito (compra a proveedor)
-- [ ] La recepción de un pedido de insumos suma stock en Viedma; el despacho lo resta en el depósito
-- [ ] Acción "abrir bolsa" en Viedma (descuenta una bolsa) y alerta de pocas bolsas
-
-### Fase 5 — Receta y producción
-
-- [ ] Receta producto → insumos (en kg, como referencia)
-- [ ] Registro de tandas de producción
-
-### Fase 6 — Tests
-
-- [ ] Backend: máquina de estados, movimientos de stock, validaciones
-- [ ] Frontend: componentes y flujos
-- [ ] End-to-end de los flujos críticos
+- [x] **Sprint 0 — Fundaciones:** templates de issues y PR, `CONTRIBUTING.md`, ESLint + Prettier, Vitest con primeros tests, Dependabot, sucursales reales.
+- [x] **Sprint 1 — CI + tests con umbral:** GitHub Actions (lint, formato, tests, build, Docker + smoke test), coverage mínimo (80% backend, 70% frontend) que bloquea el merge.
+- [ ] **Sprint 2 — Login y roles:** dueña/socio, empleada de sucursal, galpón, chofer. Migraciones versionadas.
+- [ ] **Sprint 3 — Cierre de caja:** formulario mobile por sucursal (Z, efectivo, posnet, QR, gastos locales).
+- [ ] **Sprint 4 — Contenedores en el pipeline + e2e:** imágenes en GHCR, escaneo Trivy, Playwright contra el compose.
+- [ ] **Sprint 5 — Gastos y retiros de socios.**
+- [ ] **Sprint 6 — IaC + CD:** Terraform, environments staging y producción con aprobación, blue-green.
+- [ ] **Sprint 7 — Dashboard ejecutivo.**
+- [ ] **Sprint 8 — DevSecOps, observabilidad y feedback continuo.** Release v1.0.
+- [ ] **Fase 2 — Galpón, pedidos y chofer:** evoluciona el módulo de pedidos e insumos existente (máquina de estados ya implementada).

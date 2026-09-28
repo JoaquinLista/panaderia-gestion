@@ -20,9 +20,9 @@ export const postPedido = async (req, res, next) => {
     const { sucursal_origen_id, sucursal_destino_id, detalles } = req.body ?? {};
 
     if (!sucursal_origen_id || !sucursal_destino_id) {
-      return res
-        .status(400)
-        .json({ error: 'Los campos "sucursal_origen_id" y "sucursal_destino_id" son obligatorios' });
+      return res.status(400).json({
+        error: 'Los campos "sucursal_origen_id" y "sucursal_destino_id" son obligatorios',
+      });
     }
     if (!Array.isArray(detalles) || detalles.length === 0) {
       return res

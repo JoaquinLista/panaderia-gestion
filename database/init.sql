@@ -60,16 +60,26 @@ ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_estado_check;
 ALTER TABLE pedidos ADD  CONSTRAINT pedidos_estado_check
     CHECK (estado IN ('PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO', 'RECIBIDO', 'CANCELADO'));
 
+-- Nombres reales de las sucursales (PRD La Fueguina Stats, 2026-09).
+-- Renombra las filas de bases creadas con el seed anterior; si ya están
+-- renombradas, los UPDATE no encuentran nada y no hacen nada.
+UPDATE sucursales SET nombre = 'Viedma (Chacra)' WHERE nombre = 'Panadería Viedma';
+UPDATE sucursales SET nombre = 'Estrada'         WHERE nombre = 'Panadería Estrada';
+UPDATE sucursales SET nombre = 'Café'            WHERE nombre = 'Panadería El Café';
+UPDATE sucursales SET nombre = 'Patagonia'       WHERE nombre = 'Panadería Patagónico';
+UPDATE sucursales SET nombre = 'Galpón Central'  WHERE nombre = 'Depósito Central';
+
 -- -------------------------------------------------------------
 --  Datos iniciales (DML idempotente)
 -- -------------------------------------------------------------
 
+-- Viedma (en la zona de Chacra) es la cuadra de producción y también vende al público.
 INSERT INTO sucursales (nombre, tipo) VALUES
-    ('Panadería Viedma',      'FABRICA'),
-    ('Panadería Estrada',     'VENTA'),
-    ('Panadería Patagónico',  'VENTA'),
-    ('Panadería El Café',     'VENTA'),
-    ('Depósito Central',      'DEPOSITO')
+    ('Viedma (Chacra)',  'FABRICA'),
+    ('Estrada',          'VENTA'),
+    ('Café',             'VENTA'),
+    ('Patagonia',        'VENTA'),
+    ('Galpón Central',   'DEPOSITO')
 ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO insumos (nombre, stock_actual, stock_minimo, unidad_medida) VALUES

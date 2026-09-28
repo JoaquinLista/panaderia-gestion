@@ -166,7 +166,9 @@ export const crearPedido = async (data) => {
  */
 export const cambiarEstadoPedido = async (id, nuevoEstado) => {
   const pedidoId = Number(id);
-  const estado = String(nuevoEstado ?? '').trim().toUpperCase();
+  const estado = String(nuevoEstado ?? '')
+    .trim()
+    .toUpperCase();
 
   if (!Number.isInteger(pedidoId) || pedidoId <= 0) {
     const err = new Error('El id de pedido debe ser un entero positivo');
@@ -183,10 +185,9 @@ export const cambiarEstadoPedido = async (id, nuevoEstado) => {
   try {
     await client.query('BEGIN');
 
-    const { rows } = await client.query(
-      'SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE',
-      [pedidoId]
-    );
+    const { rows } = await client.query('SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE', [
+      pedidoId,
+    ]);
     if (rows.length === 0) {
       const err = new Error(`No existe el pedido #${pedidoId}`);
       err.status = 404;
@@ -205,7 +206,7 @@ export const cambiarEstadoPedido = async (id, nuevoEstado) => {
         esEstadoFinal(estadoActual)
           ? `El pedido #${pedidoId} está en un estado final (${estadoActual}) y no admite cambios de estado`
           : `Transición inválida ${estadoActual} → ${estado}. ` +
-            `Desde ${estadoActual} sólo se puede pasar a: ${transicionesDesde(estadoActual).join(', ')}`
+              `Desde ${estadoActual} sólo se puede pasar a: ${transicionesDesde(estadoActual).join(', ')}`
       );
       err.status = 409;
       throw err;

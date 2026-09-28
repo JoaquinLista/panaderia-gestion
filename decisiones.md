@@ -166,3 +166,80 @@ TP7 con `docker buildx` (build multi-arch).
   - [ ] Repasar las preguntas de ejemplo de la defensa (imagen vs contenedor, `CMD`
         vs `ENTRYPOINT`, `down` vs `down -v`, por qué multi-stage, por qué el
         healthcheck).
+
+---
+
+## La Fueguina Stats — Sprint 0: fundaciones (2026-09-28)
+
+A partir del PRD de La Fueguina Stats el proyecto deja de ser sólo un TP y pasa a ser
+un producto. Este sprint no agrega funcionalidades: prepara el terreno para que todo lo
+que venga se construya con la misma disciplina.
+
+### Por qué empezar por la plataforma y no por las features
+
+Si primero hacemos el cierre de caja y después agregamos tests y pipeline, esos tests se
+escriben "a posteriori" y cuestan el doble. Al revés, cada feature entra desde el día uno
+con tests, lint y revisión. Es la idea central de DevOps: automatizar el camino a
+producción antes de necesitarlo.
+
+### Decisiones
+
+| Tema | Decisión | Por qué |
+|------|----------|---------|
+| Framework de tests | **Vitest** en backend y frontend | Una sola herramienta y la misma sintaxis en los dos lados. Es nativa de ES Modules (el backend usa `"type": "module"`, que con Jest requiere configuración extra) y se integra con Vite. |
+| Tests de API | **Supertest** sobre `src/app.js` | Se separó la app Express (`app.js`) del arranque del servidor (`index.js`). Así los tests hacen requests HTTP reales a la app sin abrir un puerto ni esperar a Postgres. |
+| Base de datos en tests unitarios | Se reemplaza `config/db.js` con `vi.mock` | Los tests unitarios prueban reglas de negocio (validaciones, transiciones, rollback), no Postgres. Son rápidos y no dependen de nada externo. La base real se prueba en los e2e del Sprint 4. |
+| Frontend | Helpers extraídos a `src/lib/` (`api.js`, `formato.js`) | Funciones puras fáciles de testear. `App.jsx` sigue grande; se va a partir en componentes al construir el cierre de caja. |
+| Cobertura | Se mide (`npm run test:coverage`) pero todavía **sin umbral** | El umbral que bloquea el merge se activa en el Sprint 1, junto con el pipeline que lo hace cumplir. |
+| Lint y formato | **ESLint 10** (flat config) + **Prettier** | ESLint encuentra errores; Prettier elimina las discusiones de estilo. `format:check` va a correr en el pipeline. |
+| Reglas de hooks | Sólo `rules-of-hooks` y `exhaustive-deps` | El preset nuevo de `eslint-plugin-react-hooks` 7 marca patrones del código existente (`setState` en `useEffect`). Se corrigen al refactorizar `App.jsx`, no en este sprint. |
+| Seguridad de dependencias | Vite 5 → 7, Vitest 4, `npm audit fix` en backend | `npm audit` quedó en **0 vulnerabilidades** en los dos paquetes (había avisos en `esbuild`, `qs` y `@vitest/mocker`). |
+| Actualizaciones | **Dependabot** semanal para npm, Docker y GitHub Actions | Las versiones menores se agrupan en un solo PR para no saturar el tablero. |
+| Planificación | Templates de **historia de usuario** y **bug** + template de PR | La historia pide persona del PRD y criterios de aceptación. El PR pide cómo se probó y enlazar el issue (trazabilidad requisito → código). |
+| Forma de trabajo | `CONTRIBUTING.md`: rama corta, Conventional Commits, squash merge, definición de terminado | Historial legible y base para generar notas de release automáticas más adelante. |
+| Sucursales | Viedma (Chacra), Estrada, Café, Patagonia y Galpón Central | Nombres reales del negocio. `init.sql` renombra las filas de bases viejas con `UPDATE` idempotentes. Viedma queda como `FABRICA`; su rol de venta se modela con los roles del Sprint 2. |
+
+### Pendiente fuera del código (lo hace el dueño del repo en GitHub)
+
+- Crear el tablero en **GitHub Projects** y asociarle los issues del backlog.
+- Activar la **protección de `main`** (requerir PR y checks). Tiene más sentido en el
+  Sprint 1, cuando exista el pipeline que genera esos checks.
+
+---
+
+## La Fueguina Stats — Sprint 1: CI y umbral de coverage (2026-09-28)
+
+### El pipeline (`.github/workflows/ci.yml`)
+
+```
+PR o push a main
+  ├─ test (backend)   npm ci → lint → formato → tests + coverage
+  ├─ test (frontend)  npm ci → lint → formato → tests + coverage → build
+  └─ docker           (si los dos anteriores pasan)
+        docker compose build → up --wait → smoke test → down -v
+```
+
+| Decisión | Por qué |
+|----------|---------|
+| **GitHub Actions** | El pipeline vive en el repo como YAML (Pipelines as Code): se versiona, se revisa en PRs y cualquiera puede ver qué pasos corre. No hay que mantener un servidor de CI. |
+| **Matrix** `backend` / `frontend` | Un mismo job definido una vez, dos ejecuciones en paralelo. Menos YAML repetido y feedback más rápido. `fail-fast: false` para ver los errores de los dos lados en la misma corrida. |
+| **`npm ci`** con caché de npm | Instala exactamente lo del lockfile (builds reproducibles). La caché evita bajar todo en cada corrida. |
+| **Umbral de coverage** en `vitest.config.js` / `vite.config.js` | El umbral vive en la configuración de tests, no en el YAML: el mismo comando falla en tu máquina y en el pipeline. Backend **80%**, frontend **70%** (líneas, sentencias, funciones y ramas). Se comprobó que con un umbral de 99.9% el comando termina con error. |
+| Excluidos del coverage: `index.js`, `config/db.js`, `main.jsx` | Son arranque e infraestructura (abrir puerto, crear el pool de Postgres, montar React). Se prueban con el sistema levantado (job `docker` ahora, Playwright en el Sprint 4). Excluir lo que no tiene lógica evita escribir tests vacíos sólo para subir el número. |
+| **Job `docker`** con smoke test | Verifica lo que los unit tests no ven: que las imágenes construyen, que los contenedores arrancan sanos (`--wait` usa los healthchecks del compose) y que el frontend llega al backend y el backend a la base. Es la semilla de los e2e del Sprint 4. |
+| `permissions: contents: read` | Mínimo privilegio: el token del pipeline sólo puede leer el repo. Si una dependencia maliciosa corriera en CI, no podría pushear ni crear releases. |
+| `concurrency` con `cancel-in-progress` | Si pusheás dos veces seguidas, la corrida vieja se cancela. Ahorra minutos y el check refleja siempre el último commit. |
+| Resumen de coverage en el job | La tabla de cobertura aparece en la página de la corrida (Job Summary) y el HTML completo queda como artifact 14 días. |
+
+### Tests nuevos
+
+Para superar el umbral se testeó lo que faltaba, no se bajó la vara:
+
+- Backend (52 tests, ~96%): endpoints de sucursales, productos e insumos (incluido el 500 cuando la base falla), validaciones del alta de insumos y el armado del detalle de pedidos.
+- Frontend (30 tests, ~95%): tablero de pedidos (validaciones, alta con varios productos, avance y cancelación de estado con confirmación, errores del backend), stock de insumos (alerta de bajo stock, edición, validaciones, guardado) y red de sucursales. Se usa una API falsa en memoria (`src/test/apiFalsa.js`) y `@testing-library/user-event`, que simula clicks y tipeo como una persona.
+
+### Lo que hace que el umbral "frene el merge"
+
+El pipeline en rojo sólo avisa. Para que **bloquee**, `main` necesita una regla de
+protección que exija los checks. Eso se configura en GitHub (Settings → Branches) y
+queda documentado en `CONTRIBUTING.md`.
