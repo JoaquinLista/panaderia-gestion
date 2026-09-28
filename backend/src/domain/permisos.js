@@ -53,6 +53,14 @@ export const permisosDe = ({ rol, puedeCerrarCaja = false }) => {
 };
 
 /**
+ * Sucursal a la que queda limitada una sesión: la empleada sólo ve y crea
+ * pedidos de su sucursal del día. Admin y chofer no tienen límite (null).
+ * @param {{ usuario: { rol: string }, sucursal: { id: number } | null }} sesion
+ */
+export const sucursalRestringida = (sesion) =>
+  sesion.usuario.rol === ROLES.EMPLEADA ? sesion.sucursal.id : null;
+
+/**
  * @param {{ rol: string, puedeCerrarCaja?: boolean }} usuario
  * @param {string} accion
  */

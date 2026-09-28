@@ -56,10 +56,18 @@ const adjuntarDetalles = async (pedidos) => {
 };
 
 /**
- * Lista todos los pedidos con la info de sus sucursales y el detalle de productos.
+ * Lista los pedidos con la info de sus sucursales y el detalle de productos.
+ * Con `sucursalId`, sólo los que salen de esa sucursal o llegan a ella.
+ * @param {{ sucursalId?: number | null }} [filtro]
  */
-export const listarPedidos = async () => {
-  const { rows } = await query(`${PEDIDO_SELECT} ORDER BY p.fecha_creacion DESC, p.id DESC`);
+export const listarPedidos = async ({ sucursalId = null } = {}) => {
+  const orden = 'ORDER BY p.fecha_creacion DESC, p.id DESC';
+  const { rows } = sucursalId
+    ? await query(
+        `${PEDIDO_SELECT} WHERE p.sucursal_origen_id = $1 OR p.sucursal_destino_id = $1 ${orden}`,
+        [sucursalId]
+      )
+    : await query(`${PEDIDO_SELECT} ${orden}`);
   return adjuntarDetalles(rows);
 };
 

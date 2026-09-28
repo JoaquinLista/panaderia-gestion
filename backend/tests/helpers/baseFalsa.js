@@ -19,6 +19,7 @@ export const crearUsuarios = async () => {
     rol,
     puede_cerrar_caja: false,
     activo: true,
+    sesiones_desde: new Date('2026-01-01T00:00:00Z'),
     ...extra,
   });
   return [

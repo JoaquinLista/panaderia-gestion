@@ -12,7 +12,8 @@ export const MENSAJE_CREDENCIALES = 'Usuario o contraseña incorrectos';
 
 const errorHttp = (status, mensaje) => Object.assign(new Error(mensaje), { status });
 
-const COLUMNAS_USUARIO = 'id, usuario, nombre, password_hash, rol, puede_cerrar_caja, activo';
+const COLUMNAS_USUARIO =
+  'id, usuario, nombre, password_hash, rol, puede_cerrar_caja, activo, sesiones_desde';
 
 // Hash de una contraseña al azar que no es de nadie. Si el usuario no existe se
 // verifica igual contra este hash, para que la respuesta tarde lo mismo.
@@ -88,6 +89,15 @@ export const autenticar = async ({ usuario, password, sucursalId } = {}) => {
 };
 
 /**
+ * Sesión de un usuario por id, conservando la sucursal del día que ya tenía.
+ * Se usa para renovar la cookie de quien cambió su propia contraseña.
+ * @param {number} id
+ * @param {{ id: number, nombre: string, tipo: string } | null} sucursal
+ */
+export const sesionDesdeUsuario = async (id, sucursal) =>
+  armarSesion(await buscarUsuarioPorId(id), sucursal);
+
+/**
  * Token firmado que va en la cookie. Sólo lleva el id del usuario y la
  * sucursal del día: el rol y los permisos se leen de la base en cada request.
  */
@@ -100,7 +110,8 @@ export const firmarSesion = (sesion) =>
 
 /**
  * Recupera la sesión a partir del token de la cookie. Devuelve null si el
- * token es inválido o venció, si el usuario ya no existe o fue desactivado.
+ * token es inválido o venció, si el usuario ya no existe o fue desactivado,
+ * o si la dueña le reseteó la contraseña después de emitido el token.
  * Como el usuario se lee de la base, desactivar a alguien o cambiarle el rol
  * tiene efecto en su próximo request, sin esperar a que venza el token.
  * @param {string} token
@@ -114,6 +125,8 @@ export const sesionDesdeToken = async (token) => {
   }
   const usuario = await buscarUsuarioPorId(Number(payload.sub));
   if (!usuario?.activo) return null;
+  // Tokens emitidos antes de un reseteo de contraseña ya no valen.
+  if (payload.iat < Math.floor(new Date(usuario.sesiones_desde).getTime() / 1000)) return null;
   let sucursal = null;
   if (usuario.rol === ROLES.EMPLEADA) {
     // Si la pasaron a empleada después de entrar, no tiene sucursal del día:
