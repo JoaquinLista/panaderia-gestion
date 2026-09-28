@@ -6,8 +6,10 @@
  */
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 import pool from './config/db.js';
+import authRoutes from './routes/authRoutes.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
 import insumosRoutes from './routes/insumosRoutes.js';
 import pedidosRoutes from './routes/pedidosRoutes.js';
@@ -15,10 +17,16 @@ import productosRoutes from './routes/productosRoutes.js';
 
 const app = express();
 
+// El backend corre detrás de Nginx (red interna de Docker). Se confía en la IP
+// que Nginx pone en X-Forwarded-For sólo si el request viene de una red local:
+// así el límite de intentos de login cuenta por la IP real del celular.
+app.set('trust proxy', 'loopback, uniquelocal');
+
 // ---- Middlewares globales ----
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // ---- Healthcheck ----
 app.get('/api/health', async (req, res) => {
@@ -29,6 +37,9 @@ app.get('/api/health', async (req, res) => {
     res.status(503).json({ status: 'degraded', db: 'down', error: error.message });
   }
 });
+
+// ---- Sesión ----
+app.use('/api/auth', authRoutes);
 
 // ---- Rutas de negocio ----
 app.use('/api/sucursales', sucursalesRoutes);
