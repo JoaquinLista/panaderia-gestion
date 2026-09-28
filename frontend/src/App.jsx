@@ -1,35 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-const API = '/api';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers de red                                                     */
-/* ------------------------------------------------------------------ */
-
-async function apiGet(path) {
-  const res = await fetch(`${API}${path}`);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Error ${res.status} al consultar ${path}`);
-  }
-  return res.json();
-}
-
-async function apiSend(method, path, payload) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(body.error || `Error ${res.status} al enviar a ${path}`);
-  }
-  return body;
-}
-
-const apiPost = (path, payload) => apiSend('POST', path, payload);
-const apiPut = (path, payload) => apiSend('PUT', path, payload);
+import { apiGet, apiPost, apiPut } from './lib/api.js';
+import { formatFecha, nombreSucursal } from './lib/formato.js';
 
 const ESTADOS_PEDIDO = ['PENDIENTE', 'EN_PREPARACION', 'DESPACHADO', 'ENTREGADO'];
 
@@ -58,24 +30,6 @@ const ETIQUETA_AVANCE = {
 };
 
 const PUEDE_CANCELARSE = new Set(['PENDIENTE', 'EN_PREPARACION']);
-
-function formatFecha(valor) {
-  if (!valor) return '—';
-  const d = new Date(valor);
-  if (Number.isNaN(d.getTime())) return String(valor);
-  return d.toLocaleString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function nombreSucursal(sucursales, id) {
-  const s = sucursales.find((x) => x.id === Number(id));
-  return s ? s.nombre : `#${id}`;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Tablero de Pedidos                                                 */
@@ -204,12 +158,7 @@ function TableroPedidos({ sucursales, productos }) {
 
         <form onSubmit={enviar}>
           <label htmlFor="origen">Sucursal de origen</label>
-          <select
-            id="origen"
-            value={origen}
-            onChange={(e) => setOrigen(e.target.value)}
-            required
-          >
+          <select id="origen" value={origen} onChange={(e) => setOrigen(e.target.value)} required>
             <option value="">Seleccionar…</option>
             {sucursales.map((s) => (
               <option key={s.id} value={s.id}>
@@ -316,8 +265,13 @@ function TableroPedidos({ sucursales, productos }) {
                 {pedidos.map((p) => (
                   <tr key={p.id}>
                     <td>{p.id}</td>
-                    <td>{p.sucursal_origen_nombre || nombreSucursal(sucursales, p.sucursal_origen_id)}</td>
-                    <td>{p.sucursal_destino_nombre || nombreSucursal(sucursales, p.sucursal_destino_id)}</td>
+                    <td>
+                      {p.sucursal_origen_nombre || nombreSucursal(sucursales, p.sucursal_origen_id)}
+                    </td>
+                    <td>
+                      {p.sucursal_destino_nombre ||
+                        nombreSucursal(sucursales, p.sucursal_destino_id)}
+                    </td>
                     <td>
                       {p.detalles && p.detalles.length > 0 ? (
                         <ul className="detalle-list">
@@ -613,7 +567,9 @@ function RedSucursales({ sucursales }) {
   return (
     <div className="card">
       <h2>Mapa operacional</h2>
-      <p className="subtitle">Vista general de la red: depósito central, fábricas y puntos de venta.</p>
+      <p className="subtitle">
+        Vista general de la red: depósito central, fábricas y puntos de venta.
+      </p>
 
       <div className="stat-grid">
         <div className="stat">
@@ -622,7 +578,7 @@ function RedSucursales({ sucursales }) {
         </div>
         <div className="stat">
           <div className="value">{deposito.length}</div>
-          <p className="label">Depósito central</p>
+          <p className="label">Galpón central</p>
         </div>
         <div className="stat">
           <div className="value">{fabricas.length}</div>
@@ -634,13 +590,13 @@ function RedSucursales({ sucursales }) {
         </div>
       </div>
 
-      <h3 style={{ margin: '8px 0 10px', fontSize: '0.95rem' }}>Depósito</h3>
+      <h3 style={{ margin: '8px 0 10px', fontSize: '0.95rem' }}>Galpón</h3>
       <div className="node-grid">
         {deposito.length === 0 && <div className="empty">Sin depósito configurado.</div>}
         {deposito.map((s) => (
           <div className="node deposito" key={s.id}>
             <h3>{s.nombre}</h3>
-            <span className="tipo">Depósito central</span>
+            <span className="tipo">Galpón central</span>
           </div>
         ))}
       </div>

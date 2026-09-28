@@ -24,9 +24,6 @@ export const listarSucursales = async () => {
  * @param {number} id
  */
 export const obtenerSucursalPorId = async (id) => {
-  const { rows } = await query(
-    'SELECT id, nombre, tipo FROM sucursales WHERE id = $1',
-    [id]
-  );
+  const { rows } = await query('SELECT id, nombre, tipo FROM sucursales WHERE id = $1', [id]);
   return rows[0] ?? null;
 };
