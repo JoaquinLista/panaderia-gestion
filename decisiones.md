@@ -345,3 +345,16 @@ todas las rutas protegidas dan 401 sin sesión y no tocan la base, cada rol reci
 403 donde corresponde, la empleada sólo ve y crea pedidos de su sucursal, un
 usuario desactivado no entra y un token anterior al reseteo ya no vale. El smoke
 test de Docker verifica el 401 de las rutas de negocio y que el admin las usa.
+
+## La Fueguina Stats — Sprint 2 · PR 5: interfaz por rol y usuarios (#6)
+
+| Decisión | Por qué |
+|----------|---------|
+| Cada pestaña declara el permiso que necesita y se muestra sólo si `/me` lo trae | Una sola fuente de verdad: la matriz del backend. Si mañana cambia un permiso, la pantalla se adapta sola. |
+| Empleada: origen del pedido fijo en su sucursal del día; sin botones de estado | Es lo mismo que la API ya exige: la pantalla no ofrece lo que después se rechazaría. |
+| Chofer: ve y mueve pedidos, sin formulario de alta | Según la matriz aprobada, no crea pedidos. |
+| Pantalla de usuarios para la dueña | Alta, rol, permiso de caja (sólo empleadas), activar o desactivar y contraseña nueva. La dueña no puede cambiarse el rol ni desactivarse. |
+| `App.jsx` separado en `src/pantallas/` | Tenía casi 700 líneas. Ahora cada pestaña es un archivo y `App.jsx` sólo arma la app. |
+| Pestañas deslizables en el celular | Con 4 pestañas la página se ensanchaba en una pantalla de 390 px. |
+
+La API sigue siendo la que decide: esconder un botón es comodidad, no seguridad.
