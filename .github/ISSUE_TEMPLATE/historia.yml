@@ -1,0 +1,50 @@
+name: Historia de usuario
+description: Una funcionalidad vista desde quien la usa.
+title: '[Historia] '
+labels: ['historia']
+body:
+  - type: dropdown
+    id: persona
+    attributes:
+      label: ¿Para quién es?
+      options:
+        - Dueña / socio (administrador)
+        - Empleada de mostrador
+        - Encargado de galpón
+        - Chofer
+        - Equipo de desarrollo
+    validations:
+      required: true
+  - type: textarea
+    id: historia
+    attributes:
+      label: Historia
+      description: 'Como <persona>, quiero <acción>, para <beneficio>.'
+      placeholder: Como empleada de mostrador, quiero cargar el cierre de caja desde el celular, para no llenar la planilla de papel.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Condiciones verificables. Idealmente en formato Dado / Cuando / Entonces.
+      placeholder: |
+        - Dado que ya cargué el cierre de hoy, cuando intento cargar otro, entonces el sistema me avisa que ya existe.
+    validations:
+      required: true
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo
+      options:
+        - Cierre de caja
+        - Gastos y retiros
+        - Dashboard
+        - Usuarios y roles
+        - Galpón / pedidos (fase 2)
+        - Plataforma DevOps
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas técnicas
+      description: Opcional. Dependencias, riesgos, diseño.
