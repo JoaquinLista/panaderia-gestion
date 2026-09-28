@@ -31,14 +31,40 @@ export const productos = [
   { id: 2, nombre: 'Pan Baguette', unidad_medida: 'unidad' },
 ];
 
+// Mismos permisos que devuelve el backend (domain/permisos.js) para cada rol.
+export const PERMISOS_ADMIN = [
+  'sucursales:ver',
+  'productos:ver',
+  'insumos:ver',
+  'insumos:cargar',
+  'pedidos:ver',
+  'pedidos:crear',
+  'pedidos:cambiar-estado',
+  'caja:cerrar',
+  'usuarios:administrar',
+];
+
 export const sesionAdmin = {
   usuario: { id: 1, usuario: 'dueña', nombre: 'Marta', rol: 'ADMIN', puedeCerrarCaja: false },
   sucursal: null,
-  permisos: ['sucursales:ver', 'pedidos:ver', 'usuarios:administrar'],
+  permisos: PERMISOS_ADMIN,
 };
 
 export const sesionEmpleada = {
   usuario: { id: 2, usuario: 'lucia', nombre: 'Lucía', rol: 'EMPLEADA', puedeCerrarCaja: false },
   sucursal: { id: 2, nombre: 'Estrada', tipo: 'VENTA' },
-  permisos: ['sucursales:ver', 'pedidos:ver', 'pedidos:crear'],
+  permisos: ['sucursales:ver', 'productos:ver', 'pedidos:ver', 'pedidos:crear'],
+};
+
+export const sesionChofer = {
+  usuario: { id: 3, usuario: 'marcos', nombre: 'Marcos', rol: 'CHOFER', puedeCerrarCaja: false },
+  sucursal: null,
+  permisos: [
+    'sucursales:ver',
+    'productos:ver',
+    'insumos:ver',
+    'insumos:cargar',
+    'pedidos:ver',
+    'pedidos:cambiar-estado',
+  ],
 };

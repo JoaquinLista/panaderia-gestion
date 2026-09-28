@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 
 import { AuthProvider } from './auth/AuthProvider.jsx';
-import { useAuth } from './auth/contexto.js';
+import { tienePermiso, useAuth } from './auth/contexto.js';
 import PantallaLogin from './auth/PantallaLogin.jsx';
 import { apiGet } from './lib/api.js';
+import AdminUsuarios from './pantallas/AdminUsuarios.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
+// Cada pestaña aparece sólo si la sesión tiene el permiso (matriz del backend).
 const TABS = [
-  { id: 'pedidos', label: 'Tablero de Pedidos' },
-  { id: 'insumos', label: 'Stock e Insumos' },
-  { id: 'red', label: 'Red de Sucursales' },
+  { id: 'pedidos', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
+  { id: 'insumos', label: 'Stock e Insumos', permiso: 'insumos:ver' },
+  { id: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
+  { id: 'usuarios', label: 'Usuarios', permiso: 'usuarios:administrar' },
 ];
 
 const ROL_ETIQUETA = { ADMIN: 'Administración', EMPLEADA: 'Empleada', CHOFER: 'Chofer' };
@@ -34,7 +37,9 @@ function UsuarioConectado() {
 }
 
 function Panel() {
-  const [tab, setTab] = useState('pedidos');
+  const { sesion } = useAuth();
+  const tabs = TABS.filter((t) => tienePermiso(sesion, t.permiso));
+  const [tab, setTab] = useState(tabs[0]?.id);
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
@@ -65,7 +70,7 @@ function Panel() {
       {errorGlobal && <div className="alert alert-error">{errorGlobal}</div>}
 
       <nav className="tabs">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             className={`tab-btn ${tab === t.id ? 'active' : ''}`}
@@ -79,6 +84,7 @@ function Panel() {
       {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
       {tab === 'insumos' && <GestionInsumos />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}
+      {tab === 'usuarios' && <AdminUsuarios />}
     </div>
   );
 }

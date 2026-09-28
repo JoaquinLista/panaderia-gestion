@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { tienePermiso, useAuth } from '../auth/contexto.js';
 import { apiGet, apiPost, apiPut } from '../lib/api.js';
 import { formatFecha, nombreSucursal } from '../lib/formato.js';
 
@@ -32,6 +33,11 @@ const ETIQUETA_AVANCE = {
 const PUEDE_CANCELARSE = new Set(['PENDIENTE', 'EN_PREPARACION']);
 
 export default function TableroPedidos({ sucursales, productos }) {
+  const { sesion } = useAuth();
+  const puedeCrear = tienePermiso(sesion, 'pedidos:crear');
+  const puedeCambiarEstado = tienePermiso(sesion, 'pedidos:cambiar-estado');
+  // La empleada pide desde la sucursal donde trabaja hoy: el origen queda fijo.
+  const sucursalFija = sesion.sucursal;
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -63,10 +69,12 @@ export default function TableroPedidos({ sucursales, productos }) {
 
   useEffect(() => {
     if (sucursales.length >= 2) {
-      setOrigen((prev) => prev || String(sucursales[0].id));
-      setDestino((prev) => prev || String(sucursales[1].id));
+      const origenInicial = sucursalFija?.id ?? sucursales[0].id;
+      const destinoInicial = sucursales.find((s) => s.id !== origenInicial).id;
+      setOrigen((prev) => prev || String(origenInicial));
+      setDestino((prev) => prev || String(destinoInicial));
     }
-  }, [sucursales]);
+  }, [sucursales, sucursalFija]);
 
   const actualizarItem = (idx, campo, valor) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it)));
@@ -143,101 +151,120 @@ export default function TableroPedidos({ sucursales, productos }) {
     }
   };
 
+  const avisos = (
+    <>
+      {error && <div className="alert alert-error">{error}</div>}
+      {okMsg && <div className="alert alert-ok">{okMsg}</div>}
+    </>
+  );
+
   return (
-    <div className="grid-2">
-      <div className="card">
-        <h2>Nuevo pedido</h2>
-        <p className="subtitle">Registrá un movimiento de productos entre sucursales.</p>
+    <div className={puedeCrear ? 'grid-2' : undefined}>
+      {puedeCrear && (
+        <div className="card">
+          <h2>Nuevo pedido</h2>
+          <p className="subtitle">Registrá un movimiento de productos entre sucursales.</p>
 
-        {error && <div className="alert alert-error">{error}</div>}
-        {okMsg && <div className="alert alert-ok">{okMsg}</div>}
+          {avisos}
 
-        <form onSubmit={enviar}>
-          <label htmlFor="origen">Sucursal de origen</label>
-          <select id="origen" value={origen} onChange={(e) => setOrigen(e.target.value)} required>
-            <option value="">Seleccionar…</option>
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre} ({s.tipo})
-              </option>
+          <form onSubmit={enviar}>
+            <label htmlFor="origen">Sucursal de origen</label>
+            <select
+              id="origen"
+              value={origen}
+              onChange={(e) => setOrigen(e.target.value)}
+              disabled={Boolean(sucursalFija)}
+              required
+            >
+              <option value="">Seleccionar…</option>
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} ({s.tipo})
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="destino">Sucursal de destino</label>
+            <select
+              id="destino"
+              value={destino}
+              onChange={(e) => setDestino(e.target.value)}
+              required
+            >
+              <option value="">Seleccionar…</option>
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} ({s.tipo})
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="estado">Estado inicial</label>
+            <select id="estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
+              {ESTADOS_PEDIDO.map((es) => (
+                <option key={es} value={es}>
+                  {es.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+
+            <label>Productos</label>
+            {items.map((it, idx) => (
+              <div className="detalle-row" key={idx}>
+                <select
+                  value={it.producto_id}
+                  onChange={(e) => actualizarItem(idx, 'producto_id', e.target.value)}
+                  aria-label="Producto"
+                >
+                  <option value="">Producto…</option>
+                  {productos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Cant."
+                  value={it.cantidad}
+                  onChange={(e) => actualizarItem(idx, 'cantidad', e.target.value)}
+                  aria-label="Cantidad"
+                />
+                <button type="button" onClick={() => quitarItem(idx)} aria-label="Quitar ítem">
+                  ×
+                </button>
+              </div>
             ))}
-          </select>
+            <button type="button" className="link" onClick={agregarItem}>
+              + Agregar producto
+            </button>
 
-          <label htmlFor="destino">Sucursal de destino</label>
-          <select
-            id="destino"
-            value={destino}
-            onChange={(e) => setDestino(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar…</option>
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre} ({s.tipo})
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor="estado">Estado inicial</label>
-          <select id="estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
-            {ESTADOS_PEDIDO.map((es) => (
-              <option key={es} value={es}>
-                {es.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-
-          <label>Productos</label>
-          {items.map((it, idx) => (
-            <div className="detalle-row" key={idx}>
-              <select
-                value={it.producto_id}
-                onChange={(e) => actualizarItem(idx, 'producto_id', e.target.value)}
-                aria-label="Producto"
-              >
-                <option value="">Producto…</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Cant."
-                value={it.cantidad}
-                onChange={(e) => actualizarItem(idx, 'cantidad', e.target.value)}
-                aria-label="Cantidad"
-              />
-              <button type="button" onClick={() => quitarItem(idx)} aria-label="Quitar ítem">
-                ×
+            <div style={{ marginTop: 16 }}>
+              <button type="submit" className="primary" disabled={enviando}>
+                {enviando ? 'Registrando…' : 'Registrar pedido'}
               </button>
             </div>
-          ))}
-          <button type="button" className="link" onClick={agregarItem}>
-            + Agregar producto
-          </button>
-
-          <div style={{ marginTop: 16 }}>
-            <button type="submit" className="primary" disabled={enviando}>
-              {enviando ? 'Registrando…' : 'Registrar pedido'}
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
 
       <div className="card">
         <div className="row-between">
           <div>
             <h2>Pedidos registrados</h2>
-            <p className="subtitle">{pedidos.length} pedido(s) en el sistema.</p>
+            <p className="subtitle">
+              {pedidos.length} pedido(s)
+              {sucursalFija ? ` de ${sucursalFija.nombre}` : ' en el sistema'}.
+            </p>
           </div>
           <button className="link" onClick={cargarPedidos}>
             Actualizar
           </button>
         </div>
+
+        {!puedeCrear && avisos}
 
         {cargando ? (
           <div className="empty">Cargando pedidos…</div>
@@ -254,7 +281,7 @@ export default function TableroPedidos({ sucursales, productos }) {
                   <th>Detalle</th>
                   <th>Estado</th>
                   <th>Fecha</th>
-                  <th>Acciones</th>
+                  {puedeCambiarEstado && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -287,33 +314,35 @@ export default function TableroPedidos({ sucursales, productos }) {
                       </span>
                     </td>
                     <td>{formatFecha(p.fecha_creacion)}</td>
-                    <td>
-                      <div className="acciones-pedido">
-                        {SIGUIENTE_ESTADO[p.estado] && (
-                          <button
-                            type="button"
-                            className="link"
-                            disabled={estadoEnCurso === p.id}
-                            onClick={() => cambiarEstado(p.id, SIGUIENTE_ESTADO[p.estado])}
-                          >
-                            {ETIQUETA_AVANCE[SIGUIENTE_ESTADO[p.estado]]}
-                          </button>
-                        )}
-                        {PUEDE_CANCELARSE.has(p.estado) && (
-                          <button
-                            type="button"
-                            className="link link-danger"
-                            disabled={estadoEnCurso === p.id}
-                            onClick={() => cambiarEstado(p.id, 'CANCELADO')}
-                          >
-                            Cancelar
-                          </button>
-                        )}
-                        {!SIGUIENTE_ESTADO[p.estado] && !PUEDE_CANCELARSE.has(p.estado) && (
-                          <span className="muted">—</span>
-                        )}
-                      </div>
-                    </td>
+                    {puedeCambiarEstado && (
+                      <td>
+                        <div className="acciones-pedido">
+                          {SIGUIENTE_ESTADO[p.estado] && (
+                            <button
+                              type="button"
+                              className="link"
+                              disabled={estadoEnCurso === p.id}
+                              onClick={() => cambiarEstado(p.id, SIGUIENTE_ESTADO[p.estado])}
+                            >
+                              {ETIQUETA_AVANCE[SIGUIENTE_ESTADO[p.estado]]}
+                            </button>
+                          )}
+                          {PUEDE_CANCELARSE.has(p.estado) && (
+                            <button
+                              type="button"
+                              className="link link-danger"
+                              disabled={estadoEnCurso === p.id}
+                              onClick={() => cambiarEstado(p.id, 'CANCELADO')}
+                            >
+                              Cancelar
+                            </button>
+                          )}
+                          {!SIGUIENTE_ESTADO[p.estado] && !PUEDE_CANCELARSE.has(p.estado) && (
+                            <span className="muted">—</span>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

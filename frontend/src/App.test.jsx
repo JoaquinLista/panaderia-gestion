@@ -6,7 +6,7 @@ const datos = {
   '/api/auth/me': {
     usuario: { id: 1, usuario: 'dueña', nombre: 'Marta', rol: 'ADMIN' },
     sucursal: null,
-    permisos: [],
+    permisos: ['pedidos:ver', 'insumos:ver', 'sucursales:ver'],
   },
   '/api/sucursales': [
     { id: 1, nombre: 'Viedma (Chacra)', tipo: 'FABRICA' },

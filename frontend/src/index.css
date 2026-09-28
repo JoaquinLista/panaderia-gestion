@@ -74,12 +74,16 @@ body {
 .tabs {
   display: flex;
   gap: 4px;
+  /* En el celular las pestañas se deslizan en vez de ensanchar la página. */
+  overflow-x: auto;
   margin: 24px 0 20px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .tab-btn {
   appearance: none;
+  white-space: nowrap;
+  flex-shrink: 0;
   border: none;
   background: transparent;
   padding: 10px 18px;
@@ -453,4 +457,64 @@ tbody tr:hover {
   padding: 48px 16px;
   text-align: center;
   color: var(--color-muted);
+}
+
+/* ---- Administración de usuarios ---- */
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+label.check input {
+  width: auto;
+  margin: 0;
+}
+
+.lista-usuarios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-usuarios li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lista-usuarios li.inactivo strong {
+  color: var(--color-muted);
+}
+
+.lista-usuarios .row-between {
+  flex-wrap: wrap;
+}
+
+.lista-usuarios select {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+}
+
+.lista-usuarios .badge {
+  margin-left: 6px;
+}
+
+.acciones-usuario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.acciones-usuario label.check {
+  margin: 0;
+}
+
+.reset-password {
+  margin-top: 12px;
 }
