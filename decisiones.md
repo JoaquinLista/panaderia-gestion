@@ -243,3 +243,36 @@ Para superar el umbral se testeó lo que faltaba, no se bajó la vara:
 El pipeline en rojo sólo avisa. Para que **bloquee**, `main` necesita una regla de
 protección que exija los checks. Eso se configura en GitHub (Settings → Branches) y
 queda documentado en `CONTRIBUTING.md`.
+
+---
+
+## La Fueguina Stats — Sprint 2 · PR 1: migraciones versionadas (#7)
+
+Desglose completo del sprint: https://claude.ai/artifact/F3smy2Zoi6h7zNunhqkJFq
+
+### Problema
+
+El esquema vivía en `database/init.sql`, que Postgres ejecuta **sólo la primera vez**
+que se crea el volumen. Cualquier cambio (por ejemplo, la tabla de usuarios del login)
+obligaba a borrar la base o a correr SQL a mano en cada entorno. Con staging y
+producción en el horizonte (Sprint 6), eso no escala.
+
+### Decisiones
+
+| Decisión | Por qué |
+|----------|---------|
+| **node-pg-migrate** con archivos **SQL** | Es la herramienta estándar para Postgres en Node y acepta migraciones en SQL plano, que se leen y revisan igual que el `init.sql` de antes. No hace falta aprender un ORM. |
+| Numeradas `0001_`, `0002_`, … con `checkOrder` | El orden de aplicación es explícito. Si alguien agrega una migración "en el medio" de las ya aplicadas, falla en vez de aplicarse desordenada. |
+| El backend migra **al arrancar**, antes de escuchar | Un solo paso de despliegue. Si una migración falla, el backend no arranca y el healthcheck lo marca: nunca corre código nuevo contra un esquema viejo. |
+| Lock de Postgres (`advisoryLockMode: 'wait'`) | Si arrancan dos backends a la vez (blue-green, Sprint 6), uno migra y el otro espera. |
+| 0001 y 0002 **idempotentes** | Bases creadas con el `init.sql` del TP2 se actualizan sin perder datos: los `CREATE ... IF NOT EXISTS` no pisan nada y los `UPDATE` renombran las sucursales. |
+| Datos de referencia como migración (0002) | Las sucursales son datos reales del negocio, no de prueba: tienen que existir en todos los entornos. |
+| `usuarios` (0003) sin sucursal | Las empleadas rotan y eligen la sucursal al iniciar sesión (definición del PM). Roles `ADMIN`, `EMPLEADA`, `CHOFER` + `puede_cerrar_caja`. Usuario único sin distinguir mayúsculas. |
+| Se elimina `database/` | La base usa la imagen oficial `postgres:15-alpine`. `docker-compose.registry.yml` queda como snapshot de v0.1.0. |
+| Una migración mergeada **no se edita** | Ya corrió en alguna base. Para corregirla se agrega otra. |
+
+### Cómo se prueba
+
+- **Unit** (`tests/unit/migrar.test.js`): parámetros del runner, log y que la conexión se libere aunque falle.
+- **Integración** (`tests/integracion/migraciones.test.js`, `npm run test:integracion`): contra un Postgres real crea una base vacía y aplica todo, verifica que una segunda corrida no hace nada, y prueba el índice único y el CHECK de roles. Además crea una base con el `init.sql` del TP2 (fixture) con un pedido cargado, migra y comprueba que el pedido sigue ahí y las sucursales se renombraron.
+- **CI**: job nuevo `Migraciones · Postgres real` con un servicio Postgres. El smoke test de Docker ahora valida también que el backend crea el esquema solo, porque la base arranca vacía.

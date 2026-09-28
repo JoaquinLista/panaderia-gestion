@@ -43,11 +43,12 @@ updates:
       prefix: chore(deps)
 
   # Imágenes base: los saltos de versión mayor de Node y Postgres se hacen a mano.
+  # (Postgres se usa como imagen oficial en docker-compose.yml, que Dependabot no revisa.)
   # Node: sólo versiones LTS (las pares pasan a LTS en octubre), y Dependabot no
   # distingue LTS de "current". Postgres: un cambio de versión mayor requiere migrar
   # los datos del volumen (pg_upgrade o dump/restore), no alcanza con cambiar la imagen.
   - package-ecosystem: docker
-    directories: [/backend, /frontend, /database]
+    directories: [/backend, /frontend]
     schedule:
       interval: weekly
       day: monday

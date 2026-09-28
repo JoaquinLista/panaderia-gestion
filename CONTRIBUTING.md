@@ -17,6 +17,13 @@ automáticamente antes de llegar a `main`. `main` siempre tiene que poder desple
    (lint, tests, coverage) tiene que pasar.
 6. **Squash merge.** Un PR = un commit en `main`, con el título del PR como mensaje.
 
+## Cambios en la base de datos
+
+Nunca se edita una migración que ya está en `main`. Cada cambio de esquema es un
+archivo nuevo en `backend/migrations/` (`npm run migrate:nueva -- nombre`) con su
+sección `-- Down Migration`, y el job `Migraciones · Postgres real` lo prueba desde
+cero y sobre una base con el esquema viejo.
+
 ## Definición de terminado
 
 Una historia está terminada cuando:
@@ -51,7 +58,8 @@ En **Settings → Branches → Add branch ruleset** (o _Add rule_) para `main`:
 
 - Requerir pull request antes de mergear.
 - Requerir que pasen los checks: `backend · lint, tests y coverage`,
-  `frontend · lint, tests y coverage` y `Docker · build y smoke test`.
+  `frontend · lint, tests y coverage`, `Migraciones · Postgres real` y
+  `Docker · build y smoke test`.
 - Requerir que la rama esté actualizada con `main`.
 - Bloquear force push y borrado.
 

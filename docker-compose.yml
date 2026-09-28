@@ -1,9 +1,8 @@
 services:
   db:
-    build:
-      context: ./database
-      dockerfile: Dockerfile
-    image: ghcr.io/joaquinlista/panaderia-gestion-db:v0.1.0
+    # Imagen oficial sin scripts propios: el esquema lo crea el backend al
+    # arrancar, con las migraciones de backend/migrations.
+    image: postgres:15-alpine
     container_name: panaderias_db
     restart: unless-stopped
     environment:
