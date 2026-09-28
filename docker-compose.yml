@@ -37,6 +37,13 @@ services:
       POSTGRES_DB: panaderias
       POSTGRES_USER: panaderias
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env (cp .env.example .env)}
+      # Secretos del login: entran por .env y el compose no levanta si faltan.
+      JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en .env (openssl rand -hex 32)}
+      ADMIN_USUARIO: ${ADMIN_USUARIO:?Definí ADMIN_USUARIO en .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Definí ADMIN_PASSWORD en .env}
+      # El compose local se usa por http://localhost: sin HTTPS, una cookie
+      # Secure no viajaría. En un entorno con HTTPS va en true.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "3000:3000"
     depends_on:

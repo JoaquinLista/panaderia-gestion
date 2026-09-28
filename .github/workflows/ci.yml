@@ -101,9 +101,9 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -122,10 +122,15 @@ jobs:
     needs: [test, migraciones]
     runs-on: ubuntu-latest
     env:
-      # Contraseña descartable: la base sólo vive durante este job.
+      # Valores descartables: la base y las sesiones sólo viven durante este job.
       POSTGRES_PASSWORD: ci-solo-para-pruebas
+      ADMIN_USUARIO: admin-ci
+      ADMIN_PASSWORD: ci-solo-para-pruebas
     steps:
       - uses: actions/checkout@v7
+
+      - name: Generar el secreto de las sesiones
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
 
       - name: Construir imágenes
         run: docker compose build
@@ -144,6 +149,16 @@ jobs:
           grep -q 'Viedma (Chacra)' <<<"$sucursales"
           home=$(curl -fsS http://localhost/)
           grep -q '<div id="root">' <<<"$home"
+
+          # Sin sesión, /me responde 401.
+          sin_sesion=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/auth/me)
+          test "$sin_sesion" = 401
+          # El admin inicial entra y la cookie abre /me.
+          curl -fsS -c cookies.txt -H 'Content-Type: application/json' \
+            -d "{\"usuario\":\"$ADMIN_USUARIO\",\"password\":\"$ADMIN_PASSWORD\"}" \
+            http://localhost/api/auth/login >/dev/null
+          me=$(curl -fsS -b cookies.txt http://localhost/api/auth/me); echo "$me"
+          grep -q '"rol":"ADMIN"' <<<"$me"
 
       - name: Logs si algo falló
         if: failure()
