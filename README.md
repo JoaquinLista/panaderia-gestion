@@ -16,7 +16,7 @@ Cómo trabajamos: [`CONTRIBUTING.md`](CONTRIBUTING.md). Decisiones de diseño:
 
 | Servicio | Tecnología | Puerto | Rol |
 |----------|------------|--------|-----|
-| `db` | PostgreSQL 15-alpine (imagen propia con schema + seed) | interno | Persistencia |
+| `db` | PostgreSQL 15-alpine (imagen oficial) | interno | Persistencia |
 | `backend` | Node 22 + Express (ES Modules), 3 capas | 3000 | API REST |
 | `frontend` | React 18 + Vite → Nginx alpine | 80 | SPA + proxy `/api` |
 
@@ -74,11 +74,30 @@ cd frontend && npm install && npm run dev
 ```bash
 cd backend && npm test          # o npm run test:coverage
 cd frontend && npm test
+
+# Migraciones contra un Postgres real (crea y borra bases de prueba)
+cd backend && TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres npm run test:integracion
 ```
 
 `npm run test:coverage` falla si la cobertura baja de **80%** (backend) o **70%**
 (frontend). El pipeline de CI (`.github/workflows/ci.yml`) corre lo mismo en cada PR,
 construye las imágenes Docker y hace un smoke test del sistema levantado.
+
+## Base de datos y migraciones
+
+El esquema vive en `backend/migrations/` como archivos SQL numerados
+(`0001_esquema-inicial.sql`, `0002_datos-iniciales.sql`, …). El backend aplica las
+pendientes **al arrancar**, antes de aceptar requests; las ya aplicadas quedan
+registradas en la tabla `pgmigrations` y no se repiten.
+
+```bash
+cd backend
+npm run migrate:nueva -- nombre-del-cambio   # crea migrations/<timestamp>_nombre-del-cambio.sql
+npm run migrate                              # aplica las pendientes a mano
+```
+
+Cada archivo tiene una sección `-- Up Migration` y otra `-- Down Migration`. Una
+migración que ya llegó a `main` no se edita: si hay que corregirla, se agrega otra.
 
 Los tests del backend no necesitan base de datos: la capa `config/db.js` se reemplaza
 por un doble de prueba. La app Express vive en `src/app.js` (sin `listen`) para poder
@@ -90,7 +109,7 @@ Cada sprint dura una semana y termina con algo demostrable.
 
 - [x] **Sprint 0 — Fundaciones:** templates de issues y PR, `CONTRIBUTING.md`, ESLint + Prettier, Vitest con primeros tests, Dependabot, sucursales reales.
 - [x] **Sprint 1 — CI + tests con umbral:** GitHub Actions (lint, formato, tests, build, Docker + smoke test), coverage mínimo (80% backend, 70% frontend) que bloquea el merge.
-- [ ] **Sprint 2 — Login y roles:** dueña/socio, empleada de sucursal, galpón, chofer. Migraciones versionadas.
+- [ ] **Sprint 2 — Login y roles:** admin (dueños), empleada (elige sucursal al entrar), chofer (opera el galpón), permiso de cierre de caja. Migraciones versionadas ✅.
 - [ ] **Sprint 3 — Cierre de caja:** formulario mobile por sucursal (Z, efectivo, posnet, QR, gastos locales).
 - [ ] **Sprint 4 — Contenedores en el pipeline + e2e:** imágenes en GHCR, escaneo Trivy, Playwright contra el compose.
 - [ ] **Sprint 5 — Gastos y retiros de socios.**
