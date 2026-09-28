@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 
 // Base de datos falsa: cada test decide qué devuelve `query`.
+// Las rutas de negocio piden sesión: acá se entra como admin sin pasar por el login.
+vi.mock('../../src/middlewares/autenticacion.js', async () => {
+  const { requerirSesionFalsa } = await import('../helpers/sesiones.js');
+  return { requerirSesion: requerirSesionFalsa };
+});
+
 vi.mock('../../src/config/db.js', () => {
   const query = vi.fn();
   return { default: { query }, query, getClient: vi.fn() };

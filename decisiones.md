@@ -326,3 +326,22 @@ que no puede entrar.
 
 Tests nuevos: login de dueña y empleada, errores del backend, validación, sesión
 abierta al recargar, cerrar sesión y volver al login ante un 401.
+
+## La Fueguina Stats — Sprint 2 · PR 3: roles, permisos y usuarios (#6)
+
+| Decisión | Por qué |
+|----------|---------|
+| `requerirSesion` por grupo de rutas en `app.js` y `permitir(accion)` en cada ruta | Se ve en un solo lugar qué pide sesión, y cada ruta dice qué permiso necesita. 401 = no entraste; 403 = entraste pero tu rol no puede. |
+| `/api/sucursales` queda pública | La pantalla de login la necesita para que la empleada elija dónde trabaja. Los nombres de las sucursales no son un secreto. |
+| El filtro por sucursal del día lo aplica la API | La empleada ve los pedidos que salen de su sucursal o llegan a ella, y sólo crea pedidos con origen en ella. Aunque alguien arme el request a mano, la API no le deja ver ni cargar otra cosa. |
+| ABM de usuarios sólo para admin, sin borrar | Se desactiva en vez de borrar: los pedidos y cierres de caja quedan ligados a quien los cargó. |
+| Un admin no puede cambiarse el rol ni desactivarse | Así el negocio nunca se queda sin nadie que pueda administrar. |
+| Migración `0004`: columna `sesiones_desde` | Resetear la contraseña o desactivar a alguien corta sus sesiones abiertas (por ejemplo, si le robaron el celular). La hora sale del reloj del backend, el mismo que firma los tokens. |
+| Si la dueña cambia su propia contraseña, recibe una sesión nueva | Se cortan sus otras sesiones, pero no la saca de la app donde está haciendo el cambio. |
+| El permiso de cerrar caja sólo se guarda para empleadas | El admin ya puede y el chofer no (matriz aprobada por el PM). |
+
+Tests de seguridad (T9, `tests/api/permisos.test.js`) con el login real:
+todas las rutas protegidas dan 401 sin sesión y no tocan la base, cada rol recibe
+403 donde corresponde, la empleada sólo ve y crea pedidos de su sucursal, un
+usuario desactivado no entra y un token anterior al reseteo ya no vale. El smoke
+test de Docker verifica el 401 de las rutas de negocio y que el admin las usa.

@@ -86,6 +86,22 @@ describe('login contra Postgres', () => {
     expect(res.body.sucursal).toMatchObject({ nombre: 'Estrada', tipo: 'VENTA' });
   });
 
+  it('al resetear la contraseña, la sesión vieja deja de valer', async () => {
+    const { resetearPassword } = await import('../../src/services/usuariosService.js');
+    const entrada = await request(app)
+      .post('/api/auth/login')
+      .send({ usuario: 'lucia', password: 'clave-de-lucia', sucursalId: 2 });
+    const cookieVieja = entrada.headers['set-cookie'].find((c) => c.startsWith('sesion='));
+    // El token tiene resolución de segundos: se espera a que cambie el segundo.
+    await new Promise((r) => setTimeout(r, 1100));
+
+    const { rows } = await pool.query(`SELECT id FROM usuarios WHERE usuario = 'lucia'`);
+    await resetearPassword(rows[0].id, 'clave-nueva-de-lucia');
+
+    const me = await request(app).get('/api/auth/me').set('Cookie', cookieVieja);
+    expect(me.status).toBe(401);
+  });
+
   it('rechaza la contraseña incorrecta', async () => {
     const res = await request(app)
       .post('/api/auth/login')

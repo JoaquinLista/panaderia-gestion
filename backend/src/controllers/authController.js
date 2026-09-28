@@ -10,16 +10,21 @@ const opcionesCookie = () => ({
   path: '/api',
 });
 
+/** Firma la sesión y la deja en la cookie de la respuesta. */
+export const ponerCookieSesion = (res, sesion) => {
+  res.cookie(NOMBRE_COOKIE, firmarSesion(sesion), {
+    ...opcionesCookie(),
+    maxAge: DURACION_SESION_MS,
+  });
+};
+
 /**
  * POST /api/auth/login  { usuario, password, sucursalId? }
  */
 export const login = async (req, res, next) => {
   try {
     const sesion = await autenticar(req.body ?? {});
-    res.cookie(NOMBRE_COOKIE, firmarSesion(sesion), {
-      ...opcionesCookie(),
-      maxAge: DURACION_SESION_MS,
-    });
+    ponerCookieSesion(res, sesion);
     res.json(sesion);
   } catch (error) {
     next(error);

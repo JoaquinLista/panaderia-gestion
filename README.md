@@ -62,6 +62,16 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/pedidos` | Pedidos con su detalle |
 | POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) |
 | PUT | `/api/pedidos/:id/estado` | Cambia el estado del pedido validando la transición |
+| GET | `/api/usuarios` | Lista de usuarios (sólo admin) |
+| POST | `/api/usuarios` | Alta: `{ usuario, nombre, password, rol, puedeCerrarCaja? }` (sólo admin) |
+| PATCH | `/api/usuarios/:id` | Cambia `nombre`, `rol`, `puedeCerrarCaja` o `activo` (sólo admin) |
+| PUT | `/api/usuarios/:id/password` | La dueña pone una contraseña nueva y se cortan las sesiones abiertas de ese usuario (sólo admin) |
+
+**Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de
+login) y el login, todas las rutas responden `401` sin sesión y `403` si el rol no
+tiene permiso. La matriz está en `backend/src/domain/permisos.js`. La empleada sólo
+ve los pedidos que salen de su sucursal del día o llegan a ella, y sólo crea
+pedidos con origen en esa sucursal.
 
 Respuesta de login y de `/me`:
 

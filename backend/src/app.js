@@ -10,6 +10,8 @@ import cookieParser from 'cookie-parser';
 
 import pool from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import usuariosRoutes from './routes/usuariosRoutes.js';
+import { requerirSesion } from './middlewares/autenticacion.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
 import insumosRoutes from './routes/insumosRoutes.js';
 import pedidosRoutes from './routes/pedidosRoutes.js';
@@ -42,10 +44,14 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 
 // ---- Rutas de negocio ----
+// La lista de sucursales es pública: la pantalla de login la necesita para que
+// la empleada elija dónde trabaja hoy. Todo lo demás pide sesión (401) y el
+// permiso de cada acción (403).
 app.use('/api/sucursales', sucursalesRoutes);
-app.use('/api/insumos', insumosRoutes);
-app.use('/api/pedidos', pedidosRoutes);
-app.use('/api/productos', productosRoutes);
+app.use('/api/insumos', requerirSesion, insumosRoutes);
+app.use('/api/pedidos', requerirSesion, pedidosRoutes);
+app.use('/api/productos', requerirSesion, productosRoutes);
+app.use('/api/usuarios', requerirSesion, usuariosRoutes);
 
 // ---- 404 ----
 app.use((req, res) => {

@@ -150,15 +150,21 @@ jobs:
           home=$(curl -fsS http://localhost/)
           grep -q '<div id="root">' <<<"$home"
 
-          # Sin sesión, /me responde 401.
-          sin_sesion=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/auth/me)
-          test "$sin_sesion" = 401
+          # Sin sesión, /me y las rutas de negocio responden 401.
+          for ruta in auth/me pedidos insumos usuarios; do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost/api/$ruta")
+            echo "/api/$ruta sin sesión: $codigo"; test "$codigo" = 401
+          done
           # El admin inicial entra y la cookie abre /me.
           curl -fsS -c cookies.txt -H 'Content-Type: application/json' \
             -d "{\"usuario\":\"$ADMIN_USUARIO\",\"password\":\"$ADMIN_PASSWORD\"}" \
             http://localhost/api/auth/login >/dev/null
           me=$(curl -fsS -b cookies.txt http://localhost/api/auth/me); echo "$me"
           grep -q '"rol":"ADMIN"' <<<"$me"
+          # Con la sesión del admin, las rutas de negocio responden.
+          pedidos=$(curl -fsS -b cookies.txt http://localhost/api/pedidos); echo "$pedidos"
+          usuarios=$(curl -fsS -b cookies.txt http://localhost/api/usuarios); echo "$usuarios"
+          grep -q "\"usuario\":\"$ADMIN_USUARIO\"" <<<"$usuarios"
 
       - name: Logs si algo falló
         if: failure()
