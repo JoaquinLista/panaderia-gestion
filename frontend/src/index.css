@@ -1185,8 +1185,19 @@ label.check input {
 }
 
 .variacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.alert-con-icono,
+.link-con-icono {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .variacion .muted {

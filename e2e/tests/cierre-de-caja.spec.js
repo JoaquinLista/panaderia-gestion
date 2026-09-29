@@ -66,7 +66,7 @@ test('la empleada carga un cierre con diferencia y la dueña lo revisa', async (
   await expect(dueña.getByText(/revisado por/)).toBeVisible();
 
   // Ya no aparece entre los que hay que revisar.
-  await dueña.getByRole('button', { name: '← Volver a la lista' }).click();
+  await dueña.getByRole('button', { name: 'Volver a la lista' }).click();
   await dueña.getByLabel('Sólo los que hay que revisar').check();
   await expect(
     dueña

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleAlert, CircleCheck, Download } from 'lucide-react';
+import { CircleAlert, CircleCheck, Download, TrendingDown, TrendingUp } from 'lucide-react';
 
 import { apiDescargar, apiGet } from '../lib/api.js';
 import { nombreMes } from '../lib/cajaCentral.js';
@@ -149,6 +149,8 @@ function Indicador({ titulo, monto, variacion, bueno, mesAnterior }) {
       <span className="muted">{titulo}</span>
       <strong aria-label={titulo}>{pesos(monto)}</strong>
       <span className={`variacion variacion-${v.tono}`}>
+        {v.sube === true && <TrendingUp size={20} strokeWidth={2.5} aria-hidden="true" />}
+        {v.sube === false && <TrendingDown size={20} strokeWidth={2.5} aria-hidden="true" />}
         {v.texto}
         {v.tono !== 'sin-datos' && <span className="muted"> vs. {mesAnterior}</span>}
       </span>

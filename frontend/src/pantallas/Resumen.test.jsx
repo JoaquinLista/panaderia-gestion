@@ -161,12 +161,12 @@ describe('resumen: el mes', () => {
     expect(texto(within(region).getByLabelText('Ventas'))).toBe('$ 3.000.000,00');
     expect(texto(within(region).getByLabelText('Resultado'))).toBe('$ 2.050.000,00');
     // Ventas que suben: bien. Gastos que suben: mal. Resultado que baja: mal.
-    const indicadores = within(region).getAllByText(/▲|▼|sin datos/);
+    const indicadores = within(region).getAllByText(/Subió|Bajó|sin datos/);
     expect(indicadores.map((i) => [texto(i), i.className])).toEqual([
-      ['▲ 20 % vs. agosto', 'variacion variacion-bien'],
-      ['▲ 12,5 % vs. agosto', 'variacion variacion-mal'],
+      ['Subió 20 % vs. agosto', 'variacion variacion-bien'],
+      ['Subió 12,5 % vs. agosto', 'variacion variacion-mal'],
       ['sin datos para comparar', 'variacion variacion-sin-datos'],
-      ['▼ 3 % vs. agosto', 'variacion variacion-mal'],
+      ['Bajó 3 % vs. agosto', 'variacion variacion-mal'],
     ]);
   });
 

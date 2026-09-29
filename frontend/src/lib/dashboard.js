@@ -18,15 +18,16 @@ export const soloMes = (mes) => nombreMes(mes).split(' ')[0];
  * Cómo leer una variación contra el mes anterior.
  * @param {number | null} valor  porcentaje, o null si antes era cero
  * @param {'sube' | 'baja'} bueno  si para este número subir es bueno (ventas) o malo (gastos)
- * @returns {{ texto: string, tono: 'bien' | 'mal' | 'igual' | 'sin-datos' }}
+ * @returns {{ texto: string, tono: 'bien' | 'mal' | 'igual' | 'sin-datos', sube?: boolean }}
  */
 export const leerVariacion = (valor, bueno = 'sube') => {
   if (valor === null) return { texto: 'sin datos para comparar', tono: 'sin-datos' };
   if (valor === 0) return { texto: 'igual', tono: 'igual' };
   const sube = valor > 0;
   return {
-    texto: `${sube ? '▲' : '▼'} ${porcentaje.format(Math.abs(valor))} %`,
+    texto: `${sube ? 'Subió' : 'Bajó'} ${porcentaje.format(Math.abs(valor))} %`,
     tono: sube === (bueno === 'sube') ? 'bien' : 'mal',
+    sube,
   };
 };
 

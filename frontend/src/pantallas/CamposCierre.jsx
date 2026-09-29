@@ -1,4 +1,6 @@
 // Piezas que comparten la carga del cierre y la revisión de la dueña.
+import { X } from 'lucide-react';
+
 import { centavosDe } from '../lib/cierres.js';
 import { formatearMonto, leerMonto, mostrarPesos } from '../lib/cuadre.js';
 
@@ -99,7 +101,7 @@ export function FilaGasto({ numero, gasto, categorias, onCambiar, onQuitar }) {
         onChange={onCambiar('monto')}
       />
       <button type="button" aria-label={`Quitar gasto ${numero}`} onClick={onQuitar}>
-        ✕
+        <X size={20} strokeWidth={2.5} aria-hidden="true" />
       </button>
     </div>
   );

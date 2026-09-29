@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
 
 import { apiGet, apiPost } from '../lib/api.js';
 
@@ -166,8 +167,9 @@ export default function GestionInsumos() {
         </div>
 
         {bajoStock.length > 0 && (
-          <div className="alert alert-error">
-            ⚠ {bajoStock.length} insumo(s) por debajo del stock mínimo:{' '}
+          <div className="alert alert-error alert-con-icono">
+            <TriangleAlert size={22} strokeWidth={2.5} aria-hidden="true" />
+            {bajoStock.length} insumo(s) por debajo del stock mínimo:{' '}
             {bajoStock.map((i) => i.nombre).join(', ')}.
           </div>
         )}
