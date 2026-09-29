@@ -325,7 +325,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.imagen }}
 
       - name: Trivy · reporte de vulnerabilidades altas y críticas
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ${{ steps.img.outputs.ref }}
           severity: HIGH,CRITICAL
@@ -337,7 +337,7 @@ jobs:
       # Sólo frena lo que tiene arreglo: si todavía no hay versión corregida, el
       # pipeline quedaría en rojo sin que se pueda hacer nada (ver decisiones.md).
       - name: Trivy · una vulnerabilidad crítica con arreglo frena el pipeline
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ${{ steps.img.outputs.ref }}
           severity: CRITICAL
