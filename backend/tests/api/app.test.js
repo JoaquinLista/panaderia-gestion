@@ -42,6 +42,12 @@ describe('API', () => {
     expect(res.body).toMatchObject({ status: 'degraded', db: 'down' });
   });
 
+  it('no dice con qué está hecho el servidor (sin X-Powered-By)', async () => {
+    db.default.query.mockResolvedValue({ rows: [{ '?column?': 1 }] });
+    const res = await request(app).get('/api/health');
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+
   it('devuelve 404 en JSON para rutas desconocidas', async () => {
     const res = await request(app).get('/api/no-existe');
     expect(res.status).toBe(404);

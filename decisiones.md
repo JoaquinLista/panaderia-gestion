@@ -599,3 +599,18 @@ permiso de caja; cerrar sesión.
 | Menú en un panel marrón como la cabecera, agrupado en "Plata" (Resumen, Cierre de caja, Revisión de cierres, Caja central), "Panaderías" (Pedidos, Stock e insumos, Sucursales) y "Equipo" (Usuarios) | Agrupar por tema ayuda a encontrar las cosas: los dueños van casi siempre a "Plata". Un grupo sin secciones permitidas no se muestra. |
 | Sección activa en crema con letra marrón y barra amarilla; el resto en crema sobre marrón | Es el mayor contraste posible dentro de los colores de la marca: se ve de lejos dónde estás. |
 | Nombres cortos: "Pedidos", "Stock e insumos", "Sucursales" | Menos palabras para leer; el título de cada pantalla sigue diciendo el nombre completo. |
+
+## La Fueguina Stats — Sprint 8 · PR 1: seguridad en el pipeline (#17)
+
+| Decisión | Por qué |
+|----------|---------|
+| Un workflow aparte, `seguridad.yml`, que también corre los lunes | Una vulnerabilidad nueva se publica aunque nuestro código no cambie; la corrida semanal la encuentra sin esperar un PR. |
+| CodeQL con `security-extended` para JavaScript y para los workflows de Actions | Es gratis en repos públicos y es el SAST de GitHub: los hallazgos quedan en la pestaña Security. Los workflows también se revisan porque un permiso de más o un `${{ }}` mal usado es una puerta de entrada. |
+| `npm audit --audit-level=high` en los tres paquetes, sin instalar | Lee el `package-lock.json`. Frena con altas y críticas; las moderadas las va subiendo Dependabot sin frenar a nadie. |
+| gitleaks con el binario oficial y sólo sobre los commits nuevos | La acción oficial pide licencia para organizaciones; el binario no. Revisar sólo el PR hace que un secreto viejo ya rotado no frene todo, y que uno nuevo frene aunque se haya borrado en un commit posterior (queda en la historia). |
+| Trivy en modo `config` sobre `infra/`, con `.trivyignore-infra` para excepciones justificadas | Cumple el criterio de la historia (Trivy sobre el Terraform) con la misma herramienta que ya usamos para las imágenes. |
+| Cabeceras de seguridad en Nginx en un archivo aparte que se incluye en cada `location` | En Nginx, un `add_header` dentro de un location anula los del server; con el include no se pierden en `/assets/`. |
+| CSP sin `unsafe-inline`, ni para scripts ni para estilos | La app no escribe scripts ni estilos dentro del HTML: los anchos de las barras los pone React desde JavaScript, y eso la CSP lo permite. Probado con las e2e en un servidor con la misma política. |
+| HSTS aunque en la compu se use HTTP | Por HTTP los navegadores la ignoran; en Azure, con HTTPS, empieza a valer sola. |
+| El backend no manda `X-Powered-By` y Nginx no dice su versión | Menos pistas sobre qué software atacar. |
+| El límite de intentos de login ya existía (Sprint 2) | No se tocó; la historia lo pedía y ya estaba cubierto con tests. |
