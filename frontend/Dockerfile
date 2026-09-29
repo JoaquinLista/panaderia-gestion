@@ -3,7 +3,10 @@
 # =============================================================
 
 # ---- Etapa 1: build de la SPA ----
-FROM node:22-alpine AS build
+# Corre en la plataforma de la máquina que construye ($BUILDPLATFORM): el
+# resultado son archivos HTML, JS y CSS, iguales para amd64 y arm64. Así la imagen
+# arm64 no compila bajo emulación, que es mucho más lenta.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

@@ -421,3 +421,35 @@ Tests: `tests/api/revisionCierres.test.js` (validaciones y errores),
 revisión), `tests/integracion/cierres.test.js` (lista, pendientes, corrección con
 historial, 409 y revisado contra Postgres real) y
 `frontend/src/pantallas/RevisionCierres.test.jsx`.
+
+## La Fueguina Stats — Sprint 4 · PR 1: pruebas end-to-end (#11)
+
+| Decisión | Por qué |
+|----------|---------|
+| Playwright en una carpeta propia, `e2e/` | Prueba el sistema entero desde afuera, como un usuario, no un paquete en particular. Tiene sus propias dependencias y Dependabot las revisa. |
+| Chromium con la pantalla de un Pixel 7, en español y hora de Argentina | La app se usa desde el celular. La zona horaria del navegador coincide con la de las sucursales. |
+| Corren en el mismo job que el smoke test, sobre el `docker compose` ya levantado | Construir y levantar todo de nuevo en otro job sumaría varios minutos. El nombre del check no cambia, así la protección de `main` sigue funcionando sin tocar la configuración. |
+| Cada prueba crea sus usuarios por la API con el admin inicial | La base arranca vacía (`docker compose down -v`) y no hay datos de prueba metidos en las migraciones. |
+| Los elementos se buscan por su texto, su etiqueta y su rol | Es como los encuentra una persona (y un lector de pantalla). Si un botón cambia de nombre, la prueba avisa. |
+| Sin reintentos (`retries: 0`) | Una prueba que falla a veces es un bug, no mala suerte. Un reintento lo escondería. |
+| Si falla, se guardan capturas y la grabación (trace) por 7 días | Se ve qué vio el navegador en el momento del error, sin reproducirlo. |
+
+Flujos probados: la empleada carga un cierre que no cuadra y la dueña lo encuentra
+entre los "a revisar" y lo marca revisado; contraseña equivocada; empleada sin
+permiso de caja; cerrar sesión.
+
+## La Fueguina Stats — Sprint 4 · PR 2: imágenes multi-arch, Trivy y GHCR (#11)
+
+| Decisión | Por qué |
+|----------|---------|
+| Dos imágenes propias (backend y frontend) se construyen y publican; la de Postgres sólo se escanea | La historia habla de 3 imágenes, pero Postgres es la imagen oficial: publicar una copia sólo sumaría algo más que mantener. Escanearla sí sirve, porque es parte del sistema. |
+| amd64 + arm64 con Docker Buildx y QEMU | amd64 es la PC o el servidor común; arm64 son los servidores ARM (más baratos en la nube) y las Mac con chip M. |
+| Las etapas de compilación corren en la plataforma del CI (`--platform=$BUILDPLATFORM`) | Emular ARM es entre 5 y 10 veces más lento. El frontend compila a HTML/JS/CSS y el backend no tiene librerías con código nativo (verificado: ninguna trae `binding.gyp`, `.node` ni scripts de instalación), así que el resultado sirve igual para las dos plataformas. |
+| La imagen del backend ya no trae npm, npx, yarn ni corepack | En producción sólo se corre `node`. Son herramientas con sus propias librerías que no se usan y que Trivy igual revisaría: menos superficie de ataque. |
+| Trivy frena el pipeline sólo ante una vulnerabilidad **crítica con arreglo disponible**; las altas se muestran en el log | Si frenara por algo sin arreglo, el pipeline quedaría en rojo sin que podamos hacer nada. Decisión comunicada al PM. |
+| Se escanea la imagen amd64 | Docker sólo puede cargar una plataforma para escanear, y la arm64 tiene los mismos paquetes. |
+| En los PR se construye y escanea; sólo el push a `main` publica en GHCR | En el registro quedan sólo versiones que pasaron todo, y un PR (por ejemplo de Dependabot) no puede publicar nada. |
+| Etiquetas: el SHA del commit y `main` | El SHA identifica exactamente qué código tiene la imagen (lo que va a usar el despliegue del Sprint 6); `main` apunta siempre a la última. |
+| Permiso `packages: write` sólo en el job de imágenes | Mínimo privilegio: el resto del pipeline sigue sólo con lectura. |
+| Caché de capas de Docker en GitHub Actions (`type=gha`) | La segunda construcción (multi-arch) reusa lo que ya construyó la de escaneo. |
+| Excepción de Trivy para Postgres: CVE-2025-68121 (`.trivyignore-postgres`) | El primer escaneo encontró esa crítica en `gosu`, un programita de la imagen oficial compilado con una versión vieja de Go. La falla es en TLS y `gosu` sólo cambia de usuario al arrancar, no usa la red. No la podemos arreglar nosotros; la excepción vale sólo para Postgres, lleva el motivo escrito y se saca cuando salga una imagen oficial nueva. |

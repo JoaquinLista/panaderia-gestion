@@ -21,3 +21,7 @@ Thumbs.db
 
 # Reportes de tests
 coverage/
+
+# Reportes de Playwright (e2e)
+playwright-report/
+test-results/

@@ -172,6 +172,38 @@ jobs:
           codigo=$(curl -s -o /dev/null -w '%{http_code}' -b cookies.txt -H 'Content-Type: application/json' -d "$cierre" http://localhost/api/cierres)
           echo "cierre repetido: $codigo"; test "$codigo" = 409
 
+      # ---- Pruebas end-to-end (Sprint 4, #11) ----
+      # Un Chromium del tamaño de un celular usa el sistema recién levantado,
+      # como lo haría una persona: login, cierre de caja y revisión de la dueña.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Instalar Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npm run format:check
+          npx playwright install --with-deps chromium
+
+      - name: Pruebas end-to-end
+        working-directory: e2e
+        env:
+          E2E_URL: http://localhost
+        run: npx playwright test
+
+      - name: Guardar reporte de Playwright si falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+
       - name: Logs si algo falló
         if: failure()
         run: docker compose logs --no-color
@@ -179,3 +211,110 @@ jobs:
       - name: Apagar
         if: always()
         run: docker compose down -v
+
+  # ---- Imágenes (Sprint 4, #11) ----
+  # Cada imagen se construye para amd64 y arm64 y Trivy la revisa. En los PR sólo
+  # se construye y se escanea; al mergear a main, las que pasaron se publican en
+  # GitHub Container Registry con el SHA del commit como etiqueta.
+  imagenes:
+    name: Imagen ${{ matrix.imagen }} · multi-arch y Trivy
+    needs: [test, migraciones]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Para publicar en GHCR. Sólo se usa en el push a main (ver PUBLICAR).
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # postgres es la imagen oficial que usa el compose: se escanea pero no se
+        # construye ni se publica.
+        imagen: [backend, frontend, postgres]
+    env:
+      PUBLICAR: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      IMAGEN: ghcr.io/joaquinlista/panaderia-gestion-${{ matrix.imagen }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Imagen a revisar
+        id: img
+        run: |
+          if [ "${{ matrix.imagen }}" = postgres ]; then
+            ref=$(grep -m1 -oE 'image: postgres:[^ ]+' docker-compose.yml | cut -d' ' -f2)
+          else
+            ref="panaderia-gestion-${{ matrix.imagen }}:ci"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Imagen: $ref"
+
+      - uses: docker/setup-qemu-action@v4
+        if: matrix.imagen != 'postgres'
+
+      - uses: docker/setup-buildx-action@v4
+        if: matrix.imagen != 'postgres'
+
+      # Trivy necesita la imagen en el Docker local, y Docker sólo puede cargar
+      # una plataforma: se escanea la amd64. La arm64 tiene los mismos paquetes.
+      - name: Construir amd64 para escanear
+        if: matrix.imagen != 'postgres'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.imagen }}
+          platforms: linux/amd64
+          load: true
+          tags: ${{ steps.img.outputs.ref }}
+          cache-from: type=gha,scope=${{ matrix.imagen }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.imagen }}
+
+      - name: Trivy · reporte de vulnerabilidades altas y críticas
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.img.outputs.ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: ${{ matrix.imagen == 'postgres' && '.trivyignore-postgres' || '' }}
+          format: table
+          exit-code: '0'
+
+      # Sólo frena lo que tiene arreglo: si todavía no hay versión corregida, el
+      # pipeline quedaría en rojo sin que se pueda hacer nada (ver decisiones.md).
+      - name: Trivy · una vulnerabilidad crítica con arreglo frena el pipeline
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.img.outputs.ref }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          trivyignores: ${{ matrix.imagen == 'postgres' && '.trivyignore-postgres' || '' }}
+          format: table
+          exit-code: '1'
+          skip-setup-trivy: true
+
+      - name: Entrar a GHCR
+        if: env.PUBLICAR == 'true' && matrix.imagen != 'postgres'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir amd64 + arm64 (y publicar si es main)
+        if: matrix.imagen != 'postgres'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.imagen }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.PUBLICAR == 'true' }}
+          tags: |
+            ${{ env.IMAGEN }}:${{ github.sha }}
+            ${{ env.IMAGEN }}:main
+          cache-from: type=gha,scope=${{ matrix.imagen }}
+
+      - name: Resumen
+        if: matrix.imagen != 'postgres'
+        run: |
+          if [ "$PUBLICAR" = true ]; then
+            echo "Publicada: \`$IMAGEN:${{ github.sha }}\` (amd64 + arm64)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Construida para amd64 + arm64 y escaneada. Se publica al mergear a main." >> "$GITHUB_STEP_SUMMARY"
+          fi
+

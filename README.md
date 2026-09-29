@@ -139,7 +139,24 @@ cd backend && TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/post
 
 `npm run test:coverage` falla si la cobertura baja de **80%** (backend) o **70%**
 (frontend). El pipeline de CI (`.github/workflows/ci.yml`) corre lo mismo en cada PR,
-construye las imágenes Docker y hace un smoke test del sistema levantado.
+construye las imágenes Docker, hace un smoke test del sistema levantado y corre las
+pruebas end-to-end.
+
+### Pruebas end-to-end (Playwright)
+
+Un Chromium del tamaño de un celular usa el sistema como una persona: la empleada
+carga un cierre y la dueña lo revisa, el login rechaza una contraseña equivocada y
+una empleada sin permiso no ve la caja. Necesitan el sistema levantado **con la base
+vacía** (cada prueba crea sus usuarios con el admin inicial):
+
+```bash
+docker compose down -v && docker compose up -d --wait
+cd e2e && npm ci && npx playwright install chromium
+ADMIN_USUARIO=... ADMIN_PASSWORD=... npx playwright test   # los mismos del .env
+```
+
+Si una prueba falla en el CI, el reporte con capturas y la grabación paso a paso
+queda en los artefactos de la corrida (`playwright-report`).
 
 ## Base de datos y migraciones
 
