@@ -1,0 +1,9 @@
+# Excepciones de Trivy SÓLO para la imagen oficial postgres:15-alpine.
+# Cada línea lleva el motivo y cuándo revisarla (ver decisiones.md, Sprint 4 · PR 2).
+
+# CVE-2025-68121 (crypto/tls de Go) en /usr/local/bin/gosu, compilado con Go 1.24.6.
+# gosu sólo baja los privilegios de root al usuario postgres cuando arranca el
+# contenedor: no abre conexiones ni usa TLS, así que la falla no se puede explotar.
+# El binario viene dentro de la imagen oficial y no lo podemos recompilar.
+# Revisar cuando se publique una postgres:15-alpine nueva y sacar esta línea.
+CVE-2025-68121

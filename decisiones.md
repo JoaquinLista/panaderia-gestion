@@ -452,3 +452,4 @@ permiso de caja; cerrar sesión.
 | Etiquetas: el SHA del commit y `main` | El SHA identifica exactamente qué código tiene la imagen (lo que va a usar el despliegue del Sprint 6); `main` apunta siempre a la última. |
 | Permiso `packages: write` sólo en el job de imágenes | Mínimo privilegio: el resto del pipeline sigue sólo con lectura. |
 | Caché de capas de Docker en GitHub Actions (`type=gha`) | La segunda construcción (multi-arch) reusa lo que ya construyó la de escaneo. |
+| Excepción de Trivy para Postgres: CVE-2025-68121 (`.trivyignore-postgres`) | El primer escaneo encontró esa crítica en `gosu`, un programita de la imagen oficial compilado con una versión vieja de Go. La falla es en TLS y `gosu` sólo cambia de usuario al arrancar, no usa la red. No la podemos arreglar nosotros; la excepción vale sólo para Postgres, lleva el motivo escrito y se saca cuando salga una imagen oficial nueva. |

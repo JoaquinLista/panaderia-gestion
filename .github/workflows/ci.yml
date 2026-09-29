@@ -272,6 +272,7 @@ jobs:
           image-ref: ${{ steps.img.outputs.ref }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          trivyignores: ${{ matrix.imagen == 'postgres' && '.trivyignore-postgres' || '' }}
           format: table
           exit-code: '0'
 
@@ -283,6 +284,7 @@ jobs:
           image-ref: ${{ steps.img.outputs.ref }}
           severity: CRITICAL
           ignore-unfixed: true
+          trivyignores: ${{ matrix.imagen == 'postgres' && '.trivyignore-postgres' || '' }}
           format: table
           exit-code: '1'
           skip-setup-trivy: true
