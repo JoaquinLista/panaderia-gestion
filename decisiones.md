@@ -518,3 +518,19 @@ permiso de caja; cerrar sesión.
 | `TRUST_PROXY` configurable; en Azure vale `2` | En Azure hay dos proxies adelante del backend: la entrada de Container Apps y el Nginx del frontend. La entrada usa IPs que no son de red privada, así que con la regla de siempre todos los celulares parecerían la misma IP y el límite de intentos de login bloquearía a todos juntos. |
 | La imagen lleva el SHA del commit (`APP_VERSION`) y se ve en `/api/health` y al pie de la pantalla | Con blue-green conviven dos versiones: hay que poder preguntar cuál contesta. También sirve para saber qué versión tiene cada ambiente sin entrar a Azure. |
 | La configuración de Nginx es una plantilla (`nginx.conf.template`) con `BACKEND_URL` y `NGINX_RESOLVER` | La imagen oficial de Nginx completa las variables al arrancar. En el compose siguen siendo `http://backend:3000` y el DNS de Docker (valores por defecto del Dockerfile); en Azure los dos contenedores van juntos y el backend es `http://127.0.0.1:3000`. La misma imagen sirve para los dos lugares. |
+
+## La Fueguina Stats — Sprint 6 · PR 2: infraestructura con Terraform (#14)
+
+| Decisión | Por qué |
+|----------|---------|
+| Azure, con Azure for Students | Se activa con el mail de la facultad, sin tarjeta, y trae US$100 de crédito. AWS y Google Cloud piden tarjeta. |
+| Azure Container Apps, una app por ambiente con los dos contenedores juntos | Corre las mismas imágenes de GHCR, da HTTPS sin configurar nada y trae "revisiones" con reparto de tráfico, que es lo que necesita el blue-green. Frontend y backend en la misma revisión cambian de versión juntos: nunca queda una pantalla nueva hablando con un backend viejo. |
+| PostgreSQL Flexible Server B1ms, un servidor con dos bases (staging y produccion) | Es el tamaño más chico y Azure hace los backups. Dos servidores costarían el doble para cuatro sucursales. Las dos bases usan el usuario administrador; separar usuarios por ambiente queda para el Sprint 8 (seguridad). |
+| La base acepta sólo servicios de Azure y siempre con SSL | Una red privada (VNet) es lo ideal pero cuesta más y complica el primer despliegue. Queda anotado para el Sprint 8. |
+| `prevent_destroy` en el servidor y las bases | Un `terraform destroy` o un cambio que obligue a recrear el servidor borraría los datos de producción. Así Terraform se niega. |
+| Las contraseñas las genera Terraform (`random_password`) y van como secretos de Container Apps | Nadie las elige ni las copia. Quedan también en el estado de Terraform, que está en una cuenta de almacenamiento privada con versiones. |
+| GitHub entra a Azure con OIDC y una identidad administrada (no una "app registration") | No hay clave guardada que se pueda filtrar. La identidad administrada es un recurso más del grupo, así que funciona aunque la cuenta de la facultad no deje registrar aplicaciones. Sólo tiene permiso sobre `rg-lafueguina` y el estado. |
+| Script de preparación en Cloud Shell, fuera de Terraform | Terraform necesita el lugar donde guardar su estado y el permiso para entrar antes de poder correr: eso lo crea el script, una sola vez, con los permisos del dueño de la cuenta. |
+| Terraform no maneja la imagen ni el tráfico de las apps (`ignore_changes`) | Eso lo hace el workflow de despliegue en cada merge. Si no, cada `terraform apply` volvería a la versión inicial. |
+| `terraform test` con proveedores de mentira | Se prueba que el plan tenga lo importante (SSL, secretos, dos ambientes, blue-green) en cada PR, sin cuenta de Azure. |
+| Plan comentado en el PR; apply sólo al mergear y con aprobación del ambiente `infra` | Criterio de la historia #14: se ve qué cambia antes de aprobarlo y nada se aplica sin un humano. |

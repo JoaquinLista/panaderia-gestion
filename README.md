@@ -164,6 +164,11 @@ El `docker compose` de la compu no necesita ninguna de estas. Las usa el desplie
 | `BACKEND_URL` | frontend | Dónde está el backend (por defecto `http://backend:3000`; en Azure `http://127.0.0.1:3000`). |
 | `NGINX_RESOLVER` | frontend | DNS para resolver `BACKEND_URL` (por defecto el de Docker, `127.0.0.11`). |
 
+## Infraestructura en Azure
+
+La app en la nube se describe con Terraform en [`infra/`](infra/README.md): cómo se crea, cómo se conecta
+GitHub con Azure y qué hace el pipeline de infraestructura.
+
 ## Desarrollo fuera de Docker
 
 ```bash
