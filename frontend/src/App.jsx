@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   Landmark,
   LayoutDashboard,
+  LifeBuoy,
   Menu,
   Store,
   Truck,
@@ -22,6 +23,7 @@ import CierreCaja from './pantallas/CierreCaja.jsx';
 import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
+import ReportarProblema from './pantallas/ReportarProblema.jsx';
 import Resumen from './pantallas/Resumen.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
@@ -99,7 +101,10 @@ function Panel() {
   const tabs = TABS.filter((t) => tienePermiso(sesion, t.permiso));
   const [tab, setTab] = useState(tabs[0]?.id);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // "Reportar un problema" se abre encima de la sección en la que estabas.
+  const [reportando, setReportando] = useState(false);
   const actual = tabs.find((t) => t.id === tab);
+  const enPantalla = reportando ? 'Reportar un problema' : (actual?.label ?? 'Secciones');
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
@@ -137,13 +142,13 @@ function Panel() {
             className="menu-abrir"
             aria-expanded={menuAbierto}
             aria-controls="menu-secciones"
-            aria-label={`Menú · ${actual?.label ?? 'Secciones'}`}
+            aria-label={`Menú · ${enPantalla}`}
             onClick={() => setMenuAbierto((a) => !a)}
           >
             <Menu className="menu-hamburguesa" size={30} strokeWidth={2.5} aria-hidden="true" />
             <span>
               <small>Menú</small>
-              {actual?.label ?? 'Secciones'}
+              {enPantalla}
             </span>
           </button>
           <nav
@@ -168,10 +173,11 @@ function Panel() {
                     <button
                       key={t.id}
                       type="button"
-                      className={`menu-btn ${tab === t.id ? 'active' : ''}`}
-                      aria-current={tab === t.id ? 'page' : undefined}
+                      className={`menu-btn ${!reportando && tab === t.id ? 'active' : ''}`}
+                      aria-current={!reportando && tab === t.id ? 'page' : undefined}
                       onClick={() => {
                         setTab(t.id);
+                        setReportando(false);
                         setMenuAbierto(false);
                       }}
                     >
@@ -187,18 +193,39 @@ function Panel() {
                 </div>
               );
             })}
+            {/* Para todos, al final y separado: no es una sección del negocio. */}
+            <div className="menu-ayuda">
+              <button
+                type="button"
+                className={`menu-btn ${reportando ? 'active' : ''}`}
+                aria-current={reportando ? 'page' : undefined}
+                onClick={() => {
+                  setReportando(true);
+                  setMenuAbierto(false);
+                }}
+              >
+                <LifeBuoy className="menu-icono" size={24} strokeWidth={2} aria-hidden="true" />
+                Reportar un problema
+              </button>
+            </div>
           </nav>
         </aside>
 
         <main className="contenido">
-          {tab === 'resumen' && <Resumen />}
-          {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
-          {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
-          {tab === 'caja-central' && <CajaCentral />}
-          {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
-          {tab === 'insumos' && <GestionInsumos />}
-          {tab === 'red' && <RedSucursales sucursales={sucursales} />}
-          {tab === 'usuarios' && <AdminUsuarios />}
+          {reportando && (
+            <ReportarProblema seccion={actual?.label} alVolver={() => setReportando(false)} />
+          )}
+          {/* La sección queda montada (oculta) para no perder lo que se estaba cargando. */}
+          <div hidden={reportando}>
+            {tab === 'resumen' && <Resumen />}
+            {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
+            {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
+            {tab === 'caja-central' && <CajaCentral />}
+            {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
+            {tab === 'insumos' && <GestionInsumos />}
+            {tab === 'red' && <RedSucursales sucursales={sucursales} />}
+            {tab === 'usuarios' && <AdminUsuarios />}
+          </div>
         </main>
       </div>
 
