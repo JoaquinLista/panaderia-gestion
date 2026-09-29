@@ -437,3 +437,18 @@ historial, 409 y revisado contra Postgres real) y
 Flujos probados: la empleada carga un cierre que no cuadra y la dueña lo encuentra
 entre los "a revisar" y lo marca revisado; contraseña equivocada; empleada sin
 permiso de caja; cerrar sesión.
+
+## La Fueguina Stats — Sprint 4 · PR 2: imágenes multi-arch, Trivy y GHCR (#11)
+
+| Decisión | Por qué |
+|----------|---------|
+| Dos imágenes propias (backend y frontend) se construyen y publican; la de Postgres sólo se escanea | La historia habla de 3 imágenes, pero Postgres es la imagen oficial: publicar una copia sólo sumaría algo más que mantener. Escanearla sí sirve, porque es parte del sistema. |
+| amd64 + arm64 con Docker Buildx y QEMU | amd64 es la PC o el servidor común; arm64 son los servidores ARM (más baratos en la nube) y las Mac con chip M. |
+| Las etapas de compilación corren en la plataforma del CI (`--platform=$BUILDPLATFORM`) | Emular ARM es entre 5 y 10 veces más lento. El frontend compila a HTML/JS/CSS y el backend no tiene librerías con código nativo (verificado: ninguna trae `binding.gyp`, `.node` ni scripts de instalación), así que el resultado sirve igual para las dos plataformas. |
+| La imagen del backend ya no trae npm, npx, yarn ni corepack | En producción sólo se corre `node`. Son herramientas con sus propias librerías que no se usan y que Trivy igual revisaría: menos superficie de ataque. |
+| Trivy frena el pipeline sólo ante una vulnerabilidad **crítica con arreglo disponible**; las altas se muestran en el log | Si frenara por algo sin arreglo, el pipeline quedaría en rojo sin que podamos hacer nada. Decisión comunicada al PM. |
+| Se escanea la imagen amd64 | Docker sólo puede cargar una plataforma para escanear, y la arm64 tiene los mismos paquetes. |
+| En los PR se construye y escanea; sólo el push a `main` publica en GHCR | En el registro quedan sólo versiones que pasaron todo, y un PR (por ejemplo de Dependabot) no puede publicar nada. |
+| Etiquetas: el SHA del commit y `main` | El SHA identifica exactamente qué código tiene la imagen (lo que va a usar el despliegue del Sprint 6); `main` apunta siempre a la última. |
+| Permiso `packages: write` sólo en el job de imágenes | Mínimo privilegio: el resto del pipeline sigue sólo con lectura. |
+| Caché de capas de Docker en GitHub Actions (`type=gha`) | La segunda construcción (multi-arch) reusa lo que ya construyó la de escaneo. |
