@@ -9,6 +9,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 import pool from './config/db.js';
+import { confianzaEnProxy, versionActual } from './config/servidor.js';
 import authRoutes from './routes/authRoutes.js';
 import usuariosRoutes from './routes/usuariosRoutes.js';
 import cierresRoutes from './routes/cierresRoutes.js';
@@ -21,10 +22,10 @@ import productosRoutes from './routes/productosRoutes.js';
 
 const app = express();
 
-// El backend corre detrás de Nginx (red interna de Docker). Se confía en la IP
-// que Nginx pone en X-Forwarded-For sólo si el request viene de una red local:
-// así el límite de intentos de login cuenta por la IP real del celular.
-app.set('trust proxy', 'loopback, uniquelocal');
+// El backend corre detrás de Nginx (y en Azure, además, detrás de la entrada de
+// Container Apps). Se confía en X-Forwarded-For sólo para esos proxies: así el
+// límite de intentos de login cuenta por la IP real del celular.
+app.set('trust proxy', confianzaEnProxy(process.env));
 
 // ---- Middlewares globales ----
 app.use(cors());
@@ -36,9 +37,19 @@ app.use(cookieParser());
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'up', timestamp: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      db: 'up',
+      version: versionActual(process.env),
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
-    res.status(503).json({ status: 'degraded', db: 'down', error: error.message });
+    res.status(503).json({
+      status: 'degraded',
+      db: 'down',
+      version: versionActual(process.env),
+      error: error.message,
+    });
   }
 });
 
