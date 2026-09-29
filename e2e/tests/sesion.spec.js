@@ -18,9 +18,9 @@ test('una empleada sin permiso de caja no ve el cierre', async ({ page, baseURL 
   await entrar(page, { ...empleada, sucursal: 'Café' });
 
   // El menú del celular está cerrado y muestra la sección en la que arranca.
-  await expect(page.getByRole('button', { name: 'Menú · Tablero de Pedidos' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Menú · Pedidos' })).toBeVisible();
   const pestañas = await abrirMenu(page);
-  await expect(pestañas.getByRole('button', { name: 'Tablero de Pedidos' })).toBeVisible();
+  await expect(pestañas.getByRole('button', { name: 'Pedidos' })).toBeVisible();
   await expect(pestañas.getByRole('button', { name: 'Cierre de caja' })).toHaveCount(0);
   await expect(pestañas.getByRole('button', { name: 'Revisión de cierres' })).toHaveCount(0);
 });

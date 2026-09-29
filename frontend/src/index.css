@@ -21,12 +21,6 @@
   --color-marca-oscuro: #431b14;
   --color-crema: #fdf3e7;
   --color-resaltado: #f2b33d;
-  /* Color de cada grupo de secciones en el menú. */
-  --icono-resumen: #334155;
-  --icono-caja: #15803d;
-  --icono-pedidos: #c2410c;
-  --icono-red: #1d4ed8;
-  --icono-usuarios: #6d28d9;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(47, 42, 36, 0.12), 0 1px 2px rgba(47, 42, 36, 0.08);
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -136,8 +130,10 @@ body {
   }
 }
 
-/* ---- Menú de secciones: columna a la izquierda en la compu, desplegable en el celular ----
-   Botones grandes y bien separados: lo usan personas que no están acostumbradas a la compu. */
+/* ---- Menú de secciones ----
+   Un panel marrón como la cabecera, con las secciones agrupadas por tema.
+   Letra grande, íconos simples del mismo color que el texto y la sección
+   activa en crema: el contraste dice dónde estás sin tener que leer. */
 .panel {
   margin-top: 20px;
 }
@@ -167,7 +163,7 @@ body {
 
 .menu-abrir small {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 400;
   opacity: 0.85;
 }
@@ -179,70 +175,64 @@ body {
 .menu-lista {
   display: none;
   flex-direction: column;
-  gap: 8px;
+  gap: 18px;
   margin-top: 10px;
+  padding: 18px 12px;
+  background: var(--color-marca);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .menu-lista.abierto {
   display: flex;
 }
 
+.menu-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-grupo + .menu-grupo {
+  padding-top: 18px;
+  border-top: 1px solid rgba(253, 243, 231, 0.2);
+}
+
+.menu-grupo-titulo {
+  margin: 0 0 4px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-crema);
+  opacity: 0.75;
+}
+
 .menu-btn {
   appearance: none;
-  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 64px;
-  padding: 14px 20px;
+  min-height: 54px;
+  padding: 14px 16px;
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 600;
   text-align: left;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 2px solid #d4c8b3;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  color: var(--color-crema);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: background 0.15s;
 }
 
-/* Cuadradito de color con el ícono en blanco: se reconoce aunque no se lea. */
 .menu-icono {
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  color: #fff;
-}
-
-.icono-resumen {
-  background: var(--icono-resumen);
-}
-
-.icono-caja {
-  background: var(--icono-caja);
-}
-
-.icono-pedidos {
-  background: var(--icono-pedidos);
-}
-
-.icono-red {
-  background: var(--icono-red);
-}
-
-.icono-usuarios {
-  background: var(--icono-usuarios);
 }
 
 .menu-btn:hover {
-  border-color: var(--color-marca);
-  background: #fbf7f0;
+  background: rgba(253, 243, 231, 0.12);
 }
 
 .menu-btn:focus-visible,
@@ -252,19 +242,12 @@ body {
   outline-offset: 2px;
 }
 
-/* La sección en la que estás: fondo de la marca y una barra amarilla a la izquierda. */
+/* La sección en la que estás: fondo crema, letra marrón y una barra amarilla. */
 .menu-btn.active {
-  background: var(--color-marca);
-  border-color: var(--color-marca);
-  color: #fff;
-  box-shadow:
-    inset 8px 0 0 var(--color-resaltado),
-    var(--shadow);
-  padding-left: 26px;
-}
-
-.menu-btn.active .menu-icono {
-  box-shadow: 0 0 0 2px #fff;
+  background: var(--color-crema);
+  color: var(--color-marca);
+  font-weight: 700;
+  box-shadow: inset 6px 0 0 var(--color-resaltado);
 }
 
 .contenido {
@@ -274,7 +257,7 @@ body {
 @media (min-width: 860px) {
   .panel {
     display: grid;
-    grid-template-columns: 290px minmax(0, 1fr);
+    grid-template-columns: 280px minmax(0, 1fr);
     gap: 24px;
     align-items: start;
   }

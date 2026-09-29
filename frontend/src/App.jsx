@@ -25,53 +25,51 @@ import RedSucursales from './pantallas/RedSucursales.jsx';
 import Resumen from './pantallas/Resumen.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
-// Cada sección tiene su ícono y un color por grupo (verde: plata; naranja:
-// pedidos y stock; azul: sucursales; violeta: usuarios) para reconocerla de un vistazo.
-// Cada sección del menú aparece sólo si la sesión tiene el permiso (matriz del backend).
-// Los dueños arrancan en el resumen; el resto, en el cierre de caja, que es lo
-// que se usa todos los días (MVP del PRD).
+// El menú se ordena por lo que hace cada persona, en tres grupos. Cada sección
+// aparece sólo si la sesión tiene el permiso (matriz del backend). Los dueños
+// arrancan en el resumen; el resto, en lo primero que puede usar.
+const GRUPOS = [
+  { id: 'plata', titulo: 'Plata' },
+  { id: 'panaderias', titulo: 'Panaderías' },
+  { id: 'admin', titulo: 'Equipo' },
+];
+
 const TABS = [
   {
     id: 'resumen',
+    grupo: 'plata',
     Icono: LayoutDashboard,
-    color: 'resumen',
     label: 'Resumen',
     permiso: 'dashboard:ver',
   },
-  { id: 'cierre', Icono: Wallet, color: 'caja', label: 'Cierre de caja', permiso: 'caja:cerrar' },
+  { id: 'cierre', grupo: 'plata', Icono: Wallet, label: 'Cierre de caja', permiso: 'caja:cerrar' },
   {
     id: 'revision',
+    grupo: 'plata',
     Icono: ClipboardCheck,
-    color: 'caja',
     label: 'Revisión de cierres',
     permiso: 'caja:revisar',
   },
   {
     id: 'caja-central',
+    grupo: 'plata',
     Icono: Landmark,
-    color: 'caja',
     label: 'Caja central',
     permiso: 'caja-central:administrar',
   },
-  {
-    id: 'pedidos',
-    Icono: Truck,
-    color: 'pedidos',
-    label: 'Tablero de Pedidos',
-    permiso: 'pedidos:ver',
-  },
+  { id: 'pedidos', grupo: 'panaderias', Icono: Truck, label: 'Pedidos', permiso: 'pedidos:ver' },
   {
     id: 'insumos',
+    grupo: 'panaderias',
     Icono: Boxes,
-    color: 'pedidos',
-    label: 'Stock e Insumos',
+    label: 'Stock e insumos',
     permiso: 'insumos:ver',
   },
-  { id: 'red', Icono: Store, color: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
+  { id: 'red', grupo: 'panaderias', Icono: Store, label: 'Sucursales', permiso: 'sucursales:ver' },
   {
     id: 'usuarios',
+    grupo: 'admin',
     Icono: Users,
-    color: 'usuarios',
     label: 'Usuarios',
     permiso: 'usuarios:administrar',
   },
@@ -153,23 +151,42 @@ function Panel() {
             aria-label="Secciones"
             className={`menu-lista ${menuAbierto ? 'abierto' : ''}`}
           >
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`menu-btn ${tab === t.id ? 'active' : ''}`}
-                aria-current={tab === t.id ? 'page' : undefined}
-                onClick={() => {
-                  setTab(t.id);
-                  setMenuAbierto(false);
-                }}
-              >
-                <span className={`menu-icono icono-${t.color}`} aria-hidden="true">
-                  <t.Icono size={26} strokeWidth={2.25} />
-                </span>
-                {t.label}
-              </button>
-            ))}
+            {GRUPOS.map((g) => {
+              const delGrupo = tabs.filter((t) => t.grupo === g.id);
+              if (delGrupo.length === 0) return null;
+              return (
+                <div
+                  key={g.id}
+                  className="menu-grupo"
+                  role="group"
+                  aria-labelledby={`grupo-${g.id}`}
+                >
+                  <p id={`grupo-${g.id}`} className="menu-grupo-titulo">
+                    {g.titulo}
+                  </p>
+                  {delGrupo.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`menu-btn ${tab === t.id ? 'active' : ''}`}
+                      aria-current={tab === t.id ? 'page' : undefined}
+                      onClick={() => {
+                        setTab(t.id);
+                        setMenuAbierto(false);
+                      }}
+                    >
+                      <t.Icono
+                        className="menu-icono"
+                        size={24}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </nav>
         </aside>
 

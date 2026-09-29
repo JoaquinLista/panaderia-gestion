@@ -32,7 +32,7 @@ describe('pantalla de login', () => {
   it('sin sesión muestra el login y no el panel', async () => {
     abrirSinSesion();
     expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Tablero de Pedidos' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pedidos' })).not.toBeInTheDocument();
   });
 
   it('mientras consulta la sesión muestra "Cargando…"', () => {
@@ -56,7 +56,7 @@ describe('pantalla de login', () => {
     await user.type(screen.getByLabelText('Contraseña'), 'clave-segura');
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
 
-    expect(await screen.findByRole('button', { name: 'Tablero de Pedidos' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pedidos' })).toBeInTheDocument();
     expect(screen.getByText('Marta')).toBeInTheDocument();
     expect(screen.getByText('Administración')).toBeInTheDocument();
     expect(bodyDelLogin(fetchMock)).toEqual({ usuario: 'dueña', password: 'clave-segura' });

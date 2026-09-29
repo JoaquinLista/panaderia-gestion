@@ -26,7 +26,7 @@ const montar = async (rutasExtra = {}, pedidos = []) => {
     ...rutasExtra,
   });
   render(<App />);
-  await userEvent.setup().click(await screen.findByRole('button', { name: 'Tablero de Pedidos' }));
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Pedidos' }));
   return fetchMock;
 };
 

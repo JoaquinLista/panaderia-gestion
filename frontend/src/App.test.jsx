@@ -25,8 +25,8 @@ beforeEach(() => {
 describe('App', () => {
   it('muestra las pestañas principales', async () => {
     render(<App />);
-    expect(await screen.findByRole('button', { name: 'Tablero de Pedidos' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Stock e Insumos' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pedidos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stock e insumos' })).toBeInTheDocument();
   });
 
   it('muestra al pie qué versión está corriendo', async () => {

@@ -33,7 +33,7 @@ const abrirInsumos = async (rutasExtra = {}) => {
     ...rutasExtra,
   });
   render(<App />);
-  await user.click(await screen.findByRole('button', { name: 'Stock e Insumos' }));
+  await user.click(await screen.findByRole('button', { name: 'Stock e insumos' }));
   return { user, fetchMock };
 };
 
@@ -109,7 +109,7 @@ describe('Red de sucursales', () => {
       'GET /api/pedidos': () => [200, []],
     });
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Red de Sucursales' }));
+    await user.click(await screen.findByRole('button', { name: 'Sucursales' }));
     await screen.findByRole('heading', { name: 'Viedma (Chacra)' });
 
     expect(screen.getByText('Nodos totales', { selector: 'p' }).previousSibling).toHaveTextContent(
