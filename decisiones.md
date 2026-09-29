@@ -550,3 +550,16 @@ permiso de caja; cerrar sesión.
 | Todo va por la API de Azure con JSON Merge Patch (`az rest`) | Se cambian sólo las imágenes o el tráfico: los secretos y la configuración que puso Terraform no se tocan. |
 | `blue-green.sh` se prueba en el CI con un `az` de mentira | Las reglas del tráfico (qué etiqueta va dónde, qué pasa si se reintenta, volver atrás dos veces) se prueban en cada PR sin cuenta de Azure. |
 | Se apagan las revisiones más viejas que la anterior | No cobran y siguen guardadas: se pueden volver a prender desde el portal. |
+
+## La Fueguina Stats — Sprint 7 · PR 1: API del resumen de los dueños (#15, #16)
+
+| Decisión | Por qué |
+|----------|---------|
+| "Vendido" es el total del controlador fiscal (Z), sumando los dos turnos | Es el número oficial del día y ya está en cada cierre. |
+| El efectivo vendido suma los gastos chicos pagados con la plata de la caja | Esa plata entró por ventas; que después se haya gastado no cambia lo que se vendió. Así efectivo + débito + crédito + QR da el Z (más o menos la diferencia del cierre). |
+| Resultado = ventas − gastos (sucursales + caja central + obra) − retiros de los dueños | Criterio de la historia #16. Los depósitos no cuentan: pasan plata de la caja al banco, no la gastan. Los movimientos anulados tampoco. |
+| La comparación es contra los mismos días del mes anterior | Comparar el 1 al 18 contra el mes anterior entero haría parecer malo cualquier mes a medio camino. Si el mes anterior es más corto, se corta en su último día. Un mes terminado se compara entero. |
+| La variación es `null` si el mes anterior era cero | No hay porcentaje contra cero; la pantalla muestra "sin datos del mes anterior". |
+| Un turno sin cierre cuenta como "falta cargar", no como venta cero | Para que un cierre olvidado no se lea como un día malo. |
+| Todo se calcula al pedirlo, desde los cierres y la caja central | No hay tablas nuevas ni datos duplicados que se puedan desincronizar. Con cuatro sucursales, un mes son unos 240 cierres: se suman al instante. |
+| Permiso nuevo `dashboard:ver`, sólo admin | Son los números de todo el negocio. |

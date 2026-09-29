@@ -112,6 +112,9 @@ describe('rol incorrecto: 403', () => {
     ['chofer', 'delete', '/api/caja-central/movimientos/1'],
     ['empleada', 'get', '/api/caja-central/excel'],
     ['empleada', 'get', '/api/cierres/excel'],
+    // El resumen de ventas y resultado es de los dueños.
+    ['empleada', 'get', '/api/dashboard/dia'],
+    ['chofer', 'get', '/api/dashboard/mes'],
   ])('%s: %s %s', async (quien, metodo, ruta) => {
     const res = await request(app)[metodo](ruta).set('Cookie', cookies[quien]).send({});
     expect(res.status).toBe(403);

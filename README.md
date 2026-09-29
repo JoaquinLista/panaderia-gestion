@@ -85,6 +85,8 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/caja-central/excel` | Descarga el Excel del mes (`?mes=AAAA-MM`) con las columnas de la planilla "Retiros" y una hoja de resumen (sólo admin) |
 | GET | `/api/cierres/excel` | Descarga el Excel de los cierres con las columnas de "Egresos de caja"; mismos filtros que la lista, sin fechas el mes en curso (sólo admin) |
 | GET | `/api/caja-central/duenos` | Dueños que pueden retirar plata (sólo admin) |
+| GET | `/api/dashboard/dia` | Resumen de los dueños: lo vendido por sucursal y medio de pago y qué cierres faltan (`?fecha=AAAA-MM-DD`, hoy si no viene; sólo admin) |
+| GET | `/api/dashboard/mes` | Acumulado del mes (hasta hoy si está en curso): ventas por sucursal y por día, gastos, retiros, resultado y comparación con los mismos días del mes anterior (`?mes=AAAA-MM`; sólo admin) |
 | PUT | `/api/cierres/:id/revisado` | `{ revisado: true \| false }`: saca o vuelve a poner el cierre en "a revisar" (sólo admin) |
 
 **Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de

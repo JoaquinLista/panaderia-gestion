@@ -57,6 +57,7 @@ export const PERMISOS_ADMIN = [
   'caja:revisar',
   'usuarios:administrar',
   'caja-central:administrar',
+  'dashboard:ver',
 ];
 
 export const sesionAdmin = {
