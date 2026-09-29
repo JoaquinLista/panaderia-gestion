@@ -628,4 +628,5 @@ permiso de caja; cerrar sesión.
 | La ruta de la métrica reemplaza los números por `:id`; lo que no es una ruta va a `sin_ruta` | Cada valor distinto de una etiqueta es una serie nueva en Prometheus: con los ids crudos crecería sin límite. |
 | "Cierre cargado hoy" se calcula desde la base cada vez que Prometheus pregunta | Un contador en memoria se pierde al reiniciar y no suma bien con dos copias del backend (Azure puede levantar dos). La consulta toca unas 8 filas. |
 | Si la base no responde, la métrica de cierres no aparece (en vez de valer 0) | Un 0 diría "no cargaron el cierre" y dispararía una alerta falsa. |
+| El secreto de prueba de `vitest.config.js` va en `.gitleaksignore` y con `gitleaks:allow` | gitleaks lo marcó al tocar esa línea (prueba de que funciona). No es un secreto real: sólo firma sesiones en los tests. |
 | `/metrics` sin contraseña pero fuera de `/api` | Nginx sólo reenvía `/api/`: desde internet devuelve la pantalla. Prometheus lo lee por la red interna. El smoke test verifica las dos cosas. |

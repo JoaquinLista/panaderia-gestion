@@ -1,0 +1,6 @@
+# Hallazgos de gitleaks revisados que NO son secretos (Sprint 8, #17).
+# Cada línea es la "Fingerprint" que imprime gitleaks, con el motivo arriba.
+# Para valores de prueba nuevos, mejor el comentario `gitleaks:allow` en la misma línea.
+
+# JWT_SECRET descartable de los tests unitarios (no firma sesiones reales).
+14342d4785f29147d6ffb19e307c1c9e790f3f22:backend/vitest.config.js:generic-api-key:10
