@@ -383,3 +383,21 @@ centavos), `tests/unit/fecha.test.js` (servidor en UTC a las 21 h de Argentina),
 `tests/api/permisos.test.js` (401 sin sesión, 403 para chofer y empleada sin el
 permiso) y `tests/integracion/cierres.test.js` contra Postgres real. El smoke
 test de Docker carga un cierre y comprueba que un segundo del mismo turno da 409.
+
+## La Fueguina Stats — Sprint 3 · PR 2: formulario de cierre de caja (#8, #9)
+
+| Decisión | Por qué |
+|----------|---------|
+| Pestaña "Cierre de caja" primera para quien tiene `caja:cerrar` | Es lo que se usa todos los días y es el MVP del PRD. La dueña entra directo ahí. |
+| La diferencia se ve en vivo con `src/lib/cuadre.js`, copia de `backend/src/domain/cuadre.js` con los mismos casos de prueba | Lo que ve quien carga es lo mismo que guarda la API, que igual la vuelve a calcular. |
+| Los montos se escriben como en Argentina: "12.500,50", "12.000" o "12500" | Nadie tiene que pensar si va punto o coma. Si un monto no se entiende, el campo se marca en rojo con un ejemplo. |
+| Teclado numérico (`inputMode="decimal"`) y campos de 16 px | En el celular aparece el teclado de números y el iPhone no hace zoom al tocar un campo. |
+| Sólo se ofrecen los turnos de hoy que faltan; con los dos cerrados no hay formulario | Evita el 409 antes de que pase. |
+| El cambio fijo viene sugerido del último cierre | Casi siempre es el mismo: un dato menos para escribir. |
+| Con diferencia se puede enviar igual; el comentario es opcional | Regla del PM: se tolera pero se averigua. El aviso lo explica. |
+| La dueña elige la sucursal; el galpón no aparece | Mismas reglas que la API. |
+
+Tests: `src/lib/cuadre.test.js` (cuenta y lectura de montos) y
+`src/pantallas/CierreCaja.test.jsx` (cuadra, faltan, sobran, montos inválidos,
+gastos, 409, turnos ya cerrados, la dueña eligiendo sucursal). Los tests de
+pedidos abren su pestaña, porque la dueña ahora entra al cierre de caja.

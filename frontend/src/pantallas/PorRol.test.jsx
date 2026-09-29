@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import App from '../App.jsx';
 import {
@@ -44,7 +45,7 @@ describe('pestañas según el rol', () => {
     [
       'admin',
       sesionAdmin,
-      ['Tablero de Pedidos', 'Stock e Insumos', 'Red de Sucursales', 'Usuarios'],
+      ['Cierre de caja', 'Tablero de Pedidos', 'Stock e Insumos', 'Red de Sucursales', 'Usuarios'],
     ],
     ['empleada', sesionEmpleada, ['Tablero de Pedidos', 'Red de Sucursales']],
     ['chofer', sesionChofer, ['Tablero de Pedidos', 'Stock e Insumos', 'Red de Sucursales']],
@@ -84,6 +85,9 @@ describe('tablero de pedidos según el rol', () => {
 
   it('el admin elige cualquier origen', async () => {
     abrirComo(sesionAdmin);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Tablero de Pedidos' }));
     const origen = await screen.findByLabelText('Sucursal de origen');
     expect(origen).toBeEnabled();
   });
