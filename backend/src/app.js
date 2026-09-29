@@ -27,6 +27,8 @@ const app = express();
 // Container Apps). Se confía en X-Forwarded-For sólo para esos proxies: así el
 // límite de intentos de login cuenta por la IP real del celular.
 app.set('trust proxy', confianzaEnProxy(process.env));
+// Sin la cabecera "X-Powered-By: Express": no hace falta contar con qué está hecho.
+app.disable('x-powered-by');
 
 // ---- Middlewares globales ----
 app.use(cors());

@@ -165,6 +165,21 @@ jobs:
           home=$(curl -fsS http://localhost/)
           grep -q '<div id="root">' <<<"$home"
 
+          # Cabeceras de seguridad de Nginx en la página, en los archivos con
+          # caché y en la API (Sprint 8, #17). Nginx no dice su versión.
+          asset=$(grep -oE '/assets/[^"]+\.js' <<<"$home" | head -1)
+          for ruta in / "$asset" /api/health; do
+            cabeceras=$(curl -fsS -D - -o /dev/null "http://localhost$ruta")
+            echo "== $ruta"; echo "$cabeceras"
+            for c in 'content-security-policy: default-src' 'x-frame-options: DENY' \
+                     'x-content-type-options: nosniff' 'referrer-policy:' 'permissions-policy:'; do
+              grep -qi "^$c" <<<"$cabeceras" || { echo "Falta la cabecera $c en $ruta"; exit 1; }
+            done
+            if grep -qiE '^server: nginx/[0-9]|^x-powered-by' <<<"$cabeceras"; then
+              echo "$ruta dice con qué está hecho el servidor"; exit 1
+            fi
+          done
+
           # Sin sesión, /me y las rutas de negocio responden 401.
           for ruta in auth/me pedidos insumos usuarios cierres/hoy caja-central/resumen dashboard/dia; do
             codigo=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost/api/$ruta")
@@ -297,7 +312,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.imagen }}
 
       - name: Trivy · reporte de vulnerabilidades altas y críticas
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ${{ steps.img.outputs.ref }}
           severity: HIGH,CRITICAL
@@ -309,7 +324,7 @@ jobs:
       # Sólo frena lo que tiene arreglo: si todavía no hay versión corregida, el
       # pipeline quedaría en rojo sin que se pueda hacer nada (ver decisiones.md).
       - name: Trivy · una vulnerabilidad crítica con arreglo frena el pipeline
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ${{ steps.img.outputs.ref }}
           severity: CRITICAL

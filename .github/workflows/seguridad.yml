@@ -1,0 +1,134 @@
+# Seguridad automatizada (DevSecOps, Sprint 8, #17).
+#
+# Cuatro revisiones que corren en cada PR a main, al mergear y todos los lunes
+# (las vulnerabilidades nuevas se publican aunque el código no cambie):
+#   - CodeQL (SAST): busca errores de seguridad en nuestro código.
+#   - npm audit (SCA): dependencias con vulnerabilidades altas o críticas.
+#   - gitleaks: contraseñas, tokens o claves commiteadas por error.
+#   - Trivy: configuraciones inseguras en el Terraform (infra/).
+# Las imágenes de Docker ya las revisa Trivy en ci.yml (Sprint 4).
+name: Seguridad
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Lunes 9:00 de Argentina (12:00 UTC).
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: seguridad-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL · ${{ matrix.lenguaje }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Para subir los hallazgos a la pestaña Security del repo.
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # javascript-typescript: backend, frontend y e2e.
+        # actions: los propios workflows (permisos de más, inyección de comandos).
+        lenguaje: [javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.lenguaje }}
+          # JavaScript no se compila: CodeQL lee el código tal cual.
+          build-mode: none
+          # Las consultas de seguridad más amplias, no sólo las de alta precisión.
+          queries: security-extended
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.lenguaje }}
+
+  dependencias:
+    name: npm audit · ${{ matrix.paquete }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        paquete: [backend, frontend, e2e]
+    defaults:
+      run:
+        working-directory: ${{ matrix.paquete }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # npm audit lee el package-lock.json: no hace falta instalar nada.
+      # Frena con vulnerabilidades altas o críticas; las moderadas y bajas se
+      # listan igual y las arregla Dependabot.
+      - name: Vulnerabilidades altas o críticas
+        run: npm audit --audit-level=high
+
+  secretos:
+    name: gitleaks · secretos en los commits
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.28.0
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Toda la historia, para poder revisar los commits nuevos uno por uno.
+          fetch-depth: 0
+
+      - name: Instalar gitleaks
+        run: |
+          set -euo pipefail
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL "$url" | tar -xz -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" version
+
+      # Se revisan sólo los commits nuevos: los del PR, o los que llegaron a main
+      # en este push. Un secreto en cualquiera de ellos frena el pipeline, aunque
+      # un commit posterior lo haya borrado (sigue en la historia de git).
+      - name: Buscar secretos
+        env:
+          DESDE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HASTA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DESDE" ] || [ "$DESDE" = 0000000000000000000000000000000000000000 ]; then
+            rango="$HASTA"; echo "Revisando toda la historia hasta $HASTA"
+          else
+            rango="$DESDE..$HASTA"; echo "Revisando los commits $rango"
+          fi
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --verbose \
+            --log-opts="$rango" --exit-code 1
+
+  terraform:
+    name: Trivy · Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Revisa infra/ contra las buenas prácticas de Azure (bases públicas,
+      # TLS viejo, secretos en texto plano...). Frena con hallazgos altos o
+      # críticos; las excepciones justificadas van en .trivyignore-infra.
+      - name: Configuraciones inseguras en infra/
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore-infra
+          format: table
+          exit-code: '1'

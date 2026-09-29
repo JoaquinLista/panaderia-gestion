@@ -5,6 +5,12 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # No decir qué versión de Nginx corre (menos pistas para un atacante).
+    server_tokens off;
+
+    # Cabeceras de seguridad para todas las respuestas (ver el archivo).
+    include /etc/nginx/cabeceras-seguridad.conf;
+
     # Compresión básica
     gzip on;
     gzip_types text/plain text/css application/javascript application/json image/svg+xml;
@@ -38,6 +44,8 @@ server {
     location /assets/ {
         expires 30d;
         add_header Cache-Control "public, immutable";
+        # Este location agrega una cabecera propia: hay que repetir las de seguridad.
+        include /etc/nginx/cabeceras-seguridad.conf;
         try_files $uri =404;
     }
 

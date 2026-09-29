@@ -22,6 +22,7 @@ LABEL org.opencontainers.image.source="https://github.com/JoaquinLista/panaderia
 RUN rm /etc/nginx/conf.d/default.conf
 # Plantilla: al arrancar se completa con estas variables y queda en conf.d.
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY cabeceras-seguridad.conf /etc/nginx/cabeceras-seguridad.conf
 ENV BACKEND_URL=http://backend:3000 \
     NGINX_RESOLVER=127.0.0.11
 COPY --from=build /app/dist /usr/share/nginx/html

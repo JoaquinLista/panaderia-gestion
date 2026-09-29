@@ -233,6 +233,29 @@ ADMIN_USUARIO=... ADMIN_PASSWORD=... npx playwright test   # los mismos del .env
 Si una prueba falla en el CI, el reporte con capturas y la grabación paso a paso
 queda en los artefactos de la corrida (`playwright-report`).
 
+## Seguridad
+
+El workflow `.github/workflows/seguridad.yml` corre en cada PR, al mergear a main y
+todos los lunes:
+
+| Revisión | Qué busca | Frena con |
+|----------|-----------|-----------|
+| CodeQL | Errores de seguridad en el código JavaScript y en los workflows | Hallazgos de severidad alta (pestaña **Security** del repo) |
+| `npm audit` | Dependencias con vulnerabilidades conocidas (backend, frontend, e2e) | Altas o críticas |
+| gitleaks | Contraseñas, tokens o claves en los commits nuevos | Cualquier secreto |
+| Trivy | Configuraciones inseguras en el Terraform de `infra/` | Altas o críticas (excepciones en `.trivyignore-infra`) |
+
+Además, Trivy revisa las imágenes Docker en `ci.yml`, Dependabot abre los PR con
+parches, el login tiene un límite de intentos y Nginx manda cabeceras de seguridad
+(`frontend/cabeceras-seguridad.conf`): una Content-Security-Policy que sólo deja
+cargar archivos de la propia app, y otras que impiden meter la app en otra página
+o que el navegador adivine tipos de archivo. El smoke test del CI verifica que
+estén, y la prueba e2e `seguridad.spec.js` recorre las secciones y falla si el
+navegador bloquea algo.
+
+Si gitleaks marca algo que no es un secreto (un valor de prueba), se agrega el
+comentario `gitleaks:allow` al final de esa línea.
+
 ## Base de datos y migraciones
 
 El esquema vive en `backend/migrations/` como archivos SQL numerados
@@ -259,11 +282,11 @@ Cada sprint dura una semana y termina con algo demostrable.
 
 - [x] **Sprint 0 — Fundaciones:** templates de issues y PR, `CONTRIBUTING.md`, ESLint + Prettier, Vitest con primeros tests, Dependabot, sucursales reales.
 - [x] **Sprint 1 — CI + tests con umbral:** GitHub Actions (lint, formato, tests, build, Docker + smoke test), coverage mínimo (80% backend, 70% frontend) que bloquea el merge.
-- [ ] **Sprint 2 — Login y roles:** admin (dueños), empleada (elige sucursal al entrar), chofer (opera el galpón), permiso de cierre de caja. Migraciones versionadas ✅.
-- [ ] **Sprint 3 — Cierre de caja:** formulario mobile por sucursal (Z, efectivo, posnet, QR, gastos locales).
-- [ ] **Sprint 4 — Contenedores en el pipeline + e2e:** imágenes en GHCR, escaneo Trivy, Playwright contra el compose.
-- [ ] **Sprint 5 — Gastos y retiros de socios.**
-- [ ] **Sprint 6 — IaC + CD:** Terraform, environments staging y producción con aprobación, blue-green.
-- [ ] **Sprint 7 — Dashboard ejecutivo.**
+- [x] **Sprint 2 — Login y roles:** admin (dueños), empleada (elige sucursal al entrar), chofer (opera el galpón), permiso de cierre de caja. Migraciones versionadas ✅.
+- [x] **Sprint 3 — Cierre de caja:** formulario mobile por sucursal (Z, efectivo, posnet, QR, gastos locales).
+- [x] **Sprint 4 — Contenedores en el pipeline + e2e:** imágenes en GHCR, escaneo Trivy, Playwright contra el compose.
+- [x] **Sprint 5 — Gastos y retiros de socios.**
+- [x] **Sprint 6 — IaC + CD:** Terraform, environments staging y producción con aprobación, blue-green.
+- [x] **Sprint 7 — Dashboard ejecutivo.**
 - [ ] **Sprint 8 — DevSecOps, observabilidad y feedback continuo.** Release v1.0.
 - [ ] **Fase 2 — Galpón, pedidos y chofer:** evoluciona el módulo de pedidos e insumos existente (máquina de estados ya implementada).
