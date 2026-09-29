@@ -3,7 +3,7 @@ services:
     # Imagen oficial sin scripts propios: el esquema lo crea el backend al
     # arrancar, con las migraciones de backend/migrations.
     image: postgres:15-alpine
-    container_name: panaderias_db
+    container_name: lafueguina_db
     restart: unless-stopped
     environment:
       # POSTGRES_DB y POSTGRES_USER no son secretos: van literales.
@@ -20,14 +20,14 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - panaderias_net
+      - lafueguina_net
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     image: ghcr.io/joaquinlista/panaderia-gestion-backend:v0.1.0
-    container_name: panaderias_backend
+    container_name: lafueguina_backend
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -60,14 +60,14 @@ services:
       retries: 5
       start_period: 15s
     networks:
-      - panaderias_net
+      - lafueguina_net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     image: ghcr.io/joaquinlista/panaderia-gestion-frontend:v0.1.0
-    container_name: panaderias_frontend
+    container_name: lafueguina_frontend
     restart: unless-stopped
     ports:
       - "80:80"
@@ -75,12 +75,12 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - panaderias_net
+      - lafueguina_net
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  panaderias_net:
+  lafueguina_net:
     driver: bridge

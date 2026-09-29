@@ -38,6 +38,10 @@ docker compose up -d --build
 Abrir **http://localhost**. El primer usuario es el admin de `ADMIN_USUARIO` /
 `ADMIN_PASSWORD`: el backend lo crea al arrancar si todavía no hay ningún admin.
 
+Usa los puertos 80 y 3000: si tenés levantado otro proyecto que los ocupe (por
+ejemplo la versión del TP, `insgsoft3-tp01`), bajalo antes con `docker compose down`
+en su carpeta.
+
 ### Verificar
 
 ```bash
