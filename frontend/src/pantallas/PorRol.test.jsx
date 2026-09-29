@@ -34,7 +34,7 @@ const abrirComo = (sesion) => {
 };
 
 const pestañas = async () => {
-  const nav = await screen.findByRole('navigation');
+  const nav = await screen.findByRole('navigation', { name: 'Secciones' });
   return within(nav)
     .getAllByRole('button')
     .map((b) => b.textContent);
@@ -61,6 +61,35 @@ describe('pestañas según el rol', () => {
   ])('%s ve sólo sus pestañas', async (_rol, sesion, esperadas) => {
     abrirComo(sesion);
     expect(await pestañas()).toEqual(esperadas);
+  });
+});
+
+describe('menú de secciones', () => {
+  it('el botón del menú dice en qué sección estás y se cierra al elegir otra', async () => {
+    const user = userEvent.setup();
+    abrirComo(sesionChofer);
+    const abrir = await screen.findByRole('button', { name: 'Menú · Tablero de Pedidos' });
+    expect(abrir).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(abrir);
+    expect(abrir).toHaveAttribute('aria-expanded', 'true');
+    const nav = screen.getByRole('navigation', { name: 'Secciones' });
+    expect(nav).toHaveClass('abierto');
+    expect(within(nav).getByRole('button', { name: 'Tablero de Pedidos' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+
+    await user.click(within(nav).getByRole('button', { name: 'Red de Sucursales' }));
+    expect(screen.getByRole('button', { name: 'Menú · Red de Sucursales' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(nav).not.toHaveClass('abierto');
+    expect(within(nav).getByRole('button', { name: 'Red de Sucursales' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
   });
 });
 

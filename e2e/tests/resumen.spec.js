@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ADMIN, entrar } from './helpers.js';
+import { ADMIN, entrar, irA } from './helpers.js';
 
 // Sprint 7: lo que se carga en un cierre aparece en el resumen de la dueña, y
 // el turno que todavía no se cargó figura como pendiente.
@@ -10,7 +10,7 @@ test('el cierre del mediodía se ve en el resumen y falta el de la noche', async
   await expect(page.getByRole('heading', { name: /^Hoy / })).toBeVisible();
 
   // ---- Carga el cierre del mediodía de Viedma (ninguna otra prueba la usa) ----
-  await page.getByRole('button', { name: 'Cierre de caja' }).click();
+  await irA(page, 'Cierre de caja');
   await page.getByLabel('Sucursal').selectOption({ label: 'Viedma (Chacra)' });
   const cierre = page.getByRole('form', { name: 'Cierre de caja' });
   await cierre.getByLabel('Mediodía').check();
@@ -23,7 +23,7 @@ test('el cierre del mediodía se ve en el resumen y falta el de la noche', async
   await expect(page.getByText('Cierre del mediodía enviado.')).toBeVisible();
 
   // ---- En el resumen: lo vendido en Viedma y que falta su noche ----
-  await page.getByRole('button', { name: 'Resumen' }).click();
+  await irA(page, 'Resumen');
   const porSucursal = page.getByRole('list', { name: 'Vendido por sucursal' });
   const viedma = porSucursal.getByRole('listitem').filter({ hasText: 'Viedma' });
   await expect(viedma).toContainText('80.000,00');

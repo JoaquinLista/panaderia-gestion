@@ -37,7 +37,7 @@ body {
 }
 
 .app {
-  max-width: 1120px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 24px 20px 64px;
 }
@@ -78,39 +78,103 @@ body {
   font-size: 0.9rem;
 }
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  /* En el celular las pestañas se deslizan en vez de ensanchar la página. */
-  overflow-x: auto;
-  margin: 24px 0 20px;
-  border-bottom: 1px solid var(--color-border);
+/* ---- Menú de secciones: columna a la izquierda en la compu, desplegable en el celular ---- */
+.panel {
+  margin-top: 24px;
 }
 
-.tab-btn {
+.menu {
+  margin-bottom: 20px;
+}
+
+.menu-abrir {
   appearance: none;
-  white-space: nowrap;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  text-align: left;
+}
+
+.menu-lista {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.menu-lista.abierto {
+  display: flex;
+}
+
+.menu-btn {
+  appearance: none;
   border: none;
   background: transparent;
-  padding: 10px 18px;
+  text-align: left;
+  padding: 10px 14px;
   font-size: 0.95rem;
-  cursor: pointer;
   color: var(--color-muted);
-  border-bottom: 3px solid transparent;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
   transition:
-    color 0.15s,
-    border-color 0.15s;
+    background 0.15s,
+    color 0.15s;
 }
 
-.tab-btn:hover {
+.menu-btn:hover {
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
-.tab-btn.active {
+.menu-btn.active {
+  background: var(--color-warn-bg);
   color: var(--color-primary-dark);
-  border-bottom-color: var(--color-primary);
+  border-left-color: var(--color-primary);
   font-weight: 600;
+}
+
+.contenido {
+  min-width: 0;
+}
+
+@media (min-width: 860px) {
+  .panel {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .menu {
+    position: sticky;
+    top: 16px;
+    margin-bottom: 0;
+  }
+
+  .menu-abrir {
+    display: none;
+  }
+
+  .menu-lista {
+    display: flex;
+    margin-top: 0;
+  }
 }
 
 .card {

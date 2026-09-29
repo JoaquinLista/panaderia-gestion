@@ -14,7 +14,7 @@ import RedSucursales from './pantallas/RedSucursales.jsx';
 import Resumen from './pantallas/Resumen.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
-// Cada pestaña aparece sólo si la sesión tiene el permiso (matriz del backend).
+// Cada sección del menú aparece sólo si la sesión tiene el permiso (matriz del backend).
 // Los dueños arrancan en el resumen; el resto, en el cierre de caja, que es lo
 // que se usa todos los días (MVP del PRD).
 const TABS = [
@@ -51,6 +51,8 @@ function Panel() {
   const { sesion } = useAuth();
   const tabs = TABS.filter((t) => tienePermiso(sesion, t.permiso));
   const [tab, setTab] = useState(tabs[0]?.id);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const actual = tabs.find((t) => t.id === tab);
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
@@ -80,26 +82,52 @@ function Panel() {
 
       {errorGlobal && <div className="alert alert-error">{errorGlobal}</div>}
 
-      <nav className="tabs">
-        {tabs.map((t) => (
+      <div className="panel">
+        <aside className="menu">
+          {/* En el celular el menú se abre con este botón; en la compu está siempre a la vista. */}
           <button
-            key={t.id}
-            className={`tab-btn ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
+            type="button"
+            className="menu-abrir"
+            aria-expanded={menuAbierto}
+            aria-controls="menu-secciones"
+            aria-label={`Menú · ${actual?.label ?? 'Secciones'}`}
+            onClick={() => setMenuAbierto((a) => !a)}
           >
-            {t.label}
+            <span aria-hidden="true">☰</span> {actual?.label ?? 'Menú'}
           </button>
-        ))}
-      </nav>
+          <nav
+            id="menu-secciones"
+            aria-label="Secciones"
+            className={`menu-lista ${menuAbierto ? 'abierto' : ''}`}
+          >
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`menu-btn ${tab === t.id ? 'active' : ''}`}
+                aria-current={tab === t.id ? 'page' : undefined}
+                onClick={() => {
+                  setTab(t.id);
+                  setMenuAbierto(false);
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-      {tab === 'resumen' && <Resumen />}
-      {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
-      {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
-      {tab === 'caja-central' && <CajaCentral />}
-      {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
-      {tab === 'insumos' && <GestionInsumos />}
-      {tab === 'red' && <RedSucursales sucursales={sucursales} />}
-      {tab === 'usuarios' && <AdminUsuarios />}
+        <main className="contenido">
+          {tab === 'resumen' && <Resumen />}
+          {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
+          {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
+          {tab === 'caja-central' && <CajaCentral />}
+          {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
+          {tab === 'insumos' && <GestionInsumos />}
+          {tab === 'red' && <RedSucursales sucursales={sucursales} />}
+          {tab === 'usuarios' && <AdminUsuarios />}
+        </main>
+      </div>
 
       <footer className="app-pie">Versión {VERSION}</footer>
     </div>

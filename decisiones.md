@@ -583,3 +583,11 @@ permiso de caja; cerrar sesión.
 | Dos hojas: "Resumen" (este mes, mes anterior y variación) y "Ventas por día" (una columna por sucursal y totales) | La primera es para leer; la segunda, para que el contador o la familia armen sus propios gráficos. |
 | La variación va como porcentaje de Excel con signo (+10,0 %) y "sin datos" si el mes anterior era cero | Se puede usar en fórmulas, y no aparece un porcentaje inventado. |
 | Google Sheets queda para cuando el negocio tenga su cuenta de Google | Sin esa cuenta no hay dónde sincronizar; el Excel ya se puede subir a Drive a mano. |
+
+## La Fueguina Stats — Menú de secciones en columna
+
+| Decisión | Por qué |
+|----------|---------|
+| En la compu, las secciones van en una columna fija a la izquierda | Pedido del PM: con las pestañas en fila no se veían todas y había que deslizar. En columna entran todas y el menú acompaña al bajar. |
+| En el celular, un botón "☰" con el nombre de la sección abre la lista | Una columna al costado no entra en el ancho del celular. El botón dice dónde estás y la lista se cierra sola al elegir. |
+| El menú es una `nav` "Secciones" y la sección activa lleva `aria-current` | Los lectores de pantalla anuncian el menú y la sección en la que estás. |

@@ -37,3 +37,27 @@ export const entrar = async (page, { usuario, password, sucursal }) => {
   }
   await page.getByRole('button', { name: 'Entrar' }).click();
 };
+
+/**
+ * Abre el menú de secciones si está cerrado (en el celular arranca cerrado) y
+ * lo devuelve. Cerrado no está en el árbol de accesibilidad: se busca por id.
+ * @param {import('@playwright/test').Page} page
+ */
+export const abrirMenu = async (page) => {
+  const menu = page.locator('#menu-secciones');
+  await menu.waitFor({ state: 'attached' });
+  if (!(await menu.isVisible())) {
+    await page.getByRole('button', { name: /^Menú · / }).click();
+  }
+  return menu;
+};
+
+/**
+ * Va a una sección del menú.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} seccion  el nombre tal como aparece en el menú
+ */
+export const irA = async (page, seccion) => {
+  const menu = await abrirMenu(page);
+  await menu.getByRole('button', { name: seccion, exact: true }).click();
+};
