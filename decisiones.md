@@ -487,3 +487,13 @@ permiso de caja; cerrar sesión.
 | Permiso nuevo `caja-central:administrar`, sólo admin | Son los números del negocio y los retiros de la familia. |
 | Los saldos se calculan en el servidor en centavos enteros, igual que el cuadre | Sin errores de redondeo. Con el volumen de una panadería (unos pocos movimientos por día) recalcular todo es instantáneo y más simple que guardar saldos. |
 
+## La Fueguina Stats — Sprint 5 · PR 3: pantalla de la caja central
+
+| Decisión | Por qué |
+|----------|---------|
+| Pestaña "Caja central" sólo para los dueños, en cuatro bloques: saldo de hoy, cargar un movimiento, movimientos del mes y resumen del mes | Es el orden en que se usa: mirar cuánto hay, anotar lo que salió y, cada tanto, revisar el mes. Todo en una columna para el celular. |
+| El ajuste se carga con "Faltaba plata" o "Sobraba plata" y un monto positivo | Escribir un monto negativo en el celular es incómodo y fácil de errar. La pantalla le pone el signo. |
+| El saldo inicial se ofrece sólo mientras falte cargar alguno, y si falta el de la caja el formulario arranca ahí | Se carga una sola vez. Después ya no molesta en la lista de opciones. |
+| Anular pide confirmación en la misma fila | Evita anular con un toque sin querer. Las entradas de las sucursales no se anulan acá: se corrigen en el cierre. |
+| Los montos llevan signo y color (verde entra, rojo sale) y cada fila muestra el saldo de la caja después | Es la columna del saldo de la planilla "Retiros", que es lo que la dueña ya sabe leer. |
+
