@@ -5,9 +5,10 @@
  * función probada con los mismos casos.
  *
  * Fórmula (PM, 2026-09-29): lo que entró por ventas en efectivo es lo que hay
- * en la caja menos el cambio fijo que queda. Eso, más posnet, transferencias
- * y los gastos pagados con plata de la caja, tiene que dar el total del
- * controlador fiscal.
+ * en la caja menos el cambio fijo que queda. Eso, más lo cobrado con débito,
+ * crédito y QR y los gastos pagados con plata de la caja, tiene que dar el
+ * total del controlador fiscal. Las transferencias quedan por si algún día
+ * vuelven (hoy no hay).
  */
 
 const MONTO_MAXIMO_CENTAVOS = 9_999_999_999; // NUMERIC(12,2)
@@ -37,7 +38,7 @@ export const aPesos = (centavos) => {
 /**
  * @param {{
  *   totalControlador: number, efectivoContado: number, cambioFijo: number,
- *   posnet: number, transferencias: number, gastos: number[]
+ *   debito: number, credito: number, qr: number, transferencias?: number, gastos: number[]
  * }} c  todos los montos en centavos
  * @returns {{ efectivoVentas: number, totalGastos: number, totalCargado: number, diferencia: number }}
  *   en centavos. `diferencia` positiva: sobra plata; negativa: falta.
@@ -46,12 +47,14 @@ export const calcularCuadre = ({
   totalControlador,
   efectivoContado,
   cambioFijo,
-  posnet,
-  transferencias,
+  debito,
+  credito,
+  qr,
+  transferencias = 0,
   gastos,
 }) => {
   const efectivoVentas = efectivoContado - cambioFijo;
   const totalGastos = gastos.reduce((suma, g) => suma + g, 0);
-  const totalCargado = efectivoVentas + posnet + transferencias + totalGastos;
+  const totalCargado = efectivoVentas + debito + credito + qr + transferencias + totalGastos;
   return { efectivoVentas, totalGastos, totalCargado, diferencia: totalCargado - totalControlador };
 };

@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import App from '../App.jsx';
-import { apiFalsa, sucursales, productos, sesionAdmin } from '../test/apiFalsa.js';
+import { apiFalsa, categorias, sucursales, productos, sesionAdmin } from '../test/apiFalsa.js';
 
 const cierre = (extra = {}) => ({
   id: 10,
@@ -15,7 +15,9 @@ const cierre = (extra = {}) => ({
   total_controlador: 205350,
   efectivo_contado: 113000,
   cambio_fijo: 15000,
-  posnet: 74250,
+  debito: 30000,
+  credito: 24250,
+  qr: 20000,
   transferencias: 31100,
   diferencia: -2000,
   comentario: 'Faltó cargar un gasto',
@@ -23,7 +25,7 @@ const cierre = (extra = {}) => ({
   revisado_en: null,
   revisado_por_nombre: null,
   a_revisar: true,
-  gastos: [{ id: 1, detalle: 'Sodero', monto: 6000 }],
+  gastos: [{ id: 1, categoria_id: 6, categoria: 'Proveedores', detalle: 'Sodero', monto: 6000 }],
   correcciones: [],
   ...extra,
 });
@@ -52,6 +54,7 @@ const abrir = async (rutas = {}) => {
       ],
     ],
     'GET /api/cierres/10': () => [200, cierre()],
+    'GET /api/cierres/categorias': () => [200, categorias],
     ...rutas,
   });
   render(<App />);
@@ -144,6 +147,8 @@ describe('revisión de cierres: detalle', () => {
     await abrirDetalle();
     expect(screen.getByRole('heading', { name: 'Estrada · 28/09 · Noche' })).toBeInTheDocument();
     expect(corregir().getByLabelText('Total del controlador (Z)')).toHaveValue('205.350');
+    expect(corregir().getByLabelText('QR')).toHaveValue('20.000');
+    expect(corregir().getByLabelText('Categoría del gasto 1')).toHaveValue('6');
     expect(corregir().getByLabelText('Detalle del gasto 1')).toHaveValue('Sodero');
     expect(screen.getByRole('status').textContent.replace(/\s/g, ' ')).toContain(
       'Sobran $ 4.000,00'
@@ -183,7 +188,10 @@ describe('revisión de cierres: detalle', () => {
       turno: 'NOCHE',
       numero_z: '1532',
       total_controlador: '209350.00',
-      gastos: [{ detalle: 'Sodero', monto: '6000.00' }],
+      debito: '30000.00',
+      credito: '24250.00',
+      qr: '20000.00',
+      gastos: [{ categoria_id: 6, detalle: 'Sodero', monto: '6000.00' }],
     });
     // Las transferencias de un cierre viejo cuentan en la diferencia pero no se reenvían.
     expect(JSON.parse(opciones.body)).not.toHaveProperty('transferencias');
@@ -198,10 +206,65 @@ describe('revisión de cierres: detalle', () => {
 
   it('no guarda con un monto vacío', async () => {
     const { user, fetchMock } = await abrirDetalle();
-    await user.clear(corregir().getByLabelText('Posnet (débito, crédito y QR)'));
+    await user.clear(corregir().getByLabelText('Crédito'));
     await user.click(corregir().getByRole('button', { name: 'Guardar corrección' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Revisá los montos');
     expect(llamadas(fetchMock, 'PUT', '/api/cierres/10')).toHaveLength(0);
+  });
+
+  it('un gasto con una categoría que ya no se usa la conserva', async () => {
+    const { user, fetchMock } = await abrirDetalle({
+      'GET /api/cierres/10': () => [
+        200,
+        cierre({
+          gastos: [{ id: 1, categoria_id: 99, categoria: 'Hielo', detalle: 'Bolsa', monto: 6000 }],
+        }),
+      ],
+      'PUT /api/cierres/10': () => [200, cierre()],
+    });
+    const selector = corregir().getByLabelText('Categoría del gasto 1');
+    expect(selector).toHaveValue('99');
+    expect(within(selector).getByRole('option', { name: 'Hielo' })).toBeInTheDocument();
+    await user.click(corregir().getByRole('button', { name: 'Guardar corrección' }));
+    await screen.findByText('Corrección guardada.');
+    const [, opciones] = llamadas(fetchMock, 'PUT', '/api/cierres/10')[0];
+    expect(JSON.parse(opciones.body).gastos).toEqual([
+      { categoria_id: 99, detalle: 'Bolsa', monto: '6000.00' },
+    ]);
+  });
+
+  it('un gasto nuevo sin categoría no deja guardar', async () => {
+    const { user, fetchMock } = await abrirDetalle();
+    await user.click(corregir().getByRole('button', { name: '+ Agregar gasto' }));
+    await user.type(corregir().getByLabelText('Detalle del gasto 2'), 'Hielo');
+    await user.type(corregir().getByLabelText('Monto del gasto 2'), '1000');
+    await user.click(corregir().getByRole('button', { name: 'Guardar corrección' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('cada gasto necesita categoría');
+    expect(llamadas(fetchMock, 'PUT', '/api/cierres/10')).toHaveLength(0);
+  });
+
+  it('el historial muestra los campos de cierres viejos', async () => {
+    await abrirDetalle({
+      'GET /api/cierres/10': () => [
+        200,
+        cierre({
+          correcciones: [
+            {
+              id: 1,
+              campo: 'posnet',
+              valor_anterior: '74250.00',
+              valor_nuevo: '75250.00',
+              usuario_nombre: 'Marta',
+              creado_en: '2026-09-29T00:30:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+    const historial = screen.getByRole('list', { name: 'Historial de correcciones' });
+    expect(historial.textContent.replace(/\s/g, ' ')).toContain(
+      'Posnet: $ 74.250,00 → $ 75.250,00'
+    );
   });
 
   it('agrega y quita gastos', async () => {

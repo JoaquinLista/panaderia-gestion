@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  getCategorias,
   getCierre,
   getCierres,
   getCierresDeHoy,
@@ -16,6 +17,7 @@ const router = Router();
 // Cargar el cierre del turno: admin o empleada con el permiso.
 router.get('/hoy', permitir(ACCIONES.CERRAR_CAJA), getCierresDeHoy);
 router.post('/', permitir(ACCIONES.CERRAR_CAJA), postCierre);
+router.get('/categorias', permitir(ACCIONES.CERRAR_CAJA), getCategorias);
 
 // Revisar y corregir: sólo la dueña o un socio. La empleada no puede editar
 // un cierre después de enviarlo (#10).

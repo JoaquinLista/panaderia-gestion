@@ -165,6 +165,9 @@ jobs:
           pedidos=$(curl -fsS -b cookies.txt http://localhost/api/pedidos); echo "$pedidos"
           usuarios=$(curl -fsS -b cookies.txt http://localhost/api/usuarios); echo "$usuarios"
           grep -q "\"usuario\":\"$ADMIN_USUARIO\"" <<<"$usuarios"
+          # Las categorías de gasto de la planilla vienen cargadas por la migración.
+          categorias=$(curl -fsS -b cookies.txt http://localhost/api/cierres/categorias); echo "$categorias"
+          grep -q '"nombre":"Varios"' <<<"$categorias"
           # La dueña carga un cierre de caja y un segundo del mismo turno da 409.
           cierre='{"sucursal_id":2,"turno":"NOCHE","total_controlador":1000,"efectivo_contado":1500,"cambio_fijo":500}'
           creado=$(curl -fsS -b cookies.txt -H 'Content-Type: application/json' -d "$cierre" http://localhost/api/cierres); echo "$creado"

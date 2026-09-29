@@ -51,8 +51,9 @@ describe('calcularCuadre', () => {
       totalControlador: 48530000,
       efectivoContado: 23250000,
       cambioFijo: 2000000,
-      posnet: 16890000,
-      transferencias: 9240000,
+      debito: 10000000,
+      credito: 6890000,
+      qr: 9240000,
       gastos: [600000, 550000],
     });
     expect(r).toEqual({
@@ -68,8 +69,9 @@ describe('calcularCuadre', () => {
       totalControlador: 20535000,
       efectivoContado: 11300000,
       cambioFijo: 1500000,
-      posnet: 7425000,
-      transferencias: 3110000,
+      debito: 5000000,
+      credito: 2425000,
+      qr: 3110000,
       gastos: [],
     });
     expect(r.diferencia).toBe(-200000);
@@ -80,8 +82,23 @@ describe('calcularCuadre', () => {
       totalControlador: aCentavos('0.30'),
       efectivoContado: aCentavos('0.10'),
       cambioFijo: 0,
-      posnet: aCentavos('0.20'),
-      transferencias: 0,
+      debito: aCentavos('0.20'),
+      credito: 0,
+      qr: 0,
+      gastos: [],
+    });
+    expect(r.diferencia).toBe(0);
+  });
+
+  it('las transferencias de un cierre viejo también cuentan', () => {
+    const r = calcularCuadre({
+      totalControlador: 10000,
+      efectivoContado: 4000,
+      cambioFijo: 0,
+      debito: 1000,
+      credito: 2000,
+      qr: 1000,
+      transferencias: 2000,
       gastos: [],
     });
     expect(r.diferencia).toBe(0);
@@ -92,8 +109,9 @@ describe('calcularCuadre', () => {
       totalControlador: 10000,
       efectivoContado: 15000,
       cambioFijo: 4000,
-      posnet: 0,
-      transferencias: 0,
+      debito: 0,
+      credito: 0,
+      qr: 0,
       gastos: [],
     });
     expect(r.diferencia).toBe(1000);

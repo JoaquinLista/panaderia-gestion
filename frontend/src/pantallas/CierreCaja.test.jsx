@@ -3,7 +3,14 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import App from '../App.jsx';
-import { apiFalsa, sucursales, productos, sesionAdmin, sesionEmpleada } from '../test/apiFalsa.js';
+import {
+  apiFalsa,
+  categorias,
+  sucursales,
+  productos,
+  sesionAdmin,
+  sesionEmpleada,
+} from '../test/apiFalsa.js';
 
 // Lucía, con el permiso de cerrar caja que le dio la dueña.
 const sesionLucia = {
@@ -37,6 +44,7 @@ const abrir = async ({ sesion = sesionLucia, rutas = {}, esperarHoy = true } = {
     'GET /api/productos': () => [200, productos],
     'GET /api/pedidos': () => [200, []],
     'GET /api/cierres/hoy': () => [200, hoyEstrada()],
+    'GET /api/cierres/categorias': () => [200, categorias],
     ...rutas,
   });
   render(<App />);
@@ -58,11 +66,15 @@ const cargarEstrada = async (user, { total = '485.300' } = {}) => {
   await user.click(form().getByLabelText('Noche'));
   await user.type(form().getByLabelText('Total del controlador (Z)'), total);
   await user.type(form().getByLabelText('Efectivo contado en la caja'), '232.500');
-  await user.type(form().getByLabelText('Posnet (débito, crédito y QR)'), '261300,00');
+  await user.type(form().getByLabelText('Débito'), '100000');
+  await user.type(form().getByLabelText('Crédito'), '68.900');
+  await user.type(form().getByLabelText('QR'), '92400,00');
   await user.click(form().getByRole('button', { name: '+ Agregar gasto' }));
+  await user.selectOptions(form().getByLabelText('Categoría del gasto 1'), 'Proveedores');
   await user.type(form().getByLabelText('Detalle del gasto 1'), 'Sodero');
   await user.type(form().getByLabelText('Monto del gasto 1'), '6.000');
   await user.click(form().getByRole('button', { name: '+ Agregar gasto' }));
+  await user.selectOptions(form().getByLabelText('Categoría del gasto 2'), 'Varios');
   await user.type(form().getByLabelText('Detalle del gasto 2'), 'Bolsas');
   await user.type(form().getByLabelText('Monto del gasto 2'), '5500');
 };
@@ -98,10 +110,12 @@ describe('cierre de caja: empleada con permiso', () => {
       total_controlador: '485300.00',
       efectivo_contado: '232500.00',
       cambio_fijo: '20000.00',
-      posnet: '261300.00',
+      debito: '100000.00',
+      credito: '68900.00',
+      qr: '92400.00',
       gastos: [
-        { detalle: 'Sodero', monto: '6000.00' },
-        { detalle: 'Bolsas', monto: '5500.00' },
+        { categoria_id: 6, detalle: 'Sodero', monto: '6000.00' },
+        { categoria_id: 10, detalle: 'Bolsas', monto: '5500.00' },
       ],
       comentario: '',
     });
@@ -124,10 +138,10 @@ describe('cierre de caja: empleada con permiso', () => {
 
   it('pone los puntos de miles mientras se escribe y no pide transferencias', async () => {
     const { user } = await abrir();
-    const posnet = form().getByLabelText('Posnet (débito, crédito y QR)');
-    await user.type(posnet, '15456,599');
-    expect(posnet).toHaveValue('15.456,59');
-    expect(posnet).toHaveAttribute('aria-invalid', 'false');
+    const debito = form().getByLabelText('Débito');
+    await user.type(debito, '15456,599');
+    expect(debito).toHaveValue('15.456,59');
+    expect(debito).toHaveAttribute('aria-invalid', 'false');
     await user.click(form().getByRole('button', { name: '+ Agregar gasto' }));
     await user.type(form().getByLabelText('Monto del gasto 1'), '1500');
     expect(form().getByLabelText('Monto del gasto 1')).toHaveValue('1.500');
@@ -151,6 +165,31 @@ describe('cierre de caja: empleada con permiso', () => {
 
     await user.click(form().getByRole('button', { name: 'Quitar gasto 2' }));
     expect(form().queryByLabelText('Detalle del gasto 2')).not.toBeInTheDocument();
+  });
+
+  it('cada gasto lleva una categoría, en el orden de la planilla', async () => {
+    const { user, fetchMock } = await abrir();
+    await cargarEstrada(user);
+    const opciones = within(form().getByLabelText('Categoría del gasto 1')).getAllByRole('option');
+    expect(opciones.map((o) => o.textContent)).toEqual([
+      'Categoría…',
+      'Personal',
+      'Proveedores',
+      'Varios',
+    ]);
+
+    await user.selectOptions(form().getByLabelText('Categoría del gasto 2'), '');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await user.click(form().getByRole('button', { name: 'Enviar cierre de la noche' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Cada gasto necesita categoría');
+    expect(cuerpoDe(fetchMock, 'POST', '/api/cierres')).toBeUndefined();
+  });
+
+  it('si no se pueden traer las categorías lo muestra', async () => {
+    await abrir({
+      rutas: { 'GET /api/cierres/categorias': () => [500, { error: 'Sin categorías' }] },
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sin categorías');
   });
 
   it('muestra el error de la API, por ejemplo si el turno ya se cargó', async () => {
@@ -239,7 +278,9 @@ describe('cierre de caja: la dueña', () => {
       sucursal_id: 3,
       turno: 'MEDIODIA',
       numero_z: null,
-      posnet: '0.00',
+      debito: '0.00',
+      credito: '0.00',
+      qr: '0.00',
       gastos: [],
     });
   });

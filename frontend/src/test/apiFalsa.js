@@ -26,6 +26,13 @@ export const sucursales = [
   { id: 3, nombre: 'Café', tipo: 'VENTA' },
 ];
 
+// Algunas categorías de gasto del cierre (la base trae las de la planilla).
+export const categorias = [
+  { id: 1, nombre: 'Personal' },
+  { id: 6, nombre: 'Proveedores' },
+  { id: 10, nombre: 'Varios' },
+];
+
 export const productos = [
   { id: 1, nombre: 'Medialunas', unidad_medida: 'docena' },
   { id: 2, nombre: 'Pan Baguette', unidad_medida: 'unidad' },

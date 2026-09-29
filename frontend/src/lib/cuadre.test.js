@@ -101,8 +101,9 @@ describe('calcularCuadre', () => {
       totalControlador: 48530000,
       efectivoContado: 23250000,
       cambioFijo: 2000000,
-      posnet: 16890000,
-      transferencias: 9240000,
+      debito: 10000000,
+      credito: 6890000,
+      qr: 9240000,
       gastos: [600000, 550000],
     });
     expect(r).toEqual({
@@ -118,8 +119,9 @@ describe('calcularCuadre', () => {
       totalControlador: 20535000,
       efectivoContado: 11300000,
       cambioFijo: 1500000,
-      posnet: 7425000,
-      transferencias: 3110000,
+      debito: 5000000,
+      credito: 2425000,
+      qr: 3110000,
       gastos: [],
     });
     expect(r.diferencia).toBe(-200000);
@@ -130,8 +132,9 @@ describe('calcularCuadre', () => {
       totalControlador: 30,
       efectivoContado: 10,
       cambioFijo: 0,
-      posnet: 20,
-      transferencias: 0,
+      debito: 20,
+      credito: 0,
+      qr: 0,
       gastos: [],
     });
     expect(r.diferencia).toBe(0);

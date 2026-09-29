@@ -16,6 +16,12 @@ vi.mock('../../src/config/db.js', () => {
 const db = await import('../../src/config/db.js');
 const { default: app } = await import('../../src/app.js');
 
+const CATEGORIAS = [
+  { id: 1, nombre: 'Personal' },
+  { id: 5, nombre: 'Bebidas (Coca, Cohiue)' },
+  { id: 10, nombre: 'Varios' },
+];
+
 const SUCURSALES = {
   1: { id: 1, nombre: 'Galpón Central', tipo: 'DEPOSITO' },
   2: { id: 2, nombre: 'Viedma (Chacra)', tipo: 'FABRICA' },
@@ -39,8 +45,10 @@ const filaCierre = (extra = {}) => ({
   total_controlador: '485300.00',
   efectivo_contado: '232500.00',
   cambio_fijo: '20000.00',
-  posnet: '168900.00',
-  transferencias: '92400.00',
+  debito: '100000.00',
+  credito: '68900.00',
+  qr: '92400.00',
+  transferencias: '0.00',
   diferencia: '0.00',
   comentario: null,
   cargado_por: 2,
@@ -79,14 +87,17 @@ beforeEach(() => {
       return { rows: SUCURSALES[params[0]] ? [SUCURSALES[params[0]]] : [] };
     }
     if (sql.includes('WHERE c.id = $1')) {
-      const [, , , , total, efectivo, cambio, posnet, transf, diferencia, comentario] = insertado;
+      const [, , , , total, efectivo, cambio, debito, credito, qr, transf, diferencia, comentario] =
+        insertado;
       return {
         rows: [
           filaCierre({
             total_controlador: total,
             efectivo_contado: efectivo,
             cambio_fijo: cambio,
-            posnet,
+            debito,
+            credito,
+            qr,
             transferencias: transf,
             diferencia,
             comentario,
@@ -96,11 +107,17 @@ beforeEach(() => {
     }
     if (sql.includes('WHERE c.sucursal_id = $1 AND c.fecha = $2')) return { rows: cierresDeHoy };
     if (sql.includes('SELECT cambio_fijo FROM cierres_caja')) return { rows: ultimoCambio };
+    if (sql.includes('FROM categorias_gasto WHERE activa AND id = ANY')) {
+      return { rows: CATEGORIAS.filter((c) => params[0].includes(c.id)) };
+    }
+    if (sql.includes('FROM categorias_gasto WHERE activa ORDER BY')) return { rows: CATEGORIAS };
     if (sql.includes('FROM cierre_gastos')) {
       return {
-        rows: gastosInsertados.map(([cierreId, detalle, monto], i) => ({
+        rows: gastosInsertados.map(([cierreId, categoriaId, detalle, monto], i) => ({
           id: i + 1,
           cierre_id: cierreId,
+          categoria_id: categoriaId,
+          categoria: CATEGORIAS.find((c) => c.id === categoriaId).nombre,
           detalle,
           monto,
         })),
@@ -116,11 +133,12 @@ const cierreEstrada = (extra = {}) => ({
   total_controlador: 485300,
   efectivo_contado: 232500,
   cambio_fijo: 20000,
-  posnet: 168900,
-  transferencias: 92400,
+  debito: 100000,
+  credito: 68900,
+  qr: '92400',
   gastos: [
-    { detalle: 'Sodero', monto: 6000 },
-    { detalle: 'Bolsas', monto: '5500.00' },
+    { categoria_id: 5, detalle: 'Sodero', monto: 6000 },
+    { categoria_id: 10, detalle: 'Bolsas', monto: '5500.00' },
   ],
   ...extra,
 });
@@ -132,13 +150,21 @@ describe('POST /api/cierres', () => {
     expect(res.body).toMatchObject({ id: 10, sucursal_nombre: 'Estrada', diferencia: 0 });
     expect(res.body.total_controlador).toBe(485300);
     expect(res.body.gastos).toEqual([
-      { id: 1, detalle: 'Sodero', monto: 6000 },
-      { id: 2, detalle: 'Bolsas', monto: 5500 },
+      {
+        id: 1,
+        categoria_id: 5,
+        categoria: 'Bebidas (Coca, Cohiue)',
+        detalle: 'Sodero',
+        monto: 6000,
+      },
+      { id: 2, categoria_id: 10, categoria: 'Varios', detalle: 'Bolsas', monto: 5500 },
     ]);
+    // débito, crédito y QR se guardan por separado
+    expect(insertado.slice(7, 11)).toEqual(['100000.00', '68900.00', '92400.00', '0.00']);
     // sucursal del día, fecha de Argentina, el usuario de la sesión
     expect(insertado[0]).toBe(3);
     expect(insertado[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(insertado[11]).toBe(SESION_EMPLEADA_CAJA.usuario.id);
+    expect(insertado[13]).toBe(SESION_EMPLEADA_CAJA.usuario.id);
     expect(client.query).toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
   });
@@ -159,7 +185,7 @@ describe('POST /api/cierres', () => {
     expect(res.body.diferencia).toBe(-2000);
   });
 
-  it('posnet, transferencias, gastos, número de Z y comentario son opcionales', async () => {
+  it('débito, crédito, QR, gastos, número de Z y comentario son opcionales', async () => {
     const res = await request(app).post('/api/cierres').send({
       turno: 'mediodia',
       total_controlador: '1000',
@@ -171,7 +197,7 @@ describe('POST /api/cierres', () => {
     expect(res.body.diferencia).toBe(0);
     expect(insertado[2]).toBe('MEDIODIA');
     expect(insertado[3]).toBeNull();
-    expect(insertado[10]).toBeNull();
+    expect(insertado[12]).toBeNull();
     expect(gastosInsertados).toEqual([]);
   });
 
@@ -226,10 +252,16 @@ describe('POST /api/cierres', () => {
     ['turno inválido', { turno: 'TARDE' }, 'Elegí el turno'],
     ['sin total del controlador', { total_controlador: undefined }, 'total_controlador'],
     ['sin cambio fijo', { cambio_fijo: '' }, 'cambio_fijo'],
-    ['monto con tres decimales', { posnet: '10.123' }, 'posnet'],
+    ['monto con tres decimales', { qr: '10.123' }, 'qr'],
     ['monto negativo', { efectivo_contado: -5 }, 'efectivo_contado'],
     ['gastos que no son lista', { gastos: 'sodero' }, 'lista'],
-    ['gasto sin detalle', { gastos: [{ monto: 100 }] }, 'detalle'],
+    ['gasto sin detalle', { gastos: [{ categoria_id: 1, monto: 100 }] }, 'detalle'],
+    ['gasto sin categoría', { gastos: [{ detalle: 'Sodero', monto: 100 }] }, 'categoría'],
+    [
+      'gasto con una categoría que no existe',
+      { gastos: [{ categoria_id: 99, detalle: 'Sodero', monto: 100 }] },
+      'no existe',
+    ],
     ['gasto con detalle largo', { gastos: [{ detalle: 'x'.repeat(121), monto: 1 }] }, 'detalle'],
     ['gasto en cero', { gastos: [{ detalle: 'Sodero', monto: 0 }] }, 'mayor a cero'],
     [
@@ -318,5 +350,13 @@ describe('GET /api/cierres/hoy', () => {
   it('la empleada no puede mirar otra sucursal', async () => {
     const res = await request(app).get('/api/cierres/hoy?sucursal_id=2');
     expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /api/cierres/categorias', () => {
+  it('lista las categorías de gasto en el orden de la planilla', async () => {
+    const res = await request(app).get('/api/cierres/categorias');
+    expect(res.status).toBe(200);
+    expect(res.body.map((c) => c.nombre)).toEqual(['Personal', 'Bebidas (Coca, Cohiue)', 'Varios']);
   });
 });

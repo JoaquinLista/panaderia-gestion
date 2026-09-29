@@ -79,7 +79,7 @@ export const mostrarPesos = (centavos) => formatoPesos.format(centavos / 100);
 /**
  * @param {{
  *   totalControlador: number, efectivoContado: number, cambioFijo: number,
- *   posnet: number, transferencias: number, gastos: number[]
+ *   debito: number, credito: number, qr: number, transferencias?: number, gastos: number[]
  * }} c  todos los montos en centavos
  * @returns {{ efectivoVentas: number, totalGastos: number, totalCargado: number, diferencia: number }}
  *   `diferencia` positiva: sobra plata; negativa: falta.
@@ -88,12 +88,14 @@ export const calcularCuadre = ({
   totalControlador,
   efectivoContado,
   cambioFijo,
-  posnet,
-  transferencias,
+  debito,
+  credito,
+  qr,
+  transferencias = 0,
   gastos,
 }) => {
   const efectivoVentas = efectivoContado - cambioFijo;
   const totalGastos = gastos.reduce((suma, g) => suma + g, 0);
-  const totalCargado = efectivoVentas + posnet + transferencias + totalGastos;
+  const totalCargado = efectivoVentas + debito + credito + qr + transferencias + totalGastos;
   return { efectivoVentas, totalGastos, totalCargado, diferencia: totalCargado - totalControlador };
 };

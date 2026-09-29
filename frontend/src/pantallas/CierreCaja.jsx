@@ -3,15 +3,28 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/contexto.js';
 import { apiGet, apiPost } from '../lib/api.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
-import { aCampo, centavosDe, DEL_TURNO, diaMes, TURNOS, valorGasto } from '../lib/cierres.js';
-import { BadgeDiferencia, CampoMonto, Diferencia } from './CamposCierre.jsx';
+import {
+  aCampo,
+  centavosDe,
+  DEL_TURNO,
+  diaMes,
+  GASTO_VACIO,
+  gastoCompleto,
+  gastoParaApi,
+  TURNOS,
+  valorGasto,
+} from '../lib/cierres.js';
+import { useCategorias } from '../lib/useCategorias.js';
+import { BadgeDiferencia, CampoMonto, Diferencia, FilaGasto } from './CamposCierre.jsx';
 
 const VACIO = {
   numeroZ: '',
   totalControlador: '',
   efectivoContado: '',
   cambioFijo: '',
-  posnet: '',
+  debito: '',
+  credito: '',
+  qr: '',
   comentario: '',
 };
 
@@ -50,6 +63,7 @@ export default function CierreCaja({ sucursales }) {
   const [error, setError] = useState('');
   const [enviado, setEnviado] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const categorias = useCategorias(setError);
 
   const cargarHoy = useCallback(async () => {
     if (!sucursalId) return;
@@ -80,7 +94,7 @@ export default function CierreCaja({ sucursales }) {
     );
 
   const centavos = Object.fromEntries(
-    ['totalControlador', 'efectivoContado', 'cambioFijo', 'posnet'].map((k) => [
+    ['totalControlador', 'efectivoContado', 'cambioFijo', 'debito', 'credito', 'qr'].map((k) => [
       k,
       leerMonto(datos[k]),
     ])
@@ -89,8 +103,7 @@ export default function CierreCaja({ sucursales }) {
   const completo =
     OBLIGATORIOS.every((k) => datos[k].trim() !== '') &&
     Object.values(centavos).every((c) => c !== null) &&
-    gastosCentavos.every((c) => c !== null && c > 0) &&
-    gastos.every((g) => g.detalle.trim() !== '');
+    gastos.every((g, i) => gastoCompleto(g, gastosCentavos[i]));
   const cuadre = completo
     ? calcularCuadre({ ...centavos, transferencias: 0, gastos: gastosCentavos })
     : null;
@@ -100,7 +113,7 @@ export default function CierreCaja({ sucursales }) {
     setError('');
     if (!completo) {
       setError(
-        'Completá el total del controlador, el efectivo contado y el cambio que queda. Cada gasto necesita detalle y monto.'
+        'Completá el total del controlador, el efectivo contado y el cambio que queda. Cada gasto necesita categoría, detalle y monto.'
       );
       return;
     }
@@ -113,11 +126,10 @@ export default function CierreCaja({ sucursales }) {
         total_controlador: aPesos(centavos.totalControlador),
         efectivo_contado: aPesos(centavos.efectivoContado),
         cambio_fijo: aPesos(centavos.cambioFijo),
-        posnet: aPesos(centavos.posnet),
-        gastos: gastos.map((g, i) => ({
-          detalle: g.detalle.trim(),
-          monto: aPesos(gastosCentavos[i]),
-        })),
+        debito: aPesos(centavos.debito),
+        credito: aPesos(centavos.credito),
+        qr: aPesos(centavos.qr),
+        gastos: gastos.map((g, i) => gastoParaApi(g, gastosCentavos[i])),
         comentario: datos.comentario,
       });
       setEnviado(cierre);
@@ -226,45 +238,37 @@ export default function CierreCaja({ sucursales }) {
                 ayuda={hoy.cambio_sugerido === null ? undefined : 'Sugerido: el del último cierre.'}
               />
               <CampoMonto
-                id="cierre-posnet"
-                label="Posnet (débito, crédito y QR)"
-                valor={datos.posnet}
-                onChange={monto('posnet')}
+                id="cierre-debito"
+                label="Débito"
+                valor={datos.debito}
+                onChange={monto('debito')}
               />
+              <CampoMonto
+                id="cierre-credito"
+                label="Crédito"
+                valor={datos.credito}
+                onChange={monto('credito')}
+              />
+              <CampoMonto id="cierre-qr" label="QR" valor={datos.qr} onChange={monto('qr')} />
             </div>
 
             <fieldset className="gastos">
               <legend>Gastos pagados con la caja</legend>
               {gastos.length === 0 && <p className="muted">Sin gastos.</p>}
               {gastos.map((g, i) => (
-                <div key={i} className="gasto-row">
-                  <input
-                    aria-label={`Detalle del gasto ${i + 1}`}
-                    placeholder="Ej: sodero"
-                    value={g.detalle}
-                    onChange={cambiarGasto(i, 'detalle')}
-                  />
-                  <input
-                    aria-label={`Monto del gasto ${i + 1}`}
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={g.monto}
-                    aria-invalid={leerMonto(g.monto) === null}
-                    onChange={cambiarGasto(i, 'monto')}
-                  />
-                  <button
-                    type="button"
-                    aria-label={`Quitar gasto ${i + 1}`}
-                    onClick={() => setGastos((prev) => prev.filter((_, j) => j !== i))}
-                  >
-                    ✕
-                  </button>
-                </div>
+                <FilaGasto
+                  key={i}
+                  numero={i + 1}
+                  gasto={g}
+                  categorias={categorias}
+                  onCambiar={(nombre) => cambiarGasto(i, nombre)}
+                  onQuitar={() => setGastos((prev) => prev.filter((_, j) => j !== i))}
+                />
               ))}
               <button
                 type="button"
                 className="link"
-                onClick={() => setGastos((prev) => [...prev, { detalle: '', monto: '' }])}
+                onClick={() => setGastos((prev) => [...prev, { ...GASTO_VACIO }])}
               >
                 + Agregar gasto
               </button>
