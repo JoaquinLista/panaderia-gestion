@@ -421,3 +421,19 @@ Tests: `tests/api/revisionCierres.test.js` (validaciones y errores),
 revisión), `tests/integracion/cierres.test.js` (lista, pendientes, corrección con
 historial, 409 y revisado contra Postgres real) y
 `frontend/src/pantallas/RevisionCierres.test.jsx`.
+
+## La Fueguina Stats — Sprint 4 · PR 1: pruebas end-to-end (#11)
+
+| Decisión | Por qué |
+|----------|---------|
+| Playwright en una carpeta propia, `e2e/` | Prueba el sistema entero desde afuera, como un usuario, no un paquete en particular. Tiene sus propias dependencias y Dependabot las revisa. |
+| Chromium con la pantalla de un Pixel 7, en español y hora de Argentina | La app se usa desde el celular. La zona horaria del navegador coincide con la de las sucursales. |
+| Corren en el mismo job que el smoke test, sobre el `docker compose` ya levantado | Construir y levantar todo de nuevo en otro job sumaría varios minutos. El nombre del check no cambia, así la protección de `main` sigue funcionando sin tocar la configuración. |
+| Cada prueba crea sus usuarios por la API con el admin inicial | La base arranca vacía (`docker compose down -v`) y no hay datos de prueba metidos en las migraciones. |
+| Los elementos se buscan por su texto, su etiqueta y su rol | Es como los encuentra una persona (y un lector de pantalla). Si un botón cambia de nombre, la prueba avisa. |
+| Sin reintentos (`retries: 0`) | Una prueba que falla a veces es un bug, no mala suerte. Un reintento lo escondería. |
+| Si falla, se guardan capturas y la grabación (trace) por 7 días | Se ve qué vio el navegador en el momento del error, sin reproducirlo. |
+
+Flujos probados: la empleada carga un cierre que no cuadra y la dueña lo encuentra
+entre los "a revisar" y lo marca revisado; contraseña equivocada; empleada sin
+permiso de caja; cerrar sesión.
