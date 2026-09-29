@@ -58,8 +58,7 @@ const cargarEstrada = async (user, { total = '485.300' } = {}) => {
   await user.click(form().getByLabelText('Noche'));
   await user.type(form().getByLabelText('Total del controlador (Z)'), total);
   await user.type(form().getByLabelText('Efectivo contado en la caja'), '232.500');
-  await user.type(form().getByLabelText('Posnet (débito y crédito)'), '168900');
-  await user.type(form().getByLabelText('QR y transferencias'), '92400,00');
+  await user.type(form().getByLabelText('Posnet (débito, crédito y QR)'), '261300,00');
   await user.click(form().getByRole('button', { name: '+ Agregar gasto' }));
   await user.type(form().getByLabelText('Detalle del gasto 1'), 'Sodero');
   await user.type(form().getByLabelText('Monto del gasto 1'), '6.000');
@@ -78,16 +77,16 @@ describe('cierre de caja: empleada con permiso', () => {
 
   it('sugiere el cambio fijo del último cierre', async () => {
     await abrir();
-    expect(form().getByLabelText('Cambio fijo que queda')).toHaveValue('20000');
+    expect(form().getByLabelText('Cambio fijo que queda')).toHaveValue('20.000');
     expect(form().getByText('Sugerido: el del último cierre.')).toBeInTheDocument();
   });
 
-  it('muestra que cuadra mientras carga y envía los montos en pesos', async () => {
+  it('muestra que no hay diferencia mientras carga y envía los montos en pesos', async () => {
     const { user, fetchMock } = await abrir({
       rutas: { 'POST /api/cierres': () => [201, cierreNoche] },
     });
     await cargarEstrada(user);
-    expect(screen.getByRole('status')).toHaveTextContent('Cuadra');
+    expect(screen.getByRole('status')).toHaveTextContent('Sin diferencia');
 
     await user.type(form().getByLabelText('Número de Z (opcional)'), '1532');
     await user.click(form().getByRole('button', { name: 'Enviar cierre de la noche' }));
@@ -99,8 +98,7 @@ describe('cierre de caja: empleada con permiso', () => {
       total_controlador: '485300.00',
       efectivo_contado: '232500.00',
       cambio_fijo: '20000.00',
-      posnet: '168900.00',
-      transferencias: '92400.00',
+      posnet: '261300.00',
       gastos: [
         { detalle: 'Sodero', monto: '6000.00' },
         { detalle: 'Bolsas', monto: '5500.00' },
@@ -124,14 +122,16 @@ describe('cierre de caja: empleada con permiso', () => {
     expect(screen.getByRole('status').textContent.replace(/\s/g, ' ')).toContain('Sobran $ 300,00');
   });
 
-  it('marca un monto que no se entiende', async () => {
+  it('pone los puntos de miles mientras se escribe y no pide transferencias', async () => {
     const { user } = await abrir();
-    await user.type(form().getByLabelText('Posnet (débito y crédito)'), '12,5,0');
-    expect(form().getByLabelText('Posnet (débito y crédito)')).toHaveAttribute(
-      'aria-invalid',
-      'true'
-    );
-    expect(form().getByText('No se entiende el monto. Ejemplo: 12.500,50')).toBeInTheDocument();
+    const posnet = form().getByLabelText('Posnet (débito, crédito y QR)');
+    await user.type(posnet, '15456,599');
+    expect(posnet).toHaveValue('15.456,59');
+    expect(posnet).toHaveAttribute('aria-invalid', 'false');
+    await user.click(form().getByRole('button', { name: '+ Agregar gasto' }));
+    await user.type(form().getByLabelText('Monto del gasto 1'), '1500');
+    expect(form().getByLabelText('Monto del gasto 1')).toHaveValue('1.500');
+    expect(form().queryByLabelText(/transferencias/i)).not.toBeInTheDocument();
   });
 
   it('no envía si faltan datos', async () => {
@@ -193,7 +193,7 @@ describe('cierre de caja: empleada con permiso', () => {
     });
     expect(await screen.findByText('Ya se cerraron los dos turnos de hoy.')).toBeInTheDocument();
     expect(screen.queryByRole('form', { name: 'Cierre de caja' })).not.toBeInTheDocument();
-    expect(screen.getByText('CUADRA')).toBeInTheDocument();
+    expect(screen.getByText('SIN DIFERENCIA')).toBeInTheDocument();
   });
 
   it('si falla la carga de hoy lo muestra', async () => {

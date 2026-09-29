@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/contexto.js';
 import { apiGet, apiPost } from '../lib/api.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
-import { aCampo, centavosDe, DEL_TURNO, diaMes, TURNOS } from '../lib/cierres.js';
+import { aCampo, centavosDe, DEL_TURNO, diaMes, TURNOS, valorGasto } from '../lib/cierres.js';
 import { BadgeDiferencia, CampoMonto, Diferencia } from './CamposCierre.jsx';
 
 const VACIO = {
@@ -12,7 +12,6 @@ const VACIO = {
   efectivoContado: '',
   cambioFijo: '',
   posnet: '',
-  transferencias: '',
   comentario: '',
 };
 
@@ -74,11 +73,14 @@ export default function CierreCaja({ sucursales }) {
   }, [cargarHoy]);
 
   const campo = (nombre) => (e) => setDatos((prev) => ({ ...prev, [nombre]: e.target.value }));
+  const monto = (nombre) => (valor) => setDatos((prev) => ({ ...prev, [nombre]: valor }));
   const cambiarGasto = (i, nombre) => (e) =>
-    setGastos((prev) => prev.map((g, j) => (j === i ? { ...g, [nombre]: e.target.value } : g)));
+    setGastos((prev) =>
+      prev.map((g, j) => (j === i ? { ...g, [nombre]: valorGasto(nombre, e) } : g))
+    );
 
   const centavos = Object.fromEntries(
-    ['totalControlador', 'efectivoContado', 'cambioFijo', 'posnet', 'transferencias'].map((k) => [
+    ['totalControlador', 'efectivoContado', 'cambioFijo', 'posnet'].map((k) => [
       k,
       leerMonto(datos[k]),
     ])
@@ -89,7 +91,9 @@ export default function CierreCaja({ sucursales }) {
     Object.values(centavos).every((c) => c !== null) &&
     gastosCentavos.every((c) => c !== null && c > 0) &&
     gastos.every((g) => g.detalle.trim() !== '');
-  const cuadre = completo ? calcularCuadre({ ...centavos, gastos: gastosCentavos }) : null;
+  const cuadre = completo
+    ? calcularCuadre({ ...centavos, transferencias: 0, gastos: gastosCentavos })
+    : null;
 
   const enviar = async (evt) => {
     evt.preventDefault();
@@ -110,7 +114,6 @@ export default function CierreCaja({ sucursales }) {
         efectivo_contado: aPesos(centavos.efectivoContado),
         cambio_fijo: aPesos(centavos.cambioFijo),
         posnet: aPesos(centavos.posnet),
-        transferencias: aPesos(centavos.transferencias),
         gastos: gastos.map((g, i) => ({
           detalle: g.detalle.trim(),
           monto: aPesos(gastosCentavos[i]),
@@ -196,7 +199,7 @@ export default function CierreCaja({ sucursales }) {
                 id="cierre-total"
                 label="Total del controlador (Z)"
                 valor={datos.totalControlador}
-                onChange={campo('totalControlador')}
+                onChange={monto('totalControlador')}
               />
               <div className="campo-monto">
                 <label htmlFor="cierre-numero-z">Número de Z (opcional)</label>
@@ -212,27 +215,21 @@ export default function CierreCaja({ sucursales }) {
                 id="cierre-efectivo"
                 label="Efectivo contado en la caja"
                 valor={datos.efectivoContado}
-                onChange={campo('efectivoContado')}
+                onChange={monto('efectivoContado')}
                 ayuda="Toda la plata de la caja, cambio incluido."
               />
               <CampoMonto
                 id="cierre-cambio"
                 label="Cambio fijo que queda"
                 valor={datos.cambioFijo}
-                onChange={campo('cambioFijo')}
+                onChange={monto('cambioFijo')}
                 ayuda={hoy.cambio_sugerido === null ? undefined : 'Sugerido: el del último cierre.'}
               />
               <CampoMonto
                 id="cierre-posnet"
-                label="Posnet (débito y crédito)"
+                label="Posnet (débito, crédito y QR)"
                 valor={datos.posnet}
-                onChange={campo('posnet')}
-              />
-              <CampoMonto
-                id="cierre-transferencias"
-                label="QR y transferencias"
-                valor={datos.transferencias}
-                onChange={campo('transferencias')}
+                onChange={monto('posnet')}
               />
             </div>
 

@@ -32,7 +32,10 @@ export const aPesos = (centavos) => {
  * @param {string} texto
  */
 export const leerMonto = (texto) => {
-  let limpio = String(texto ?? '').replace(/[\s$]/g, '');
+  // Una coma al final es alguien que está por escribir los decimales.
+  let limpio = String(texto ?? '')
+    .replace(/[\s$]/g, '')
+    .replace(/,$/, '');
   if (limpio === '') return 0;
   if (limpio.includes(',')) {
     // Con coma decimal, los puntos son separadores de miles.
@@ -42,6 +45,26 @@ export const leerMonto = (texto) => {
     limpio = limpio.replace(/\./g, '');
   }
   return aCentavos(limpio);
+};
+
+/**
+ * Da formato a un monto mientras se escribe: puntos de miles y coma decimal
+ * ("15000,5" → "15.000,5"), para que se note si sobra o falta un cero.
+ * Los puntos que escribe la persona se toman como separadores de miles (el
+ * campo los pone solo); los decimales van con coma y son como mucho dos.
+ * @param {string} texto
+ */
+export const formatearMonto = (texto) => {
+  const limpio = String(texto ?? '').replace(/[^\d,]/g, '');
+  const coma = limpio.indexOf(',');
+  const enteros = (coma === -1 ? limpio : limpio.slice(0, coma)).replace(/^0+(?=\d)/, '');
+  if (coma === -1) return enteros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const decimales = limpio
+    .slice(coma + 1)
+    .replace(/,/g, '')
+    .slice(0, 2);
+  const miles = (enteros || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${miles},${decimales}`;
 };
 
 const formatoPesos = new Intl.NumberFormat('es-AR', {

@@ -1,14 +1,14 @@
 // Piezas que comparten la carga del cierre y la revisión de la dueña.
 import { centavosDe } from '../lib/cierres.js';
-import { leerMonto, mostrarPesos } from '../lib/cuadre.js';
+import { formatearMonto, leerMonto, mostrarPesos } from '../lib/cuadre.js';
 
 /** Texto y color de la diferencia, en palabras de la caja. */
 export function Diferencia({ centavos, aviso }) {
   if (centavos === 0) {
     return (
       <div className="cuadre cuadre-ok" role="status">
-        <strong>Cuadra</strong>
-        <span>Diferencia {mostrarPesos(0)}</span>
+        <strong>Sin diferencia</strong>
+        <span>Coincide con el controlador</span>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export function Diferencia({ centavos, aviso }) {
 /** Etiqueta corta del resultado de un cierre. */
 export function BadgeDiferencia({ diferencia }) {
   const centavos = centavosDe(diferencia);
-  if (centavos === 0) return <span className="badge badge-ok">CUADRA</span>;
+  if (centavos === 0) return <span className="badge badge-ok">SIN DIFERENCIA</span>;
   return (
     <span className="badge badge-warn">
       {centavos < 0 ? 'FALTAN' : 'SOBRAN'} {mostrarPesos(Math.abs(centavos))}
@@ -34,7 +34,10 @@ export function BadgeDiferencia({ diferencia }) {
   );
 }
 
-/** Campo de monto: teclado numérico en el celular y aviso si no se entiende. */
+/**
+ * Campo de monto: teclado numérico en el celular, puntos de miles mientras se
+ * escribe y aviso si no se entiende. `onChange` recibe el texto ya formateado.
+ */
 export function CampoMonto({ id, label, valor, onChange, ayuda }) {
   const invalido = leerMonto(valor) === null;
   return (
@@ -46,7 +49,7 @@ export function CampoMonto({ id, label, valor, onChange, ayuda }) {
         autoComplete="off"
         placeholder="0"
         value={valor}
-        onChange={onChange}
+        onChange={(e) => onChange(formatearMonto(e.target.value))}
         aria-invalid={invalido}
         aria-describedby={ayuda || invalido ? `${id}-ayuda` : undefined}
       />

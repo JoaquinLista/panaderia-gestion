@@ -453,3 +453,11 @@ permiso de caja; cerrar sesión.
 | Permiso `packages: write` sólo en el job de imágenes | Mínimo privilegio: el resto del pipeline sigue sólo con lectura. |
 | Caché de capas de Docker en GitHub Actions (`type=gha`) | La segunda construcción (multi-arch) reusa lo que ya construyó la de escaneo. |
 | Excepción de Trivy para Postgres: CVE-2025-68121 (`.trivyignore-postgres`) | El primer escaneo encontró esa crítica en `gosu`, un programita de la imagen oficial compilado con una versión vieja de Go. La falla es en TLS y `gosu` sólo cambia de usuario al arrancar, no usa la red. No la podemos arreglar nosotros; la excepción vale sólo para Postgres, lleva el motivo escrito y se saca cuando salga una imagen oficial nueva. |
+
+## La Fueguina Stats — Ajustes del cierre de caja después de la prueba del PM
+
+| Decisión | Por qué |
+|----------|---------|
+| Los montos se muestran con puntos de miles y coma decimal mientras se escriben (`15.456,59`) | Pedido del PM: con `15000` es fácil poner un cero de más o de menos. Los puntos los pone el campo; los decimales van con coma y son dos como máximo. |
+| Un solo campo "Posnet (débito, crédito y QR)" y ya no se piden transferencias | En las sucursales el mismo posnet cobra débito, crédito y QR, y no se reciben transferencias. La API sigue aceptando `transferencias` como opcional (vale 0) y un cierre viejo que las tenga las conserva al corregirlo. |
+| "Sin diferencia" en lugar de "Cuadra" | En la panadería "la cuadra" es donde se produce: la palabra se prestaba a confusión. |
