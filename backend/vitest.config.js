@@ -6,8 +6,11 @@ export default defineConfig({
     include: ['tests/**/*.test.js'],
     // Los tests de integración necesitan un Postgres real: corren con `npm run test:integracion`.
     exclude: ['tests/integracion/**'],
-    // Secreto descartable sólo para los tests: el real entra por el entorno.
-    env: { JWT_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres' },
+    env: {
+      LOG_LEVEL: 'silent',
+      // Secreto descartable sólo para los tests: el real entra por el entorno.
+      JWT_SECRET: 'secreto-de-prueba-de-al-menos-32-caracteres', // gitleaks:allow
+    },
     coverage: {
       provider: 'v8',
       include: ['src/**/*.js'],

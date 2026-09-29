@@ -5,6 +5,7 @@ import pool from './config/db.js';
 import { configAuth } from './config/auth.js';
 import { aplicarMigraciones } from './db/migrar.js';
 import { asegurarAdminInicial } from './services/authService.js';
+import { logger } from './observabilidad/logger.js';
 
 dotenv.config({ quiet: true });
 
@@ -17,11 +18,12 @@ const esperarBaseDeDatos = async (reintentos = 15, esperaMs = 2000) => {
   for (let intento = 1; intento <= reintentos; intento += 1) {
     try {
       await pool.query('SELECT 1');
-      console.log('[db] Conexión establecida.');
+      logger.info('Conexión con Postgres establecida');
       return;
     } catch (error) {
-      console.warn(
-        `[db] Intento ${intento}/${reintentos} fallido (${error.message}). Reintentando en ${esperaMs} ms...`
+      logger.warn(
+        { intento, reintentos, error: error.message },
+        `Postgres no responde, reintentando en ${esperaMs} ms`
       );
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
@@ -35,21 +37,21 @@ const iniciar = async () => {
   await esperarBaseDeDatos();
   // El esquema se actualiza antes de aceptar tráfico: si una migración falla,
   // el backend no arranca y el healthcheck lo marca como caído.
-  await aplicarMigraciones();
-  await asegurarAdminInicial();
+  await aplicarMigraciones({ log: (mensaje) => logger.info(mensaje) });
+  await asegurarAdminInicial({ log: (mensaje) => logger.info(mensaje) });
   app.listen(PORT, () => {
-    console.log(`[server] API escuchando en http://0.0.0.0:${PORT}`);
+    logger.info({ puerto: PORT }, 'API escuchando');
   });
 };
 
 iniciar().catch((error) => {
-  console.error('[server] Error fatal durante el arranque:', error);
+  logger.fatal({ err: error }, 'Error fatal durante el arranque');
   process.exit(1);
 });
 
 // ---- Apagado ordenado ----
 const cerrar = async (signal) => {
-  console.log(`[server] Señal ${signal} recibida. Cerrando pool de conexiones...`);
+  logger.info({ signal }, 'Apagando: cierro las conexiones con Postgres');
   try {
     await pool.end();
   } finally {

@@ -214,6 +214,19 @@ jobs:
           dia=$(curl -fsS -b cookies.txt http://localhost/api/dashboard/dia); echo "$dia"
           grep -q '"total":{"vendido":1000,' <<<"$dia"
 
+          # ---- Observabilidad (Sprint 8, #18) ----
+          # Cada respuesta de la API trae el id del request que genera Nginx.
+          cabeceras=$(curl -fsS -D - -o /dev/null http://localhost/api/health)
+          grep -qiE '^x-request-id: [0-9a-f]{32}' <<<"$cabeceras"
+          # Las métricas se leen directo del backend: el cierre de Estrada de
+          # recién figura como cargado y la API ya tiene tiempos medidos.
+          metricas=$(curl -fsS http://localhost:3000/metrics)
+          grep -q 'lafueguina_cierre_cargado_hoy{sucursal="Estrada",turno="NOCHE"} 1' <<<"$metricas"
+          grep -q 'lafueguina_http_duracion_segundos_count{metodo="POST",ruta="/api/cierres",codigo="201"}' <<<"$metricas"
+          # Desde afuera (Nginx) /metrics no existe: devuelve la pantalla, no las métricas.
+          publica=$(curl -fsS http://localhost/metrics)
+          if grep -q lafueguina_ <<<"$publica"; then echo "/metrics quedó público"; exit 1; fi
+
       # ---- Pruebas end-to-end (Sprint 4, #11) ----
       # Un Chromium del tamaño de un celular usa el sistema recién levantado,
       # como lo haría una persona: login, cierre de caja y revisión de la dueña.

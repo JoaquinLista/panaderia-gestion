@@ -615,3 +615,19 @@ permiso de caja; cerrar sesión.
 | El backend no manda `X-Powered-By` y Nginx no dice su versión | Menos pistas sobre qué software atacar. |
 | La acción de Trivy se fija por el SHA del commit (con la versión en un comentario) | CodeQL lo marcó: una etiqueta de otra organización se puede mover y cambiar el código que corre con nuestros permisos. Dependabot sigue actualizando el SHA. |
 | El límite de intentos de login ya existía (Sprint 2) | No se tocó; la historia lo pedía y ya estaba cubierto con tests. |
+
+## La Fueguina Stats — Sprint 8 · PR 2: logs y métricas (#18)
+
+| Decisión | Por qué |
+|----------|---------|
+| pino + pino-http, una línea JSON por evento | Es el logger más usado en Node y el más rápido. JSON se puede filtrar con `jq` hoy, y mañana lo leen Azure Log Analytics o Grafana Loki sin cambiar nada. |
+| El id del request lo genera Nginx (`$request_id`) y el backend lo devuelve en `X-Request-Id` | Un solo id del navegador a la base. Si viene uno raro (largo o con caracteres extraños) se descarta y se genera otro, para que nadie pueda ensuciar los logs. |
+| No se loguean `/api/health` ni `/metrics` | Los consultan Docker y Prometheus cada pocos segundos: taparían los requests de las personas. |
+| Cookie, `Authorization` y contraseñas se reemplazan por `[oculto]` | Un log nunca tiene que servir para entrar al sistema. |
+| 5xx se loguea como `error`, 4xx como `warn` | Un 4xx es un error del usuario (contraseña mal, falta un dato); un 5xx es nuestro y hay que mirarlo. |
+| prom-client, métricas con prefijo `lafueguina_` | Es la librería oficial de Prometheus para Node. El prefijo evita choques con otras apps en el mismo Prometheus. |
+| La ruta de la métrica reemplaza los números por `:id`; lo que no es una ruta va a `sin_ruta` | Cada valor distinto de una etiqueta es una serie nueva en Prometheus: con los ids crudos crecería sin límite. |
+| "Cierre cargado hoy" se calcula desde la base cada vez que Prometheus pregunta | Un contador en memoria se pierde al reiniciar y no suma bien con dos copias del backend (Azure puede levantar dos). La consulta toca unas 8 filas. |
+| Si la base no responde, la métrica de cierres no aparece (en vez de valer 0) | Un 0 diría "no cargaron el cierre" y dispararía una alerta falsa. |
+| El secreto de prueba de `vitest.config.js` va en `.gitleaksignore` y con `gitleaks:allow` | gitleaks lo marcó al tocar esa línea (prueba de que funciona). No es un secreto real: sólo firma sesiones en los tests. |
+| `/metrics` sin contraseña pero fuera de `/api` | Nginx sólo reenvía `/api/`: desde internet devuelve la pantalla. Prometheus lo lee por la red interna. El smoke test verifica las dos cosas. |
