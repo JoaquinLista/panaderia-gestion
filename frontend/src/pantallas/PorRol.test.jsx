@@ -35,9 +35,12 @@ const abrirComo = (sesion) => {
 
 const pestañas = async () => {
   const nav = await screen.findByRole('navigation', { name: 'Secciones' });
-  return within(nav)
-    .getAllByRole('button')
-    .map((b) => b.textContent);
+  return (
+    within(nav)
+      .getAllByRole('button')
+      // Sin el ícono de adelante, que es decorativo.
+      .map((b) => b.textContent.replace(b.querySelector('.menu-icono').textContent, ''))
+  );
 };
 
 describe('pestañas según el rol', () => {

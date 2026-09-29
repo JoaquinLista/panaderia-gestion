@@ -18,14 +18,14 @@ import TableroPedidos from './pantallas/TableroPedidos.jsx';
 // Los dueños arrancan en el resumen; el resto, en el cierre de caja, que es lo
 // que se usa todos los días (MVP del PRD).
 const TABS = [
-  { id: 'resumen', label: 'Resumen', permiso: 'dashboard:ver' },
-  { id: 'cierre', label: 'Cierre de caja', permiso: 'caja:cerrar' },
-  { id: 'revision', label: 'Revisión de cierres', permiso: 'caja:revisar' },
-  { id: 'caja-central', label: 'Caja central', permiso: 'caja-central:administrar' },
-  { id: 'pedidos', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
-  { id: 'insumos', label: 'Stock e Insumos', permiso: 'insumos:ver' },
-  { id: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
-  { id: 'usuarios', label: 'Usuarios', permiso: 'usuarios:administrar' },
+  { id: 'resumen', icono: '📊', label: 'Resumen', permiso: 'dashboard:ver' },
+  { id: 'cierre', icono: '💵', label: 'Cierre de caja', permiso: 'caja:cerrar' },
+  { id: 'revision', icono: '✅', label: 'Revisión de cierres', permiso: 'caja:revisar' },
+  { id: 'caja-central', icono: '🏦', label: 'Caja central', permiso: 'caja-central:administrar' },
+  { id: 'pedidos', icono: '📦', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
+  { id: 'insumos', icono: '🧺', label: 'Stock e Insumos', permiso: 'insumos:ver' },
+  { id: 'red', icono: '🏪', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
+  { id: 'usuarios', icono: '👥', label: 'Usuarios', permiso: 'usuarios:administrar' },
 ];
 
 const ROL_ETIQUETA = { ADMIN: 'Administración', EMPLEADA: 'Empleada', CHOFER: 'Chofer' };
@@ -72,10 +72,10 @@ function Panel() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="logo">🥐</div>
-        <div>
-          <h1>Red de Panaderías · Gestión Interna</h1>
-          <p>Pedidos entre sucursales · Control de insumos · Mapa operacional</p>
+        <img className="logo" src="/logo-la-fueguina-ancho.png" alt="" width="120" height="77" />
+        <div className="app-titulo">
+          <h1>La Fueguina</h1>
+          <p>Gestión de las panaderías</p>
         </div>
         <UsuarioConectado />
       </header>
@@ -93,7 +93,13 @@ function Panel() {
             aria-label={`Menú · ${actual?.label ?? 'Secciones'}`}
             onClick={() => setMenuAbierto((a) => !a)}
           >
-            <span aria-hidden="true">☰</span> {actual?.label ?? 'Menú'}
+            <span className="menu-hamburguesa" aria-hidden="true">
+              ☰
+            </span>
+            <span>
+              <small>Menú</small>
+              {actual?.label ?? 'Secciones'}
+            </span>
           </button>
           <nav
             id="menu-secciones"
@@ -111,6 +117,9 @@ function Panel() {
                   setMenuAbierto(false);
                 }}
               >
+                <span className="menu-icono" aria-hidden="true">
+                  {t.icono}
+                </span>
                 {t.label}
               </button>
             ))}

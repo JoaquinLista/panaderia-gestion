@@ -49,8 +49,14 @@ export default function PantallaLogin() {
     <main className="login">
       <form className="card login-card" onSubmit={enviar} noValidate>
         <div className="login-marca">
-          <div className="logo">🥐</div>
-          <h1>La Fueguina</h1>
+          <img
+            className="logo-login"
+            src="/logo-la-fueguina.png"
+            alt="La Fueguina"
+            width="160"
+            height="160"
+          />
+          <h1 className="solo-lectores">La Fueguina</h1>
           <p className="subtitle">Ingresá para empezar el turno</p>
         </div>
 

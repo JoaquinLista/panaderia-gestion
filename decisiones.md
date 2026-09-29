@@ -591,3 +591,5 @@ permiso de caja; cerrar sesión.
 | En la compu, las secciones van en una columna fija a la izquierda | Pedido del PM: con las pestañas en fila no se veían todas y había que deslizar. En columna entran todas y el menú acompaña al bajar. |
 | En el celular, un botón "☰" con el nombre de la sección abre la lista | Una columna al costado no entra en el ancho del celular. El botón dice dónde estás y la lista se cierra sola al elegir. |
 | El menú es una `nav` "Secciones" y la sección activa lleva `aria-current` | Los lectores de pantalla anuncian el menú y la sección en la que estás. |
+| Botones del menú grandes (56 px de alto, letra de 1,1 rem), separados, con borde y un ícono cada uno; el activo en el marrón del logo | Pedido del PM: lo usan personas que no están acostumbradas a la compu. Cada sección se ve como un botón distinto y se reconoce por el dibujo. |
+| Logo y colores de La Fueguina (marrón #5a261d y crema) en la cabecera, el login y el ícono de la pestaña | La app pasa a ser de la panadería. Los logos se guardan achicados en `frontend/public` (entre 2 y 44 KB). |
