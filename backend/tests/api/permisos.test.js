@@ -46,6 +46,7 @@ beforeEach(async () => {
   cookies.admin = await entrar({ usuario: 'dueña', password: PASSWORD });
   cookies.empleada = await entrar({ usuario: 'lucia', password: PASSWORD, sucursalId: 3 });
   cookies.chofer = await entrar({ usuario: 'marcos', password: PASSWORD });
+  cookies.empleadaSinCaja = await entrar({ usuario: 'sofia', password: PASSWORD, sucursalId: 3 });
   consultasDeNegocio = [];
 });
 
@@ -60,6 +61,8 @@ const RUTAS_PROTEGIDAS = [
   ['post', '/api/usuarios'],
   ['patch', '/api/usuarios/2'],
   ['put', '/api/usuarios/2/password'],
+  ['get', '/api/cierres/hoy'],
+  ['post', '/api/cierres'],
 ];
 
 describe('sin sesión', () => {
@@ -85,6 +88,11 @@ describe('rol incorrecto: 403', () => {
     ['chofer', 'post', '/api/pedidos'],
     ['chofer', 'get', '/api/usuarios'],
     ['chofer', 'patch', '/api/usuarios/3'],
+    ['chofer', 'get', '/api/cierres/hoy'],
+    ['chofer', 'post', '/api/cierres'],
+    // Cerrar caja es un permiso que la dueña da a cada empleada.
+    ['empleadaSinCaja', 'get', '/api/cierres/hoy'],
+    ['empleadaSinCaja', 'post', '/api/cierres'],
   ])('%s: %s %s', async (quien, metodo, ruta) => {
     const res = await request(app)[metodo](ruta).set('Cookie', cookies[quien]).send({});
     expect(res.status).toBe(403);
@@ -97,6 +105,7 @@ describe('rol incorrecto: 403', () => {
     ['chofer', 'get', '/api/insumos'],
     ['chofer', 'get', '/api/pedidos'],
     ['empleada', 'get', '/api/productos'],
+    ['empleada', 'get', '/api/cierres/hoy'],
   ])('%s sí puede %s %s', async (quien, metodo, ruta) => {
     const res = await request(app)[metodo](ruta).set('Cookie', cookies[quien]);
     expect(res.status).toBe(200);

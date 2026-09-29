@@ -72,6 +72,7 @@ describe('migraciones sobre una base vacía', () => {
       '0002_datos-iniciales',
       '0003_usuarios',
       '0004_sesiones-desde',
+      '0005_cierres-caja',
     ]);
     expect(await nombresSucursales(db)).toEqual(SUCURSALES);
     const { rows } = await db.query('SELECT count(*)::int AS n FROM usuarios');

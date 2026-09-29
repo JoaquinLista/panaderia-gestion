@@ -358,3 +358,28 @@ test de Docker verifica el 401 de las rutas de negocio y que el admin las usa.
 | Pestañas deslizables en el celular | Con 4 pestañas la página se ensanchaba en una pantalla de 390 px. |
 
 La API sigue siendo la que decide: esconder un botón es comodidad, no seguridad.
+
+## La Fueguina Stats — Sprint 3 · PR 1: API del cierre de caja (#8, #9)
+
+Reglas del PM (2026-09-29): dos cierres por día (mediodía y noche), los gastos
+locales se pagan con la plata de la caja, queda un cambio fijo que se deja
+asentado, una diferencia se tolera pero se averigua, y la fecha es siempre hoy
+porque cierran a las 21 h.
+
+| Decisión | Por qué |
+|----------|---------|
+| Migración `0005`: `cierres_caja` y `cierre_gastos`, única por sucursal + fecha + turno | Si dos personas cargan el mismo turno a la vez, la base rechaza el segundo y la API responde 409 con un mensaje claro. |
+| Plata en `NUMERIC(12,2)` y cuenta en centavos enteros (`domain/cuadre.js`) | Con decimales de punto flotante 0,10 + 0,20 no da 0,30: una caja que cuadra podría dar diferencia por un redondeo. Montos con más de dos decimales se rechazan. |
+| Se carga todo el efectivo contado y el cambio fijo aparte | Es como lo hacen hoy: el cambio queda en la caja. La API lo resta y guarda los dos, así la dueña ve cuánto cambio se dejó. `/hoy` sugiere el cambio del último cierre. |
+| La diferencia la calcula y guarda la API | El formulario no puede mandar otra. Guardarla sirve para listar rápido los cierres "a revisar" en el PR 3. |
+| Un cierre con diferencia se guarda, con comentario opcional | El PM la tolera pero la quiere averiguar: la dueña la va a ver marcada (PR 3). |
+| La fecha la pone el servidor en hora de Argentina (`domain/fecha.js`) | En la nube el servidor suele estar en UTC: a las 21 h de Viedma ya sería el día siguiente. La empleada no elige fecha; una fecha vieja la corrige la dueña. |
+| La empleada cierra su sucursal del día; la dueña elige la sucursal; el galpón no tiene caja | Sigue la matriz del Sprint 2 (`caja:cerrar`). |
+| La tabla de correcciones va en el PR 3 | Sólo se usa cuando la dueña edita; así este PR no deja tablas sin código. |
+
+Cómo se prueba: `tests/unit/cuadre.test.js` (los ejemplos del desglose y los
+centavos), `tests/unit/fecha.test.js` (servidor en UTC a las 21 h de Argentina),
+`tests/api/cierres.test.js` (validaciones, sucursal, 409, rollback),
+`tests/api/permisos.test.js` (401 sin sesión, 403 para chofer y empleada sin el
+permiso) y `tests/integracion/cierres.test.js` contra Postgres real. El smoke
+test de Docker carga un cierre y comprueba que un segundo del mismo turno da 409.

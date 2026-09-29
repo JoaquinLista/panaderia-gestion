@@ -8,6 +8,13 @@ const sesion = (id, rol, sucursal = null, puedeCerrarCaja = false) => ({
 
 export const SESION_ADMIN = sesion(1, 'ADMIN');
 export const SESION_EMPLEADA = sesion(2, 'EMPLEADA', { id: 3, nombre: 'Estrada', tipo: 'VENTA' });
+// Empleada a la que la dueña le dio el permiso de cerrar caja.
+export const SESION_EMPLEADA_CAJA = sesion(
+  4,
+  'EMPLEADA',
+  { id: 3, nombre: 'Estrada', tipo: 'VENTA' },
+  true
+);
 export const SESION_CHOFER = sesion(3, 'CHOFER');
 
 /**
