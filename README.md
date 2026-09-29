@@ -152,6 +152,23 @@ Errores del login: `400` si faltan datos o la sucursal no es válida, `401` con 
 mensaje genérico "Usuario o contraseña incorrectos" y `429` después de 5 intentos
 fallidos en un minuto desde la misma IP.
 
+## Variables para la nube
+
+El `docker compose` de la compu no necesita ninguna de estas. Las usa el despliegue en Azure (Sprint 6).
+
+| Variable | Contenedor | Para qué |
+|----------|-----------|----------|
+| `POSTGRES_SSL=true` | backend | Conectar a la base con SSL (Azure lo exige). |
+| `TRUST_PROXY=2` | backend | Cuántos proxies hay adelante, para ver la IP real en el límite de intentos de login. |
+| `APP_VERSION` | los dos | SHA del commit. Lo pone el pipeline al construir la imagen; se ve en `/api/health` y al pie de la pantalla. |
+| `BACKEND_URL` | frontend | Dónde está el backend (por defecto `http://backend:3000`; en Azure `http://127.0.0.1:3000`). |
+| `NGINX_RESOLVER` | frontend | DNS para resolver `BACKEND_URL` (por defecto el de Docker, `127.0.0.11`). |
+
+## Infraestructura en Azure
+
+La app en la nube se describe con Terraform en [`infra/`](infra/README.md): cómo se crea, cómo se conecta
+GitHub con Azure y qué hace el pipeline de infraestructura.
+
 ## Despliegue (staging y producción)
 
 Cada merge a `main` con el CI en verde se despliega solo con el workflow **Desplegar**:

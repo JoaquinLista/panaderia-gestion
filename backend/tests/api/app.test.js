@@ -24,7 +24,15 @@ describe('API', () => {
     db.default.query.mockResolvedValue({ rows: [{ '?column?': 1 }] });
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', db: 'up' });
+    expect(res.body).toMatchObject({ status: 'ok', db: 'up', version: 'local' });
+  });
+
+  it('GET /api/health dice qué versión está corriendo', async () => {
+    vi.stubEnv('APP_VERSION', '0123abc');
+    db.default.query.mockResolvedValue({ rows: [] });
+    const res = await request(app).get('/api/health');
+    vi.unstubAllEnvs();
+    expect(res.body.version).toBe('0123abc');
   });
 
   it('GET /api/health responde 503 cuando la base no contesta', async () => {
