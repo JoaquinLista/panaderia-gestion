@@ -6,6 +6,7 @@ import PantallaLogin from './auth/PantallaLogin.jsx';
 import { apiGet } from './lib/api.js';
 import AdminUsuarios from './pantallas/AdminUsuarios.jsx';
 import CierreCaja from './pantallas/CierreCaja.jsx';
+import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
@@ -14,6 +15,7 @@ import TableroPedidos from './pantallas/TableroPedidos.jsx';
 // El cierre de caja va primero: es lo que se usa todos los días (MVP del PRD).
 const TABS = [
   { id: 'cierre', label: 'Cierre de caja', permiso: 'caja:cerrar' },
+  { id: 'revision', label: 'Revisión de cierres', permiso: 'caja:revisar' },
   { id: 'pedidos', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
   { id: 'insumos', label: 'Stock e Insumos', permiso: 'insumos:ver' },
   { id: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
@@ -85,6 +87,7 @@ function Panel() {
       </nav>
 
       {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
+      {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
       {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
       {tab === 'insumos' && <GestionInsumos />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}

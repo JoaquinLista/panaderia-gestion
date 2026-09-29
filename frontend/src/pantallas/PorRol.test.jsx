@@ -45,7 +45,14 @@ describe('pestañas según el rol', () => {
     [
       'admin',
       sesionAdmin,
-      ['Cierre de caja', 'Tablero de Pedidos', 'Stock e Insumos', 'Red de Sucursales', 'Usuarios'],
+      [
+        'Cierre de caja',
+        'Revisión de cierres',
+        'Tablero de Pedidos',
+        'Stock e Insumos',
+        'Red de Sucursales',
+        'Usuarios',
+      ],
     ],
     ['empleada', sesionEmpleada, ['Tablero de Pedidos', 'Red de Sucursales']],
     ['chofer', sesionChofer, ['Tablero de Pedidos', 'Stock e Insumos', 'Red de Sucursales']],

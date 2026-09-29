@@ -155,3 +155,124 @@ describe('cierre de caja contra Postgres', () => {
     ).rejects.toThrow(/check/i);
   });
 });
+
+describe('revisión de la dueña contra Postgres', () => {
+  const cierreNoche = async () => {
+    const { rows } = await pool.query(
+      `SELECT id FROM cierres_caja WHERE sucursal_id = $1 AND turno = 'NOCHE'`,
+      [estrada]
+    );
+    return rows[0].id;
+  };
+
+  it('la empleada no puede ver la lista ni corregir', async () => {
+    const id = await cierreNoche();
+    expect((await request(app).get('/api/cierres').set('Cookie', cookieLucia)).status).toBe(403);
+    const res = await request(app)
+      .put(`/api/cierres/${id}`)
+      .set('Cookie', cookieLucia)
+      .send({ total_controlador: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it('lista los cierres a revisar: sólo los que tienen diferencia', async () => {
+    const res = await request(app).get('/api/cierres?a_revisar=true').set('Cookie', cookieDueña);
+    expect(res.status).toBe(200);
+    expect(res.body.map((c) => [c.sucursal_nombre, c.turno])).toEqual([['Estrada', 'NOCHE']]);
+    expect(res.body[0].a_revisar).toBe(true);
+  });
+
+  it('filtra por sucursal y fechas', async () => {
+    const { rows } = await pool.query(
+      `SELECT to_char(fecha, 'YYYY-MM-DD') AS f FROM cierres_caja LIMIT 1`
+    );
+    const hoy = rows[0].f;
+    const todos = await request(app)
+      .get(`/api/cierres?desde=${hoy}&hasta=${hoy}`)
+      .set('Cookie', cookieDueña);
+    expect(todos.body).toHaveLength(3);
+    const deEstrada = await request(app)
+      .get(`/api/cierres?sucursal_id=${estrada}`)
+      .set('Cookie', cookieDueña);
+    expect(deEstrada.body).toHaveLength(2);
+    const ayer = await request(app).get('/api/cierres?hasta=2000-01-01').set('Cookie', cookieDueña);
+    expect(ayer.body).toEqual([]);
+  });
+
+  it('pendientes: qué sucursal no cargó qué turno de hoy, sin el galpón', async () => {
+    const res = await request(app).get('/api/cierres/pendientes').set('Cookie', cookieDueña);
+    const porNombre = Object.fromEntries(
+      res.body.sucursales.map((s) => [s.nombre, s.turnos_pendientes])
+    );
+    expect(porNombre).toEqual({
+      Café: ['MEDIODIA'],
+      Estrada: [],
+      Patagonia: ['MEDIODIA', 'NOCHE'],
+      'Viedma (Chacra)': ['MEDIODIA', 'NOCHE'],
+    });
+  });
+
+  it('corregir recalcula la diferencia y guarda cada cambio con el valor anterior', async () => {
+    const id = await cierreNoche();
+    const res = await request(app)
+      .put(`/api/cierres/${id}`)
+      .set('Cookie', cookieDueña)
+      .send({ total_controlador: '203350.01', comentario: 'Mal tipeada la Z', gastos: [] });
+    expect(res.status).toBe(200);
+    expect(res.body.diferencia).toBe(-0.01);
+    expect(res.body.gastos).toEqual([]);
+    const porCampo = Object.fromEntries(
+      res.body.correcciones.map((k) => [
+        k.campo,
+        [k.valor_anterior, k.valor_nuevo, k.usuario_nombre],
+      ])
+    );
+    expect(porCampo).toEqual({
+      total_controlador: ['205350.00', '203350.01', 'Administración'],
+      comentario: [null, 'Mal tipeada la Z', 'Administración'],
+      gastos: ['Bolsas 0.01', 'sin gastos', 'Administración'],
+    });
+  });
+
+  it('sin cambios responde 400 y no registra nada', async () => {
+    const id = await cierreNoche();
+    const res = await request(app)
+      .put(`/api/cierres/${id}`)
+      .set('Cookie', cookieDueña)
+      .send({ total_controlador: 203350.01 });
+    expect(res.status).toBe(400);
+    const { rows } = await pool.query('SELECT count(*)::int AS n FROM cierre_correcciones');
+    expect(rows[0].n).toBe(3);
+  });
+
+  it('mover un cierre a un turno que ya existe da 409', async () => {
+    const id = await cierreNoche();
+    const res = await request(app)
+      .put(`/api/cierres/${id}`)
+      .set('Cookie', cookieDueña)
+      .send({ turno: 'MEDIODIA' });
+    expect(res.status).toBe(409);
+  });
+
+  it('marcar revisado lo saca de "a revisar" y se puede deshacer', async () => {
+    const id = await cierreNoche();
+    const marcado = await request(app)
+      .put(`/api/cierres/${id}/revisado`)
+      .set('Cookie', cookieDueña)
+      .send({ revisado: true });
+    expect(marcado.body).toMatchObject({ a_revisar: false, revisado_por_nombre: 'Administración' });
+    const lista = await request(app).get('/api/cierres?a_revisar=true').set('Cookie', cookieDueña);
+    expect(lista.body).toEqual([]);
+
+    const desmarcado = await request(app)
+      .put(`/api/cierres/${id}/revisado`)
+      .set('Cookie', cookieDueña)
+      .send({ revisado: false });
+    expect(desmarcado.body).toMatchObject({ a_revisar: true, revisado_en: null });
+  });
+
+  it('un cierre que no existe da 404', async () => {
+    const res = await request(app).get('/api/cierres/99999').set('Cookie', cookieDueña);
+    expect(res.status).toBe(404);
+  });
+});

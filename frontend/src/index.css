@@ -669,3 +669,17 @@ label.check input {
   margin: 4px 0 0;
   font-size: 0.82rem;
 }
+
+.cierre-caja h3 {
+  font-size: 1rem;
+  margin: 20px 0 8px;
+}
+
+.lista-cierres .badge-danger {
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.boton-revisado {
+  margin-bottom: 16px;
+}

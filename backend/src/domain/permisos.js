@@ -18,6 +18,8 @@ export const ACCIONES = Object.freeze({
   CREAR_PEDIDO: 'pedidos:crear',
   CAMBIAR_ESTADO_PEDIDO: 'pedidos:cambiar-estado',
   CERRAR_CAJA: 'caja:cerrar',
+  // Ver todos los cierres, corregirlos y marcarlos revisados: sólo la dueña o un socio.
+  REVISAR_CAJA: 'caja:revisar',
   ADMINISTRAR_USUARIOS: 'usuarios:administrar',
 });
 

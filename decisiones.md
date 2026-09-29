@@ -401,3 +401,23 @@ Tests: `src/lib/cuadre.test.js` (cuenta y lectura de montos) y
 `src/pantallas/CierreCaja.test.jsx` (cuadra, faltan, sobran, montos inválidos,
 gastos, 409, turnos ya cerrados, la dueña eligiendo sucursal). Los tests de
 pedidos abren su pestaña, porque la dueña ahora entra al cierre de caja.
+
+## La Fueguina Stats — Sprint 3 · PR 3: la dueña revisa y corrige cierres (#10)
+
+| Decisión | Por qué |
+|----------|---------|
+| Permiso nuevo `caja:revisar`, sólo admin | La empleada que carga un cierre no puede editarlo después de enviarlo (#10). Cargar y revisar son permisos distintos. |
+| Migración `0006`: `revisado_por` y `revisado_en` en el cierre, tabla `cierre_correcciones` | "A revisar" = tiene diferencia y nadie lo marcó revisado. Cada corrección guarda quién, cuándo, el valor anterior y el nuevo. |
+| Corregir recalcula la diferencia en el servidor | Si la dueña agrega un gasto que faltaba, el cierre puede pasar a cuadrar solo. |
+| Sólo se registran los campos que cambiaron; sin cambios responde 400 | El historial muestra lo que pasó de verdad, sin ruido. |
+| La corrección se hace en una transacción con `SELECT … FOR UPDATE` | Si dos socios corrigen a la vez, el segundo espera y compara contra el valor ya corregido. |
+| Mover un cierre a una fecha y turno que ya existen da 409 | La restricción única de la base sigue valiendo para las correcciones. |
+| `GET /api/cierres/pendientes` por turno | La dueña ve de un vistazo qué sucursal no cerró el mediodía o la noche. El galpón no aparece. |
+| Los filtros de la lista van como parámetros de SQL, nunca pegados al texto | Evita inyección SQL. Máximo 200 filas por consulta. |
+| Pantalla "Revisión de cierres" con lista, filtros, detalle, historial y "Marcar revisado" | Pensada para el celular, con los mismos campos y la misma diferencia en vivo que el formulario de carga. |
+
+Tests: `tests/api/revisionCierres.test.js` (validaciones y errores),
+`tests/api/permisos.test.js` (403 para empleada y chofer en todas las rutas de
+revisión), `tests/integracion/cierres.test.js` (lista, pendientes, corrección con
+historial, 409 y revisado contra Postgres real) y
+`frontend/src/pantallas/RevisionCierres.test.jsx`.
