@@ -77,6 +77,12 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/cierres/pendientes` | Qué sucursales todavía no cargaron cada turno de hoy (sólo admin) |
 | GET | `/api/cierres/:id` | Un cierre con su historial de correcciones (sólo admin) |
 | PUT | `/api/cierres/:id` | La dueña corrige fecha, turno, montos, gastos o comentario; cada cambio queda registrado (sólo admin) |
+| GET | `/api/caja-central/resumen` | Saldo de la caja central y del banco al final del día, lo que entró de cada sucursal y lo que se movió (`?fecha=AAAA-MM-DD`, hoy si no viene; sólo admin) |
+| GET | `/api/caja-central/movimientos` | Movimientos con el saldo después de cada uno. Filtros: `desde`, `hasta` (por defecto, el mes en curso), `cuenta`, `tipo`, `categoria_id`, `dueno_id` (sólo admin) |
+| POST | `/api/caja-central/movimientos` | Carga un depósito, pago, retiro de un dueño, ajuste o saldo inicial (sólo admin) |
+| DELETE | `/api/caja-central/movimientos/:id` | Anula un movimiento mal cargado: deja de contar pero queda registrado (sólo admin) |
+| GET | `/api/caja-central/mensual` | Totales del mes por sucursal, por dueño y por categoría (`?mes=AAAA-MM`; sólo admin) |
+| GET | `/api/caja-central/duenos` | Dueños que pueden retirar plata (sólo admin) |
 | PUT | `/api/cierres/:id/revisado` | `{ revisado: true \| false }`: saca o vuelve a poner el cierre en "a revisar" (sólo admin) |
 
 **Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de
@@ -120,6 +126,25 @@ Argentina) y la sucursal sale de la sesión: la empleada cierra su sucursal del 
 y la dueña manda `sucursal_id`. La API calcula
 `diferencia = (efectivo_contado − cambio_fijo) + debito + credito + qr + transferencias + gastos − total_controlador`
 (negativa: falta plata). Un cierre con diferencia se guarda igual.
+
+Caja central (`POST /api/caja-central/movimientos`, permiso `caja-central:administrar`):
+
+```json
+{ "tipo": "PAGO", "cuenta": "BANCO", "monto": 300000, "categoria_id": 6, "concepto": "Harina", "fecha": "2026-09-29" }
+```
+
+| `tipo` | Qué hace | Pide además |
+|--------|----------|-------------|
+| `SALDO_INICIAL` | Con cuánto arranca la cuenta (uno por cuenta) | `cuenta` |
+| `DEPOSITO` | Pasa plata de la caja central al banco | nada: siempre sale de `CAJA` |
+| `PAGO` | Sale de la cuenta | `cuenta`, `categoria_id` y `concepto` |
+| `RETIRO_DUENO` | Un dueño se lleva plata | `cuenta` y `dueno_id` |
+| `AJUSTE` | Diferencia de un arqueo; negativo si falta plata | `cuenta` y `concepto` |
+
+`cuenta` es `CAJA` (caja central, efectivo) o `BANCO` (Banco Patagonia). La fecha es
+opcional (hoy), no puede ser futura ni anterior al saldo inicial. Lo que entra de
+cada sucursal no se carga: es el efectivo contado menos el cambio fijo de cada
+cierre, y aparece en los movimientos como `RETIRO_SUCURSAL`.
 
 Errores del login: `400` si faltan datos o la sucursal no es válida, `401` con el
 mensaje genérico "Usuario o contraseña incorrectos" y `429` después de 5 intentos
