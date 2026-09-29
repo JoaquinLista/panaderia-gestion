@@ -497,3 +497,15 @@ permiso de caja; cerrar sesión.
 | Anular pide confirmación en la misma fila | Evita anular con un toque sin querer. Las entradas de las sucursales no se anulan acá: se corrigen en el cierre. |
 | Los montos llevan signo y color (verde entra, rojo sale) y cada fila muestra el saldo de la caja después | Es la columna del saldo de la planilla "Retiros", que es lo que la dueña ya sabe leer. |
 
+## La Fueguina Stats — Sprint 5 · PR 4: descargar en Excel
+
+| Decisión | Por qué |
+|----------|---------|
+| Dos planillas con las columnas que ya usan: "Retiros" (caja central del mes, con una hoja de resumen) y "Egresos de caja" (un renglón por cierre, una columna por categoría) | La familia sigue teniendo su Excel, pero armado solo, sin copiar a mano y sin `#REF!`. |
+| El archivo lo arma la API con la librería `exceljs` | Es la librería más usada en Node para escribir `.xlsx` de verdad (fechas, formato de pesos, encabezado fijo). Un CSV perdería el formato y las hojas. |
+| `uuid` forzado a la 11.1.1 con `overrides` | `exceljs` trae una versión de `uuid` con un aviso de seguridad moderado. La 11 es compatible y deja `npm audit` en cero. |
+| Los montos van como números con formato `#,##0.00`, no como texto | Así se pueden sumar, filtrar y hacer gráficos en Excel o Google Sheets. |
+| Los totales se calculan en centavos y se escriben como valor, no como fórmula | Se ven igual en Excel, LibreOffice y Google Sheets, y el test puede comprobarlos abriendo el archivo. |
+| El Excel de cierres usa los filtros de la revisión (sucursal y fechas), pero no "a revisar" | El Excel es el registro completo del período. "A revisar" es sólo para trabajar la lista. |
+| Sin límite de filas en el Excel de cierres | La lista en pantalla muestra hasta 200 cierres; un mes de cuatro sucursales pasa de 240. |
+

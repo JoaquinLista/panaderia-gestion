@@ -322,8 +322,9 @@ const MAXIMO_LISTA = 200;
  * Cierres filtrados por sucursal, rango de fechas y "a revisar", del más
  * nuevo al más viejo. Sin filtros, los de los últimos días (hasta 200).
  * @param {{ sucursal_id?: string, desde?: string, hasta?: string, a_revisar?: string }} filtros
+ * @param {{ limite?: number | null }} [opciones] null: todos (para el Excel)
  */
-export const listarCierres = async (filtros = {}) => {
+export const listarCierres = async (filtros = {}, { limite = MAXIMO_LISTA } = {}) => {
   const condiciones = [];
   const params = [];
   const agregar = (sql, valor) => {
@@ -345,7 +346,7 @@ export const listarCierres = async (filtros = {}) => {
 
   const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
   const { rows } = await query(
-    `${CIERRE_SELECT} ${where} ORDER BY c.fecha DESC, c.turno DESC, s.nombre ASC LIMIT ${MAXIMO_LISTA}`,
+    `${CIERRE_SELECT} ${where} ORDER BY c.fecha DESC, c.turno DESC, s.nombre ASC${limite ? ` LIMIT ${Number(limite)}` : ''}`,
     params
   );
   return adjuntarGastos(rows);

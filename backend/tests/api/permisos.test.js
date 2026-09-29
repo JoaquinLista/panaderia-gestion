@@ -110,6 +110,8 @@ describe('rol incorrecto: 403', () => {
     ['empleada', 'post', '/api/caja-central/movimientos'],
     ['chofer', 'get', '/api/caja-central/movimientos'],
     ['chofer', 'delete', '/api/caja-central/movimientos/1'],
+    ['empleada', 'get', '/api/caja-central/excel'],
+    ['empleada', 'get', '/api/cierres/excel'],
   ])('%s: %s %s', async (quien, metodo, ruta) => {
     const res = await request(app)[metodo](ruta).set('Cookie', cookies[quien]).send({});
     expect(res.status).toBe(403);

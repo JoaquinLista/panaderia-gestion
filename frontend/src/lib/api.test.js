@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { apiGet, apiPost, EVENTO_SESION_VENCIDA } from './api.js';
+import { apiDescargar, apiGet, apiPost, EVENTO_SESION_VENCIDA } from './api.js';
 
 const respuesta = (status, body) =>
   Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) });
@@ -51,5 +51,59 @@ describe('sesión vencida', () => {
     await expect(apiGet('/pedidos')).rejects.toThrow();
     expect(escuchar).not.toHaveBeenCalled();
     window.removeEventListener(EVENTO_SESION_VENCIDA, escuchar);
+  });
+});
+
+describe('descargas', () => {
+  const archivo = (status, headers = {}) =>
+    Promise.resolve({
+      ok: status < 400,
+      status,
+      headers: new Headers(headers),
+      blob: () => Promise.resolve(new Blob(['xlsx'])),
+      json: () => Promise.resolve({ error: 'No hay nada' }),
+    });
+
+  const espiarEnlace = () => {
+    URL.createObjectURL = vi.fn(() => 'blob:planilla');
+    URL.revokeObjectURL = vi.fn();
+    return vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+      espiarEnlace.ultimo = { href: this.href, download: this.download };
+    });
+  };
+
+  it('guarda el archivo con el nombre que manda el servidor', async () => {
+    const click = espiarEnlace();
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(
+      archivo(200, { 'Content-Disposition': 'attachment; filename="caja-central-2026-09.xlsx"' })
+    );
+    await apiDescargar('/caja-central/excel?mes=2026-09', 'otro.xlsx');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(espiarEnlace.ultimo).toEqual({
+      href: 'blob:planilla',
+      download: 'caja-central-2026-09.xlsx',
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:planilla');
+  });
+
+  it('sin nombre del servidor usa el propio', async () => {
+    espiarEnlace();
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(archivo(200));
+    await apiDescargar('/cierres/excel', 'egresos.xlsx');
+    expect(espiarEnlace.ultimo.download).toBe('egresos.xlsx');
+  });
+
+  it('si falla muestra el error del backend', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(archivo(400));
+    await expect(apiDescargar('/cierres/excel', 'x.xlsx')).rejects.toThrow('No hay nada');
+  });
+
+  it('sin mensaje del backend arma uno genérico', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(
+      Promise.resolve({ ok: false, status: 500, json: () => Promise.reject(new Error('no json')) })
+    );
+    await expect(apiDescargar('/cierres/excel', 'x.xlsx')).rejects.toThrow(
+      'Error 500 al descargar /cierres/excel'
+    );
   });
 });

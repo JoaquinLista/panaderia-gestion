@@ -15,7 +15,13 @@ export function apiFalsa(rutas) {
     const [status, respuesta] = handler
       ? handler(body)
       : [404, { error: `Sin ruta ${metodo} ${url}` }];
-    return { ok: status < 400, status, json: async () => respuesta };
+    return {
+      ok: status < 400,
+      status,
+      headers: new Headers(),
+      json: async () => respuesta,
+      blob: async () => new Blob([JSON.stringify(respuesta)]),
+    };
   });
 }
 

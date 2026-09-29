@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { apiGet, apiSend } from '../lib/api.js';
+import { apiDescargar, apiGet, apiSend } from '../lib/api.js';
 import {
   aCampo,
   centavosDe,
@@ -359,6 +359,18 @@ export default function RevisionCierres({ sucursales }) {
     cargar();
   }, [cargar]);
 
+  // El Excel sale con la sucursal y las fechas elegidas (sin fechas, el mes en curso).
+  const descargar = async () => {
+    const query = new URLSearchParams(
+      Object.entries(filtros).filter(([k, v]) => k !== 'a_revisar' && v !== '')
+    ).toString();
+    try {
+      await apiDescargar(`/cierres/excel${query ? `?${query}` : ''}`, 'egresos-de-caja.xlsx');
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   const filtro = (nombre) => (e) =>
     setFiltros((prev) => ({
       ...prev,
@@ -409,6 +421,9 @@ export default function RevisionCierres({ sucursales }) {
             <input type="checkbox" checked={filtros.a_revisar} onChange={filtro('a_revisar')} />
             Sólo los que hay que revisar
           </label>
+          <button type="button" className="boton-excel" onClick={descargar}>
+            Descargar Excel
+          </button>
         </form>
 
         {error && (
