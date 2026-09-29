@@ -21,7 +21,7 @@ vi.stubEnv('POSTGRES_USER', decodeURIComponent(url.username));
 vi.stubEnv('POSTGRES_PASSWORD', decodeURIComponent(url.password));
 vi.stubEnv('POSTGRES_DB', BASE);
 
-vi.stubEnv('JWT_SECRET', 'secreto-de-integracion-de-al-menos-32-caracteres');
+vi.stubEnv('JWT_SECRET', 'secreto-de-integracion-de-al-menos-32-caracteres'); // gitleaks:allow
 vi.stubEnv('GITHUB_TOKEN_REPORTES', '');
 
 let app;
