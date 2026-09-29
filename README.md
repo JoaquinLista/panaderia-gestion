@@ -256,6 +256,31 @@ navegador bloquea algo.
 Si gitleaks marca algo que no es un secreto (un valor de prueba), se agrega el
 comentario `gitleaks:allow` al final de esa línea.
 
+## Observabilidad
+
+**Logs.** El backend escribe una línea JSON por evento (con [pino](https://getpino.io)):
+hora, nivel, mensaje y, en cada request, método, ruta, código, duración y el id
+del request. Nginx genera ese id y la API lo devuelve en la cabecera `X-Request-Id`:
+si alguien reporta un error, con el id se encuentra su línea. La cookie de sesión
+y las contraseñas nunca se escriben. El nivel se cambia con `LOG_LEVEL`
+(`info` por defecto; `debug`, `warn`, `error` o `silent`).
+
+```bash
+docker compose logs backend --no-log-prefix | jq 'select(.level >= 40)'   # sólo avisos y errores
+```
+
+**Métricas.** `GET http://localhost:3000/metrics`, en el formato de Prometheus:
+
+| Métrica | Qué mide |
+|---------|----------|
+| `lafueguina_http_duracion_segundos` | Tiempo de respuesta de la API por método, ruta (`/api/cierres/:id`) y código |
+| `lafueguina_http_errores_total` | Respuestas 5xx |
+| `lafueguina_cierre_cargado_hoy` | 1 si el cierre de hoy de esa sucursal y turno está cargado, 0 si falta (KPI 1) |
+| `lafueguina_process_*`, `lafueguina_nodejs_*` | Memoria, CPU y event loop del backend |
+
+`/metrics` está fuera de `/api` a propósito: Nginx no lo reenvía, así que desde
+internet no se ve.
+
 ## Base de datos y migraciones
 
 El esquema vive en `backend/migrations/` como archivos SQL numerados

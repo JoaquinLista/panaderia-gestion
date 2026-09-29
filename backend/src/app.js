@@ -16,6 +16,8 @@ import cierresRoutes from './routes/cierresRoutes.js';
 import cajaCentralRoutes from './routes/cajaCentralRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import { requerirSesion } from './middlewares/autenticacion.js';
+import { exponerMetricas, medirRequests } from './observabilidad/metricas.js';
+import { registroHttp } from './observabilidad/registroHttp.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
 import insumosRoutes from './routes/insumosRoutes.js';
 import pedidosRoutes from './routes/pedidosRoutes.js';
@@ -31,6 +33,10 @@ app.set('trust proxy', confianzaEnProxy(process.env));
 app.disable('x-powered-by');
 
 // ---- Middlewares globales ----
+// Primero el log y la medición, para que cuenten también los requests que
+// terminan en un error de los middlewares siguientes.
+app.use(registroHttp());
+app.use(medirRequests);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -55,6 +61,11 @@ app.get('/api/health', async (req, res) => {
     });
   }
 });
+
+// ---- Métricas para Prometheus ----
+// Fuera de /api a propósito: Nginx sólo reenvía /api/, así que desde internet
+// no se ven. Prometheus las lee directo del backend, por la red interna.
+app.get('/metrics', exponerMetricas);
 
 // ---- Sesión ----
 app.use('/api/auth', authRoutes);
@@ -82,7 +93,8 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   const status = err.status ?? 500;
   if (status >= 500) {
-    console.error('[error]', err);
+    // Queda en el log con el id del request, que el usuario ve en la respuesta.
+    req.log.error({ err }, 'Error no controlado');
   }
   res.status(status).json({
     error: err.message ?? 'Error interno del servidor',

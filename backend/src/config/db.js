@@ -2,6 +2,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 
 import { opcionesPostgres } from './servidor.js';
+import { logger } from '../observabilidad/logger.js';
 
 dotenv.config({ quiet: true });
 
@@ -13,7 +14,7 @@ const pool = new pg.Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('[db] Error inesperado en cliente inactivo del pool:', err);
+  logger.error({ err }, 'Error inesperado en una conexión inactiva de Postgres');
 });
 
 /**
