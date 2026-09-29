@@ -169,6 +169,26 @@ El `docker compose` de la compu no necesita ninguna de estas. Las usa el desplie
 La app en la nube se describe con Terraform en [`infra/`](infra/README.md): cómo se crea, cómo se conecta
 GitHub con Azure y qué hace el pipeline de infraestructura.
 
+## Despliegue (staging y producción)
+
+Cada merge a `main` con el CI en verde se despliega solo con el workflow **Desplegar**:
+
+1. **Staging:** la versión nueva arranca al lado de la actual, sin tráfico, en su propia dirección
+   (`https://lafueguina-staging---verde…`). Se espera que `/api/health` conteste con el SHA del commit,
+   se corren las pruebas de sesión de Playwright contra ella y recién ahí recibe todo el tráfico.
+2. **Producción:** GitHub pide la aprobación del ambiente `produccion` (*Actions → Desplegar → Review deployments*).
+   Se despliegan exactamente las mismas imágenes, con el mismo cambio de versión vieja a nueva.
+
+Si algo falla antes de pasar el tráfico, nadie se entera: sigue andando la versión anterior.
+
+**Volver atrás:** *Actions → Volver a la versión anterior → Run workflow* y elegir el ambiente. La versión
+anterior sigue prendida, así que el cambio tarda segundos. Correrlo otra vez deshace la vuelta atrás.
+
+**Desplegar una versión puntual:** *Actions → Desplegar → Run workflow* con el SHA completo del commit.
+
+La lógica está en `infra/scripts/blue-green.sh` y se prueba sin Azure con
+`bash infra/scripts/pruebas/blue-green.test.sh`.
+
 ## Desarrollo fuera de Docker
 
 ```bash

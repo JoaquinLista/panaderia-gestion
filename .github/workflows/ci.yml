@@ -117,6 +117,20 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
 
+  despliegue:
+    name: Scripts de despliegue · shellcheck y pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # shellcheck ya viene instalado en los runners de GitHub.
+      - name: shellcheck
+        run: shellcheck infra/scripts/*.sh infra/scripts/pruebas/*.sh infra/scripts/pruebas/az infra/scripts/pruebas/curl
+
+      # blue-green.sh con un `az` de mentira: prepara, pasa el tráfico y vuelve atrás.
+      - name: Pruebas del blue-green
+        run: bash infra/scripts/pruebas/blue-green.test.sh
+
   docker:
     name: Docker · build y smoke test
     needs: [test, migraciones]

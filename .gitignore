@@ -25,3 +25,8 @@ coverage/
 # Reportes de Playwright (e2e)
 playwright-report/
 test-results/
+
+# Terraform (carpeta infra/)
+.terraform/
+*.tfstate
+*.tfstate.*
