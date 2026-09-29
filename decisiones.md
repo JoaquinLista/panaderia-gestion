@@ -509,3 +509,19 @@ permiso de caja; cerrar sesión.
 | El Excel de cierres usa los filtros de la revisión (sucursal y fechas), pero no "a revisar" | El Excel es el registro completo del período. "A revisar" es sólo para trabajar la lista. |
 | Sin límite de filas en el Excel de cierres | La lista en pantalla muestra hasta 200 cierres; un mes de cuatro sucursales pasa de 240. |
 
+
+## La Fueguina Stats — Sprint 6 · PR 3: despliegue continuo blue-green (#14)
+
+| Decisión | Por qué |
+|----------|---------|
+| Blue-green con las revisiones de Container Apps y tres etiquetas: `actual`, `anterior` y `verde` | La versión nueva (verde) arranca con 0 % del tráfico y su propia dirección. Se prueba ahí y el cambio es de golpe: nunca hay un rato con las dos mezcladas. La anterior queda prendida para volver en segundos. |
+| El despliegue arranca cuando termina el CI en verde sobre `main` (`workflow_run`) | Las imágenes con el SHA las publica el CI: antes no hay nada para desplegar. Los PRs no despliegan. |
+| La versión nueva tiene que contestar `/api/health` con su SHA antes de recibir tráfico | Así se sabe que arrancó, que aplicó las migraciones y que se conecta a la base, y que es de verdad la versión nueva y no la vieja. |
+| En staging se corren sólo las pruebas e2e de sesión | La base de staging no se borra entre despliegues y las pruebas de cierre y caja central esperan una base vacía; esas ya corren en el CI con un Postgres nuevo. |
+| En producción no se corren e2e: sólo health y que cargue la pantalla | Las pruebas crean usuarios y cierres: no se ensucian los datos reales. |
+| Producción despliega el mismo SHA que pasó staging | Lo que se aprueba es exactamente lo que se probó. |
+| Volver atrás es un workflow manual que intercambia `actual` y `anterior` | Es el caso de "algo anda mal y hay que salir ya": un botón, sin tocar la base ni reconstruir nada. En producción también pide aprobación. |
+| Las migraciones sólo agregan (columnas, tablas), nunca borran ni renombran en el mismo despliegue | La versión nueva migra la base antes de recibir tráfico, y la vieja sigue usándola. Si hay que volver atrás, la vieja tiene que poder andar con la base nueva. Un borrado se hace en dos despliegues: primero se deja de usar, después se borra. |
+| Todo va por la API de Azure con JSON Merge Patch (`az rest`) | Se cambian sólo las imágenes o el tráfico: los secretos y la configuración que puso Terraform no se tocan. |
+| `blue-green.sh` se prueba en el CI con un `az` de mentira | Las reglas del tráfico (qué etiqueta va dónde, qué pasa si se reintenta, volver atrás dos veces) se prueban en cada PR sin cuenta de Azure. |
+| Se apagan las revisiones más viejas que la anterior | No cobran y siguen guardadas: se pueden volver a prender desde el portal. |

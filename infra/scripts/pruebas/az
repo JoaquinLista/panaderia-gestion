@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# `az` de mentira para probar blue-green.sh sin Azure. Guarda la app en
+# $ESTADO (JSON) y aplica los PATCH como JSON Merge Patch, igual que Azure.
+set -euo pipefail
+echo "az $*" >>"$ESTADO.log"
+if [[ "$1 $2" == "account show" ]]; then echo "sub-prueba"; exit 0; fi
+[[ "$1" == rest ]] || { echo "az de mentira: comando no soportado: $*" >&2; exit 2; }
+shift
+metodo="" url="" cuerpo=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --method) metodo=$2; shift 2 ;;
+    --url) url=$2; shift 2 ;;
+    --body) cuerpo=$2; shift 2 ;;
+    *) shift 2 ;;
+  esac
+done
+ruta=${url%%\?*}
+case "$metodo:$ruta" in
+  get:*/revisions)
+    jq '{value: .revisiones}' "$ESTADO" ;;
+  post:*/deactivate)
+    nombre=$(basename "$(dirname "$ruta")")
+    jq --arg n "$nombre" '.revisiones |= map(if .name == $n then .properties.active = false else . end)' "$ESTADO" >"$ESTADO.tmp" && mv "$ESTADO.tmp" "$ESTADO" ;;
+  get:*)
+    jq 'del(.revisiones)' "$ESTADO" ;;
+  patch:*)
+    [[ -z "${FALLA_PATCH:-}" ]] || { echo "error de mentira" >&2; exit 1; }
+    jq --argjson c "$cuerpo" '
+      . * $c
+      | if $c.properties.template then
+          (.name + "--" + $c.properties.template.revisionSuffix) as $n
+          | .properties.latestRevisionName = $n
+          | .revisiones += [{name: $n, properties: {active: true, template: $c.properties.template}}]
+        else . end' "$ESTADO" >"$ESTADO.tmp" && mv "$ESTADO.tmp" "$ESTADO" ;;
+  *) echo "az de mentira: $metodo $ruta no soportado" >&2; exit 2 ;;
+esac

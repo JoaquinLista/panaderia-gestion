@@ -1,0 +1,184 @@
+# =============================================================
+#  Despliegue continuo (blue-green)
+#
+#  Después de cada CI en verde sobre main (que publicó las imágenes con el SHA):
+#   1. staging: la versión nueva arranca al lado de la actual sin tráfico, se
+#      prueba en su propia dirección (health + e2e) y recién ahí recibe todo.
+#   2. producción: espera la aprobación del ambiente `produccion` y hace lo
+#      mismo con exactamente las mismas imágenes.
+#  Si algo falla antes de pasar el tráfico, las sucursales ni se enteran:
+#  siguen en la versión anterior. Para volver atrás después: volver-atras.yml.
+#
+#  Sin las variables de Azure (ver infra/README.md) no hace nada.
+# =============================================================
+name: Desplegar
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: SHA completo del commit a desplegar (vacío = el último de main)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+# De a un despliegue por vez y sin cortar uno a la mitad.
+concurrency:
+  group: desplegar
+  cancel-in-progress: false
+
+env:
+  GRUPO: rg-lafueguina
+
+jobs:
+  version:
+    name: Qué versión se despliega
+    # Sólo pushes a main con CI en verde (no PRs) y con Azure conectado.
+    if: >-
+      vars.AZURE_CLIENT_ID != '' && (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: SHA del commit
+        id: sha
+        env:
+          PEDIDO: ${{ inputs.sha }}
+          DE_CI: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          sha="${PEDIDO:-${DE_CI:-$GITHUB_SHA}}"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA inválido: $sha"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Versión: \`${sha:0:7}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # El CI publica las imágenes sólo en los push a main: si no están, no hay qué desplegar.
+      - name: Las imágenes existen en GHCR
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          for imagen in backend frontend; do
+            docker manifest inspect "ghcr.io/joaquinlista/panaderia-gestion-$imagen:$SHA" > /dev/null \
+              || { echo "::error::No está la imagen $imagen:$SHA en GHCR."; exit 1; }
+          done
+
+  staging:
+    name: Staging
+    needs: version
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ steps.final.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP: lafueguina-staging
+      SHA: ${{ needs.version.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Levantar la versión nueva sin tráfico
+        run: infra/scripts/blue-green.sh preparar "$APP" "$SHA"
+
+      - name: Esperar que la versión nueva conteste
+        run: infra/scripts/blue-green.sh esperar "$APP" "$SHA"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      # Contra la dirección de la versión nueva, antes de que la use nadie. Sólo
+      # las pruebas de sesión: la base de staging no se borra entre corridas y
+      # las de cierre y caja central esperan una base vacía (esas corren en el CI).
+      - name: Pruebas end-to-end contra la versión nueva
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          E2E_URL=$(../infra/scripts/blue-green.sh url "$APP" verde)
+          ADMIN_PASSWORD=$(az containerapp secret show --name "$APP" --resource-group "$GRUPO" \
+            --secret-name admin-password --query value -o tsv)
+          echo "::add-mask::$ADMIN_PASSWORD"
+          E2E_URL="$E2E_URL" ADMIN_USUARIO=admin ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+            npx playwright test tests/sesion.spec.js
+
+      - name: Guardar reporte de Playwright si falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-staging
+          path: e2e/playwright-report
+          retention-days: 7
+
+      - name: Pasarle el tráfico
+        run: infra/scripts/blue-green.sh pasar "$APP" "$SHA"
+
+      - name: Resumen
+        id: final
+        run: |
+          url=$(infra/scripts/blue-green.sh url "$APP")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Staging en \`${SHA:0:7}\`: $url" >> "$GITHUB_STEP_SUMMARY"
+
+  produccion:
+    name: Producción
+    needs: [version, staging]
+    runs-on: ubuntu-latest
+    # El ambiente `produccion` pide la aprobación del PM antes de arrancar.
+    environment:
+      name: produccion
+      url: ${{ steps.final.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP: lafueguina-produccion
+      SHA: ${{ needs.version.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Levantar la versión nueva sin tráfico
+        run: infra/scripts/blue-green.sh preparar "$APP" "$SHA"
+
+      # En producción no se cargan datos de prueba: sólo se revisa que conteste
+      # con la versión correcta y que la pantalla cargue.
+      - name: Esperar que la versión nueva conteste
+        run: |
+          infra/scripts/blue-green.sh esperar "$APP" "$SHA"
+          curl -fsS "$(infra/scripts/blue-green.sh url "$APP" verde)/" | grep -q '<div id="root">'
+
+      - name: Pasarle el tráfico
+        run: infra/scripts/blue-green.sh pasar "$APP" "$SHA"
+
+      - name: Resumen
+        id: final
+        run: |
+          url=$(infra/scripts/blue-green.sh url "$APP")
+          curl -fsS "$url/api/health"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Producción en \`${SHA:0:7}\`: $url" >> "$GITHUB_STEP_SUMMARY"

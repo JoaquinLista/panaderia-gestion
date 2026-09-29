@@ -1,0 +1,58 @@
+# =============================================================
+#  Volver a la versión anterior
+#
+#  Actions → "Volver a la versión anterior" → Run workflow → elegir el ambiente.
+#  Le devuelve todo el tráfico a la versión que estaba antes del último
+#  despliegue (sigue prendida, así que tarda segundos). Correrlo otra vez
+#  deshace la vuelta atrás.
+#
+#  Ojo: la base de datos no vuelve atrás. Por eso las migraciones sólo agregan
+#  (ver decisiones.md, Sprint 6).
+# =============================================================
+name: Volver a la versión anterior
+
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Ambiente
+        type: choice
+        options: [produccion, staging]
+        default: produccion
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desplegar
+  cancel-in-progress: false
+
+jobs:
+  volver:
+    name: Volver atrás en ${{ inputs.ambiente }}
+    runs-on: ubuntu-latest
+    # En producción también pide la aprobación del ambiente.
+    environment: ${{ inputs.ambiente }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP: lafueguina-${{ inputs.ambiente }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Devolver el tráfico a la versión anterior
+        run: infra/scripts/blue-green.sh volver "$APP"
+
+      - name: Qué versión quedó
+        run: |
+          url=$(infra/scripts/blue-green.sh url "$APP")
+          health=$(curl -fsS --retry 5 --retry-delay 5 "$url/api/health")
+          echo "$health"
+          echo "${{ inputs.ambiente }} volvió a \`$(jq -r .version <<<"$health" | cut -c1-7)\`: $url" >> "$GITHUB_STEP_SUMMARY"
