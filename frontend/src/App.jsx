@@ -5,6 +5,7 @@ import { tienePermiso, useAuth } from './auth/contexto.js';
 import PantallaLogin from './auth/PantallaLogin.jsx';
 import { apiGet } from './lib/api.js';
 import AdminUsuarios from './pantallas/AdminUsuarios.jsx';
+import CajaCentral from './pantallas/CajaCentral.jsx';
 import CierreCaja from './pantallas/CierreCaja.jsx';
 import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
@@ -16,6 +17,7 @@ import TableroPedidos from './pantallas/TableroPedidos.jsx';
 const TABS = [
   { id: 'cierre', label: 'Cierre de caja', permiso: 'caja:cerrar' },
   { id: 'revision', label: 'Revisión de cierres', permiso: 'caja:revisar' },
+  { id: 'caja-central', label: 'Caja central', permiso: 'caja-central:administrar' },
   { id: 'pedidos', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
   { id: 'insumos', label: 'Stock e Insumos', permiso: 'insumos:ver' },
   { id: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
@@ -88,6 +90,7 @@ function Panel() {
 
       {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
       {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
+      {tab === 'caja-central' && <CajaCentral />}
       {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
       {tab === 'insumos' && <GestionInsumos />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}

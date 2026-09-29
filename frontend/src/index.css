@@ -687,3 +687,77 @@ label.check input {
 .boton-revisado {
   margin-bottom: 16px;
 }
+
+/* ---- Caja central (Sprint 5) ---- */
+.saldos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.saldos > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.saldos span {
+  font-size: 0.8rem;
+}
+
+.saldos strong {
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.caja-central h3 {
+  font-size: 1rem;
+  margin: 20px 0 8px;
+}
+
+.alert-info {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.monto-entra,
+.monto-sale {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.monto-entra {
+  color: var(--color-ok);
+}
+
+.monto-sale {
+  color: var(--color-danger);
+}
+
+.caja-central .lista-cierres .row-between {
+  gap: 12px;
+}
+
+.caja-central .lista-cierres .link {
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.confirmar {
+  font-size: 0.85rem;
+}
+
+.tabla-scroll {
+  overflow-x: auto;
+}
+
+.tabla-scroll td:not(:first-child),
+.tabla-scroll th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

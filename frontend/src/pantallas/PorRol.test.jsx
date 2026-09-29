@@ -48,6 +48,7 @@ describe('pestañas según el rol', () => {
       [
         'Cierre de caja',
         'Revisión de cierres',
+        'Caja central',
         'Tablero de Pedidos',
         'Stock e Insumos',
         'Red de Sucursales',
