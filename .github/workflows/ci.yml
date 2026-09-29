@@ -157,6 +157,7 @@ jobs:
       POSTGRES_PASSWORD: ci-solo-para-pruebas
       ADMIN_USUARIO: admin-ci
       ADMIN_PASSWORD: ci-solo-para-pruebas
+      GRAFANA_PASSWORD: ci-solo-para-pruebas
     steps:
       - uses: actions/checkout@v7
 
@@ -286,9 +287,9 @@ jobs:
           reglas=$(curl -fsS http://localhost:9090/api/v1/rules)
           grep -q CierreDeLaNocheSinCargar <<<"$reglas"
           esperar 'Grafana listo' curl -fsS http://localhost:3001/api/health
-          tablero=$(curl -fsS -u admin:admin 'http://localhost:3001/api/dashboards/uid/la-fueguina'); echo "$tablero" | head -c 300; echo
+          tablero=$(curl -fsS -u "admin:$GRAFANA_PASSWORD" 'http://localhost:3001/api/dashboards/uid/la-fueguina'); echo "$tablero" | head -c 300; echo
           grep -q '"title":"La Fueguina"' <<<"$tablero"
-          fuente=$(curl -fsS -u admin:admin http://localhost:3001/api/datasources/uid/prometheus/health); echo "$fuente"
+          fuente=$(curl -fsS -u "admin:$GRAFANA_PASSWORD" http://localhost:3001/api/datasources/uid/prometheus/health); echo "$fuente"
           grep -q '"status":"OK"' <<<"$fuente"
 
       - name: Guardar reporte de Playwright si falló
