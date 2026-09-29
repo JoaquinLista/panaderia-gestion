@@ -1,0 +1,47 @@
+# Métricas DORA (Sprint 8, #18): frecuencia de despliegue, lead time, tasa de
+# fallas y tiempo de recuperación de los últimos 30 días. Corre los lunes y a
+# mano; el informe queda en el resumen de la corrida y en el artefacto dora.json.
+# Mientras no haya despliegues a producción (Azure), cuenta los merges a main.
+name: Métricas DORA
+
+on:
+  schedule:
+    # Lunes 9:00 de Argentina (12:00 UTC), junto con la revisión de seguridad.
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: Cuántos días hacia atrás
+        required: false
+        default: '30'
+
+# Sólo lectura: PRs, corridas de Actions y despliegues.
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+  deployments: read
+
+jobs:
+  dora:
+    name: Métricas DORA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Calcular
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DORA_DIAS: ${{ inputs.dias || '30' }}
+        run: node herramientas/dora/reporte.mjs "$DORA_DIAS"
+
+      - name: Guardar dora.json
+        uses: actions/upload-artifact@v7
+        with:
+          name: dora
+          path: dora.json
+          retention-days: 90

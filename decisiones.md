@@ -656,3 +656,15 @@ permiso de caja; cerrar sesión.
 | El issue lleva rol, sucursal y sección, no el nombre de la persona | El repo es público. |
 | Token fine-grained sólo con permiso de Issues | Si alguien lo roba, no puede tocar el código. |
 | Hasta 10 reportes por hora por persona | Evita que un error de pantalla en bucle (o alguien) llene GitHub de issues. |
+
+## La Fueguina Stats — Sprint 8 · PR 5: métricas DORA (#18)
+
+| Decisión | Por qué |
+|----------|---------|
+| Un script propio en Node (`herramientas/dora`) que lee la API de GitHub, sin servicios externos | Todos los datos ya están en GitHub (PRs, corridas de Actions, despliegues a los ambientes). Es gratis y se entiende entero. |
+| Mientras no haya producción, cada merge a main cuenta como un despliegue, y el informe lo dice | Sin Azure no hay despliegues reales. Cuando `desplegar.yml` empiece a desplegar a `produccion`, el script usa esos solo. |
+| Falla = CI de main en rojo para ese commit, o una corrida de "Volver a la versión anterior" antes del despliegue siguiente | Son las dos señales de que algo que llegó a main no andaba. |
+| Recuperación = de la primera corrida roja de main a la siguiente verde | Es lo que tardamos en dejar main desplegable otra vez. Las corridas canceladas no cuentan. |
+| Niveles Elite / Alto / Medio / Bajo con los cortes del informe State of DevOps | Así el número se lee contra la industria, no en el vacío. |
+| Cálculo separado de la lectura, con pruebas de `node --test` en el CI | Las cuentas se prueban con datos de mentira, sin pedirle nada a GitHub. |
+| Corre los lunes con el `GITHUB_TOKEN` de sólo lectura | No hace falta ningún secreto nuevo. |
