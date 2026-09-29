@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { apiGet } from '../lib/api.js';
+import { apiDescargar, apiGet } from '../lib/api.js';
 import { nombreMes } from '../lib/cajaCentral.js';
 import { centavosDe, diaMes } from '../lib/cierres.js';
 import { mostrarPesos } from '../lib/cuadre.js';
@@ -135,6 +135,7 @@ function Indicador({ titulo, monto, variacion, bueno, mesAnterior }) {
 /** El mes: acumulado, resultado y comparación con los mismos días del anterior. */
 function Mes({ mes, setMes, mesActual }) {
   const { datos, error } = useApi(`/dashboard/mes?mes=${mes}`);
+  const [errorExcel, setErrorExcel] = useState('');
   if (error) return <div className="alert alert-error">{error}</div>;
   if (!datos) return <p className="cargando">Cargando…</p>;
 
@@ -158,6 +159,23 @@ function Mes({ mes, setMes, mesActual }) {
           ? `Del 1 al ${dia(datos.hasta)}, comparado con los mismos días de ${anterior}.`
           : `Mes completo, comparado con ${anterior} completo.`}
       </p>
+      {errorExcel && (
+        <div className="alert alert-error" role="alert">
+          {errorExcel}
+        </div>
+      )}
+      <button
+        type="button"
+        className="boton-excel"
+        onClick={() => {
+          setErrorExcel('');
+          apiDescargar(`/dashboard/excel?mes=${datos.mes}`, `resumen-${datos.mes}.xlsx`).catch(
+            (e) => setErrorExcel(e.message)
+          );
+        }}
+      >
+        Descargar Excel del mes
+      </button>
 
       <div className="indicadores">
         <Indicador

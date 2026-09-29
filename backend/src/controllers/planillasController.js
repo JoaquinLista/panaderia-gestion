@@ -1,5 +1,5 @@
 import { TIPO_XLSX } from '../domain/planillas.js';
-import { excelCajaCentral, excelCierres } from '../services/planillasService.js';
+import { excelCajaCentral, excelCierres, excelResumen } from '../services/planillasService.js';
 
 const enviar = async (res, { nombre, libro }) => {
   const archivo = await libro.xlsx.writeBuffer();
@@ -21,6 +21,15 @@ export const getExcelCajaCentral = async (req, res, next) => {
 export const getExcelCierres = async (req, res, next) => {
   try {
     await enviar(res, await excelCierres(req.query));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/dashboard/excel[?mes=AAAA-MM]: resumen del mes de los dueños. */
+export const getExcelResumen = async (req, res, next) => {
+  try {
+    await enviar(res, await excelResumen(req.query.mes));
   } catch (error) {
     next(error);
   }

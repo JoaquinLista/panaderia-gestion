@@ -1,7 +1,8 @@
-import { libroCajaCentral, libroCierres } from '../domain/planillas.js';
+import { libroCajaCentral, libroCierres, libroResumenMes } from '../domain/planillas.js';
 import { hoyEnArgentina, rangoDelMes } from '../domain/fecha.js';
 import { listarMovimientos, resumenMensual } from './cajaCentralService.js';
 import { listarCategorias, listarCierres } from './cierresService.js';
+import { resumenDelMes } from './dashboardService.js';
 
 const errorHttp = (status, mensaje) => Object.assign(new Error(mensaje), { status });
 
@@ -42,5 +43,18 @@ export const excelCierres = async (filtros = {}, ahora = new Date()) => {
   return {
     nombre: `egresos-de-caja-${desde}-a-${hasta}.xlsx`,
     libro: libroCierres({ cierres, categorias }),
+  };
+};
+
+/**
+ * Excel del resumen del mes para los dueños (lo mismo que la pantalla "Resumen").
+ * @param {string} [mes] AAAA-MM; el actual si no viene
+ * @param {Date} [ahora]
+ */
+export const excelResumen = async (mes, ahora = new Date()) => {
+  const resumen = await resumenDelMes(mes, ahora);
+  return {
+    nombre: `resumen-${resumen.mes}.xlsx`,
+    libro: libroResumenMes(resumen),
   };
 };

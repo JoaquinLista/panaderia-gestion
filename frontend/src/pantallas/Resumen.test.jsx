@@ -186,4 +186,25 @@ describe('resumen: el mes', () => {
     expect(texto(region)).toContain('Mes completo, comparado con julio completo.');
     expect(screen.queryByRole('list', { name: 'Retiros de los dueños' })).not.toBeInTheDocument();
   });
+
+  it('descarga el Excel del mes', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:planilla');
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const { user, fetchMock } = await abrir({
+      'GET /api/dashboard/excel?mes=2026-09': () => [200, 'xlsx'],
+    });
+    await user.click(await screen.findByRole('button', { name: 'Descargar Excel del mes' }));
+    const urls = fetchMock.mock.calls.map(([url]) => url);
+    expect(urls).toContain('/api/dashboard/excel?mes=2026-09');
+    expect(click).toHaveBeenCalledTimes(1);
+  });
+
+  it('si no se puede descargar el Excel lo dice', async () => {
+    const { user } = await abrir({
+      'GET /api/dashboard/excel?mes=2026-09': () => [500, { error: 'Sin planilla' }],
+    });
+    await user.click(await screen.findByRole('button', { name: 'Descargar Excel del mes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sin planilla');
+  });
 });
