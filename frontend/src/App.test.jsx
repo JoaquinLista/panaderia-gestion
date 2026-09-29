@@ -29,6 +29,11 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Stock e Insumos' })).toBeInTheDocument();
   });
 
+  it('muestra al pie qué versión está corriendo', async () => {
+    render(<App />);
+    expect(await screen.findByText('Versión local')).toBeInTheDocument();
+  });
+
   it('muestra el error si la API no responde', async () => {
     globalThis.fetch.mockImplementation((url) =>
       url === '/api/auth/me'

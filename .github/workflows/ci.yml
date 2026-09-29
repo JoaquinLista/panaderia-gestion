@@ -145,6 +145,7 @@ jobs:
           # cortar el pipe antes de tiempo y dar un falso error.
           health=$(curl -fsS http://localhost/api/health); echo "$health"
           grep -q '"status":"ok"' <<<"$health"
+          grep -q '"version":"local"' <<<"$health"
           sucursales=$(curl -fsS http://localhost/api/sucursales); echo "$sucursales"
           grep -q 'Viedma (Chacra)' <<<"$sucursales"
           home=$(curl -fsS http://localhost/)
@@ -272,6 +273,9 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: ${{ steps.img.outputs.ref }}
+          # El SHA queda adentro de la imagen: /api/health y el pie de la pantalla
+          # dicen qué versión está corriendo.
+          build-args: APP_VERSION=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.imagen }}
           cache-to: type=gha,mode=max,scope=${{ matrix.imagen }}
 
@@ -313,6 +317,7 @@ jobs:
           context: ${{ matrix.imagen }}
           platforms: linux/amd64,linux/arm64
           push: ${{ env.PUBLICAR == 'true' }}
+          build-args: APP_VERSION=${{ github.sha }}
           tags: |
             ${{ env.IMAGEN }}:${{ github.sha }}
             ${{ env.IMAGEN }}:main

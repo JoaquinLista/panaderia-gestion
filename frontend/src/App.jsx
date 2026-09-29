@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthProvider.jsx';
 import { tienePermiso, useAuth } from './auth/contexto.js';
 import PantallaLogin from './auth/PantallaLogin.jsx';
 import { apiGet } from './lib/api.js';
+import { VERSION } from './lib/version.js';
 import AdminUsuarios from './pantallas/AdminUsuarios.jsx';
 import CajaCentral from './pantallas/CajaCentral.jsx';
 import CierreCaja from './pantallas/CierreCaja.jsx';
@@ -95,6 +96,8 @@ function Panel() {
       {tab === 'insumos' && <GestionInsumos />}
       {tab === 'red' && <RedSucursales sucursales={sucursales} />}
       {tab === 'usuarios' && <AdminUsuarios />}
+
+      <footer className="app-pie">Versión {VERSION}</footer>
     </div>
   );
 }
