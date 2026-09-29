@@ -4,10 +4,10 @@ import { anchoBarra, describirPendientes, dia, leerVariacion, soloMes } from './
 
 describe('leerVariacion', () => {
   it('ventas que suben están bien; gastos que suben, mal', () => {
-    expect(leerVariacion(15, 'sube')).toEqual({ texto: '▲ 15 %', tono: 'bien' });
-    expect(leerVariacion(12.5, 'baja')).toEqual({ texto: '▲ 12,5 %', tono: 'mal' });
-    expect(leerVariacion(-8.3, 'baja')).toEqual({ texto: '▼ 8,3 %', tono: 'bien' });
-    expect(leerVariacion(-20, 'sube')).toEqual({ texto: '▼ 20 %', tono: 'mal' });
+    expect(leerVariacion(15, 'sube')).toEqual({ texto: 'Subió 15 %', tono: 'bien', sube: true });
+    expect(leerVariacion(12.5, 'baja')).toEqual({ texto: 'Subió 12,5 %', tono: 'mal', sube: true });
+    expect(leerVariacion(-8.3, 'baja')).toEqual({ texto: 'Bajó 8,3 %', tono: 'bien', sube: false });
+    expect(leerVariacion(-20, 'sube')).toEqual({ texto: 'Bajó 20 %', tono: 'mal', sube: false });
   });
 
   it('sin cambio o sin mes anterior', () => {

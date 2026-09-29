@@ -3,7 +3,8 @@
   --color-surface: #ffffff;
   --color-border: #e2dccd;
   --color-text: #2f2a24;
-  --color-muted: #7a7365;
+  /* Texto secundario oscuro: se lee bien sobre blanco (contraste 7:1). */
+  --color-muted: #574f44;
   --color-primary: #8a5a2b;
   --color-primary-dark: #6f4620;
   --color-accent: #c8892f;
@@ -15,6 +16,11 @@
   --color-info-bg: #e6effa;
   --color-warn: #b7791f;
   --color-warn-bg: #fbf1dd;
+  /* Colores del logo de La Fueguina. */
+  --color-marca: #5a261d;
+  --color-marca-oscuro: #431b14;
+  --color-crema: #fdf3e7;
+  --color-resaltado: #f2b33d;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(47, 42, 36, 0.12), 0 1px 2px rgba(47, 42, 36, 0.08);
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -37,7 +43,7 @@ body {
 }
 
 .app {
-  max-width: 1120px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 24px 20px 64px;
 }
@@ -52,65 +58,224 @@ body {
 .app-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 8px;
+  gap: 16px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  background: var(--color-marca);
+  color: var(--color-crema);
 }
 
 .app-header .logo {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  display: grid;
-  place-items: center;
-  font-size: 22px;
+  width: 120px;
+  height: auto;
+}
+
+.app-titulo {
+  flex: 1;
+  min-width: 0;
 }
 
 .app-header h1 {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   margin: 0;
 }
 
 .app-header p {
   margin: 0;
-  color: var(--color-muted);
-  font-size: 0.9rem;
+  color: var(--color-crema);
+  opacity: 0.85;
+  font-size: 1rem;
 }
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  /* En el celular las pestañas se deslizan en vez de ensanchar la página. */
-  overflow-x: auto;
-  margin: 24px 0 20px;
-  border-bottom: 1px solid var(--color-border);
+.app-header .sesion-usuario,
+.app-header .sesion-usuario .subtitle {
+  color: var(--color-crema);
 }
 
-.tab-btn {
+.app-header .sesion-usuario {
+  font-size: 1rem;
+}
+
+.app-header .sesion-usuario .link {
+  color: var(--color-crema);
+  font-size: 1rem;
+}
+
+/* En el celular: logo más chico y los datos de la sesión abajo, en una línea. */
+@media (max-width: 600px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .app-header .logo {
+    width: 96px;
+  }
+
+  .app-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .app-header .sesion-usuario {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    margin-left: 0;
+    text-align: left;
+    padding-top: 10px;
+    border-top: 1px solid rgba(253, 243, 231, 0.25);
+  }
+}
+
+/* ---- Menú de secciones ----
+   Un panel marrón como la cabecera, con las secciones agrupadas por tema.
+   Letra grande, íconos simples del mismo color que el texto y la sección
+   activa en crema: el contraste dice dónde estás sin tener que leer. */
+.panel {
+  margin-top: 20px;
+}
+
+.menu {
+  margin-bottom: 20px;
+}
+
+.menu-abrir {
   appearance: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 60px;
   padding: 10px 18px;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-crema);
+  background: var(--color-marca);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   cursor: pointer;
-  color: var(--color-muted);
-  border-bottom: 3px solid transparent;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  text-align: left;
 }
 
-.tab-btn:hover {
-  color: var(--color-text);
+.menu-abrir small {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.85;
 }
 
-.tab-btn.active {
-  color: var(--color-primary-dark);
-  border-bottom-color: var(--color-primary);
+.menu-hamburguesa {
+  flex-shrink: 0;
+}
+
+.menu-lista {
+  display: none;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 10px;
+  padding: 18px 12px;
+  background: var(--color-marca);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.menu-lista.abierto {
+  display: flex;
+}
+
+.menu-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-grupo + .menu-grupo {
+  padding-top: 18px;
+  border-top: 1px solid rgba(253, 243, 231, 0.2);
+}
+
+.menu-grupo-titulo {
+  margin: 0 0 4px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-crema);
+  opacity: 0.75;
+}
+
+.menu-btn {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 54px;
+  padding: 14px 16px;
+  font-size: 1.125rem;
   font-weight: 600;
+  text-align: left;
+  color: var(--color-crema);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.menu-icono {
+  flex-shrink: 0;
+}
+
+.menu-btn:hover {
+  background: rgba(253, 243, 231, 0.12);
+}
+
+.menu-btn:focus-visible,
+.menu-abrir:focus-visible,
+.boton-principal:focus-visible {
+  outline: 3px solid var(--color-resaltado);
+  outline-offset: 2px;
+}
+
+/* La sección en la que estás: fondo crema, letra marrón y una barra amarilla. */
+.menu-btn.active {
+  background: var(--color-crema);
+  color: var(--color-marca);
+  font-weight: 700;
+  box-shadow: inset 6px 0 0 var(--color-resaltado);
+}
+
+.contenido {
+  min-width: 0;
+}
+
+@media (min-width: 860px) {
+  .panel {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .menu {
+    position: sticky;
+    top: 16px;
+    margin-bottom: 0;
+  }
+
+  .menu-abrir {
+    display: none;
+  }
+
+  .menu-lista {
+    display: flex;
+    margin-top: 0;
+  }
 }
 
 .card {
@@ -415,15 +580,22 @@ tbody tr:hover {
   margin-bottom: 16px;
 }
 
-.login-marca .logo {
-  width: 56px;
-  height: 56px;
+.logo-login {
+  display: block;
+  width: 160px;
+  height: 160px;
   margin: 0 auto 8px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  font-size: 1.8rem;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  border-radius: 20px;
+}
+
+/* Texto que leen los lectores de pantalla pero no se ve (el logo ya lo dice). */
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .login-marca h1 {
@@ -781,16 +953,49 @@ label.check input {
   cursor: pointer;
 }
 
+/* Acción principal de la pantalla: fondo de la marca y letra blanca grande. */
+.boton-principal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  border: none;
+  background: var(--color-marca);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.boton-principal:hover {
+  background: var(--color-marca-oscuro);
+}
+
 /* ---- Resumen de los dueños (Sprint 7) ---- */
+.resumen h2 {
+  font-size: 1.5rem;
+}
+
 .resumen h3 {
-  font-size: 1rem;
+  font-size: 1.2rem;
   margin: 20px 0 8px;
 }
 
 .resumen input[type='date'],
 .resumen input[type='month'] {
   width: auto;
-  font-size: 0.85rem;
+  font-size: 1rem;
+  padding: 8px 10px;
+}
+
+.resumen .lista-cierres li {
+  font-size: 1.05rem;
+}
+
+.resumen .nota,
+.resumen .subtitle,
+.resumen .muted {
+  font-size: 1rem;
 }
 
 .alert-warn {
@@ -798,14 +1003,74 @@ label.check input {
   color: var(--color-warn);
 }
 
-.alert-warn ul {
-  margin: 6px 0 0;
-  padding-left: 18px;
+/* ---- Estados con colores de semáforo, bien marcados ---- */
+.pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.pill-danger {
+  background: #fde8e6;
+  color: #a61b1b;
+}
+
+.pill-warn {
+  background: #fff1d6;
+  color: #8a4b00;
+}
+
+.pill-ok {
+  background: #e3f4e4;
+  color: #1b6a22;
+}
+
+.estado {
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  border: 2px solid currentColor;
+  font-size: 1rem;
+}
+
+.estado p {
+  margin: 0;
+}
+
+.estado-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+}
+
+.estado ul {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  font-weight: 600;
+}
+
+.estado-pendiente {
+  background: #fde8e6;
+  color: #a61b1b;
+}
+
+.estado-ok {
+  background: #e3f4e4;
+  color: #1b6a22;
 }
 
 .numero-grande {
-  margin: 0 0 12px;
-  font-size: 2rem;
+  margin: 0 0 16px;
+  font-size: 2.5rem;
+  line-height: 1.15;
+  color: var(--color-marca);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -813,7 +1078,7 @@ label.check input {
 
 .medios {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 8px 16px;
   margin: 0 0 16px;
 }
@@ -829,11 +1094,14 @@ label.check input {
 
 .medios dt {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .medios dd {
   margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -848,7 +1116,7 @@ label.check input {
 
 .barra .row-between {
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
 }
 
 .barra strong {
@@ -856,12 +1124,8 @@ label.check input {
   white-space: nowrap;
 }
 
-.barra .badge {
-  margin-left: 6px;
-}
-
 .barra-fondo {
-  height: 8px;
+  height: 12px;
   margin-top: 4px;
   border-radius: 4px;
   background: var(--color-bg);
@@ -876,33 +1140,47 @@ label.check input {
 
 .indicadores {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
 .indicador {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
+  padding: 14px 16px;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
 }
 
 .indicador > span:first-child {
-  font-size: 0.8rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .indicador strong {
-  font-size: 1.15rem;
+  /* Grande, pero sin partir el número en dos renglones. */
+  font-size: clamp(1.5rem, 2vw + 0.5rem, 2rem);
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .variacion {
-  font-size: 0.8rem;
-  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.alert-con-icono,
+.link-con-icono {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .variacion .muted {
@@ -959,8 +1237,15 @@ label.check input {
   color: var(--color-muted);
 }
 
-@media (min-width: 860px) {
+@media (min-width: 600px) {
+  .medios {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Los cuatro números del mes en 2 × 2 (en 4 columnas no entran grandes). */
+@media (min-width: 600px) {
   .indicadores {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }

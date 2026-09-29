@@ -34,10 +34,13 @@ const abrirComo = (sesion) => {
 };
 
 const pestañas = async () => {
-  const nav = await screen.findByRole('navigation');
-  return within(nav)
-    .getAllByRole('button')
-    .map((b) => b.textContent);
+  const nav = await screen.findByRole('navigation', { name: 'Secciones' });
+  return (
+    within(nav)
+      .getAllByRole('button')
+      // Sin el ícono de adelante, que es decorativo.
+      .map((b) => b.textContent.replace(b.querySelector('.menu-icono').textContent, ''))
+  );
 };
 
 describe('pestañas según el rol', () => {
@@ -50,17 +53,60 @@ describe('pestañas según el rol', () => {
         'Cierre de caja',
         'Revisión de cierres',
         'Caja central',
-        'Tablero de Pedidos',
-        'Stock e Insumos',
-        'Red de Sucursales',
+        'Pedidos',
+        'Stock e insumos',
+        'Sucursales',
         'Usuarios',
       ],
     ],
-    ['empleada', sesionEmpleada, ['Tablero de Pedidos', 'Red de Sucursales']],
-    ['chofer', sesionChofer, ['Tablero de Pedidos', 'Stock e Insumos', 'Red de Sucursales']],
+    ['empleada', sesionEmpleada, ['Pedidos', 'Sucursales']],
+    ['chofer', sesionChofer, ['Pedidos', 'Stock e insumos', 'Sucursales']],
   ])('%s ve sólo sus pestañas', async (_rol, sesion, esperadas) => {
     abrirComo(sesion);
     expect(await pestañas()).toEqual(esperadas);
+  });
+});
+
+describe('menú de secciones', () => {
+  it.each([
+    ['admin', sesionAdmin, ['Plata', 'Panaderías', 'Equipo']],
+    ['empleada', sesionEmpleada, ['Panaderías']],
+  ])('%s ve las secciones agrupadas y sin grupos vacíos', async (_rol, sesion, grupos) => {
+    abrirComo(sesion);
+    const nav = await screen.findByRole('navigation', { name: 'Secciones' });
+    expect(
+      within(nav)
+        .getAllByRole('group')
+        .map((g) => g.getAttribute('aria-labelledby'))
+    ).toHaveLength(grupos.length);
+    for (const g of grupos) expect(within(nav).getByRole('group', { name: g })).toBeInTheDocument();
+  });
+
+  it('el botón del menú dice en qué sección estás y se cierra al elegir otra', async () => {
+    const user = userEvent.setup();
+    abrirComo(sesionChofer);
+    const abrir = await screen.findByRole('button', { name: 'Menú · Pedidos' });
+    expect(abrir).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(abrir);
+    expect(abrir).toHaveAttribute('aria-expanded', 'true');
+    const nav = screen.getByRole('navigation', { name: 'Secciones' });
+    expect(nav).toHaveClass('abierto');
+    expect(within(nav).getByRole('button', { name: 'Pedidos' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+
+    await user.click(within(nav).getByRole('button', { name: 'Sucursales' }));
+    expect(screen.getByRole('button', { name: 'Menú · Sucursales' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(nav).not.toHaveClass('abierto');
+    expect(within(nav).getByRole('button', { name: 'Sucursales' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
   });
 });
 
@@ -94,9 +140,7 @@ describe('tablero de pedidos según el rol', () => {
 
   it('el admin elige cualquier origen', async () => {
     abrirComo(sesionAdmin);
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('button', { name: 'Tablero de Pedidos' }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Pedidos' }));
     const origen = await screen.findByLabelText('Sucursal de origen');
     expect(origen).toBeEnabled();
   });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 import { apiDescargar, apiGet, apiSend } from '../lib/api.js';
 import {
@@ -186,8 +187,9 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
 
   return (
     <div className="card cierre-caja">
-      <button type="button" className="link" onClick={alVolver}>
-        ← Volver a la lista
+      <button type="button" className="link link-con-icono" onClick={alVolver}>
+        <ArrowLeft size={18} strokeWidth={2.5} aria-hidden="true" />
+        Volver a la lista
       </button>
       <h2>
         {cierre.sucursal_nombre} · {diaMes(cierre.fecha)} · {TURNOS[cierre.turno]}

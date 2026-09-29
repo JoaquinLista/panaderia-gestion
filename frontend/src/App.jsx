@@ -1,4 +1,15 @@
 import { useEffect, useState } from 'react';
+import {
+  Boxes,
+  ClipboardCheck,
+  Landmark,
+  LayoutDashboard,
+  Menu,
+  Store,
+  Truck,
+  Users,
+  Wallet,
+} from 'lucide-react';
 
 import { AuthProvider } from './auth/AuthProvider.jsx';
 import { tienePermiso, useAuth } from './auth/contexto.js';
@@ -14,18 +25,54 @@ import RedSucursales from './pantallas/RedSucursales.jsx';
 import Resumen from './pantallas/Resumen.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
-// Cada pestaña aparece sólo si la sesión tiene el permiso (matriz del backend).
-// Los dueños arrancan en el resumen; el resto, en el cierre de caja, que es lo
-// que se usa todos los días (MVP del PRD).
+// El menú se ordena por lo que hace cada persona, en tres grupos. Cada sección
+// aparece sólo si la sesión tiene el permiso (matriz del backend). Los dueños
+// arrancan en el resumen; el resto, en lo primero que puede usar.
+const GRUPOS = [
+  { id: 'plata', titulo: 'Plata' },
+  { id: 'panaderias', titulo: 'Panaderías' },
+  { id: 'admin', titulo: 'Equipo' },
+];
+
 const TABS = [
-  { id: 'resumen', label: 'Resumen', permiso: 'dashboard:ver' },
-  { id: 'cierre', label: 'Cierre de caja', permiso: 'caja:cerrar' },
-  { id: 'revision', label: 'Revisión de cierres', permiso: 'caja:revisar' },
-  { id: 'caja-central', label: 'Caja central', permiso: 'caja-central:administrar' },
-  { id: 'pedidos', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
-  { id: 'insumos', label: 'Stock e Insumos', permiso: 'insumos:ver' },
-  { id: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
-  { id: 'usuarios', label: 'Usuarios', permiso: 'usuarios:administrar' },
+  {
+    id: 'resumen',
+    grupo: 'plata',
+    Icono: LayoutDashboard,
+    label: 'Resumen',
+    permiso: 'dashboard:ver',
+  },
+  { id: 'cierre', grupo: 'plata', Icono: Wallet, label: 'Cierre de caja', permiso: 'caja:cerrar' },
+  {
+    id: 'revision',
+    grupo: 'plata',
+    Icono: ClipboardCheck,
+    label: 'Revisión de cierres',
+    permiso: 'caja:revisar',
+  },
+  {
+    id: 'caja-central',
+    grupo: 'plata',
+    Icono: Landmark,
+    label: 'Caja central',
+    permiso: 'caja-central:administrar',
+  },
+  { id: 'pedidos', grupo: 'panaderias', Icono: Truck, label: 'Pedidos', permiso: 'pedidos:ver' },
+  {
+    id: 'insumos',
+    grupo: 'panaderias',
+    Icono: Boxes,
+    label: 'Stock e insumos',
+    permiso: 'insumos:ver',
+  },
+  { id: 'red', grupo: 'panaderias', Icono: Store, label: 'Sucursales', permiso: 'sucursales:ver' },
+  {
+    id: 'usuarios',
+    grupo: 'admin',
+    Icono: Users,
+    label: 'Usuarios',
+    permiso: 'usuarios:administrar',
+  },
 ];
 
 const ROL_ETIQUETA = { ADMIN: 'Administración', EMPLEADA: 'Empleada', CHOFER: 'Chofer' };
@@ -51,6 +98,8 @@ function Panel() {
   const { sesion } = useAuth();
   const tabs = TABS.filter((t) => tienePermiso(sesion, t.permiso));
   const [tab, setTab] = useState(tabs[0]?.id);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const actual = tabs.find((t) => t.id === tab);
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
@@ -70,36 +119,88 @@ function Panel() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="logo">🥐</div>
-        <div>
-          <h1>Red de Panaderías · Gestión Interna</h1>
-          <p>Pedidos entre sucursales · Control de insumos · Mapa operacional</p>
+        <img className="logo" src="/logo-la-fueguina-ancho.png" alt="" width="120" height="77" />
+        <div className="app-titulo">
+          <h1>La Fueguina</h1>
+          <p>Gestión de las panaderías</p>
         </div>
         <UsuarioConectado />
       </header>
 
       {errorGlobal && <div className="alert alert-error">{errorGlobal}</div>}
 
-      <nav className="tabs">
-        {tabs.map((t) => (
+      <div className="panel">
+        <aside className="menu">
+          {/* En el celular el menú se abre con este botón; en la compu está siempre a la vista. */}
           <button
-            key={t.id}
-            className={`tab-btn ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
+            type="button"
+            className="menu-abrir"
+            aria-expanded={menuAbierto}
+            aria-controls="menu-secciones"
+            aria-label={`Menú · ${actual?.label ?? 'Secciones'}`}
+            onClick={() => setMenuAbierto((a) => !a)}
           >
-            {t.label}
+            <Menu className="menu-hamburguesa" size={30} strokeWidth={2.5} aria-hidden="true" />
+            <span>
+              <small>Menú</small>
+              {actual?.label ?? 'Secciones'}
+            </span>
           </button>
-        ))}
-      </nav>
+          <nav
+            id="menu-secciones"
+            aria-label="Secciones"
+            className={`menu-lista ${menuAbierto ? 'abierto' : ''}`}
+          >
+            {GRUPOS.map((g) => {
+              const delGrupo = tabs.filter((t) => t.grupo === g.id);
+              if (delGrupo.length === 0) return null;
+              return (
+                <div
+                  key={g.id}
+                  className="menu-grupo"
+                  role="group"
+                  aria-labelledby={`grupo-${g.id}`}
+                >
+                  <p id={`grupo-${g.id}`} className="menu-grupo-titulo">
+                    {g.titulo}
+                  </p>
+                  {delGrupo.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`menu-btn ${tab === t.id ? 'active' : ''}`}
+                      aria-current={tab === t.id ? 'page' : undefined}
+                      onClick={() => {
+                        setTab(t.id);
+                        setMenuAbierto(false);
+                      }}
+                    >
+                      <t.Icono
+                        className="menu-icono"
+                        size={24}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
 
-      {tab === 'resumen' && <Resumen />}
-      {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
-      {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
-      {tab === 'caja-central' && <CajaCentral />}
-      {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
-      {tab === 'insumos' && <GestionInsumos />}
-      {tab === 'red' && <RedSucursales sucursales={sucursales} />}
-      {tab === 'usuarios' && <AdminUsuarios />}
+        <main className="contenido">
+          {tab === 'resumen' && <Resumen />}
+          {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
+          {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
+          {tab === 'caja-central' && <CajaCentral />}
+          {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
+          {tab === 'insumos' && <GestionInsumos />}
+          {tab === 'red' && <RedSucursales sucursales={sucursales} />}
+          {tab === 'usuarios' && <AdminUsuarios />}
+        </main>
+      </div>
 
       <footer className="app-pie">Versión {VERSION}</footer>
     </div>

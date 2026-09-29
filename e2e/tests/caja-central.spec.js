@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ADMIN, entrar } from './helpers.js';
+import { ADMIN, entrar, irA } from './helpers.js';
 
 // "$ 1.098.000,50" → 1098000.5
 const aNumero = (texto) => Number(texto.replace(/[^\d,]/g, '').replace(',', '.'));
@@ -10,7 +10,7 @@ test('el retiro de un cierre entra a la caja central y un pago baja el saldo', a
   await entrar(page, ADMIN);
 
   // ---- La dueña carga el cierre del mediodía del Café ----
-  await page.getByRole('button', { name: 'Cierre de caja' }).click();
+  await irA(page, 'Cierre de caja');
   await page.getByLabel('Sucursal').selectOption({ label: 'Café' });
   const cierre = page.getByRole('form', { name: 'Cierre de caja' });
   await cierre.getByLabel('Mediodía').check();
@@ -22,7 +22,7 @@ test('el retiro de un cierre entra a la caja central y un pago baja el saldo', a
   await expect(page.getByText('Cierre del mediodía enviado.')).toBeVisible();
 
   // ---- En la caja central aparece lo que se retiró: 60.000 − 10.000 ----
-  await page.getByRole('button', { name: 'Caja central' }).click();
+  await irA(page, 'Caja central');
   const entradas = page.getByRole('list', { name: 'Entradas de hoy' });
   await expect(entradas.getByRole('listitem').filter({ hasText: 'Café · Mediodía' })).toContainText(
     '50.000,00'

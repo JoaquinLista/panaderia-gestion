@@ -100,11 +100,31 @@ describe('resumen: hoy', () => {
   it('marca los cierres que faltan y las sucursales sin ninguno', async () => {
     await abrir();
     const aviso = screen.getByRole('status');
-    expect(texto(aviso)).toContain('Faltan 3 cierres (el de la noche se carga a las 21)');
+    expect(texto(aviso)).toContain('Faltan 3 cierresEl de la noche se carga a las 21.');
     expect(texto(aviso)).toContain('Café: mediodía y noche');
     expect(texto(aviso)).toContain('Estrada: noche');
     const porSucursal = screen.getByRole('list', { name: 'Vendido por sucursal' });
-    expect(texto(within(porSucursal).getAllByRole('listitem')[0])).toContain('Cafésin cierres');
+    const [cafe, estrada] = within(porSucursal).getAllByRole('listitem');
+    expect(texto(cafe)).toContain('Cafésin cierres');
+    expect(within(cafe).getByText('sin cierres')).toHaveClass('pill-danger');
+    expect(within(estrada).getByText('falta 1 cierre')).toHaveClass('pill-warn');
+  });
+
+  it('con todos los cierres cargados lo dice en verde', async () => {
+    await abrir({
+      'GET /api/dashboard/dia?fecha=2026-09-29': () => [
+        200,
+        dia({
+          sucursales: [fila(2, 'Estrada', 150000.5, ['MEDIODIA', 'NOCHE'])],
+          turnos_pendientes: 0,
+        }),
+      ],
+    });
+    const estado = screen.getByRole('status');
+    expect(estado).toHaveClass('estado-ok');
+    expect(texto(estado)).toBe('Están todos los cierres cargados');
+    const porSucursal = screen.getByRole('list', { name: 'Vendido por sucursal' });
+    expect(within(porSucursal).getByText('completo')).toHaveClass('pill-ok');
   });
 
   it('otro día: sin la aclaración de la noche', async () => {
@@ -141,12 +161,12 @@ describe('resumen: el mes', () => {
     expect(texto(within(region).getByLabelText('Ventas'))).toBe('$ 3.000.000,00');
     expect(texto(within(region).getByLabelText('Resultado'))).toBe('$ 2.050.000,00');
     // Ventas que suben: bien. Gastos que suben: mal. Resultado que baja: mal.
-    const indicadores = within(region).getAllByText(/▲|▼|sin datos/);
+    const indicadores = within(region).getAllByText(/Subió|Bajó|sin datos/);
     expect(indicadores.map((i) => [texto(i), i.className])).toEqual([
-      ['▲ 20 % vs. agosto', 'variacion variacion-bien'],
-      ['▲ 12,5 % vs. agosto', 'variacion variacion-mal'],
+      ['Subió 20 % vs. agosto', 'variacion variacion-bien'],
+      ['Subió 12,5 % vs. agosto', 'variacion variacion-mal'],
       ['sin datos para comparar', 'variacion variacion-sin-datos'],
-      ['▼ 3 % vs. agosto', 'variacion variacion-mal'],
+      ['Bajó 3 % vs. agosto', 'variacion variacion-mal'],
     ]);
   });
 

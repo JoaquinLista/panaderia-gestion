@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CircleAlert, CircleCheck, Download, TrendingDown, TrendingUp } from 'lucide-react';
 
 import { apiDescargar, apiGet } from '../lib/api.js';
 import { nombreMes } from '../lib/cajaCentral.js';
@@ -32,13 +33,13 @@ function useApi(ruta) {
 }
 
 /** Barra horizontal con su etiqueta y monto. */
-function Barra({ etiqueta, monto, maximo, nota }) {
+function Barra({ etiqueta, monto, maximo, nota, tono = 'warn' }) {
   return (
     <li className="barra">
       <div className="row-between">
         <span>
           {etiqueta}
-          {nota && <span className="badge badge-warn">{nota}</span>}
+          {nota && <span className={`pill pill-${tono}`}>{nota}</span>}
         </span>
         <strong>{pesos(monto)}</strong>
       </div>
@@ -85,19 +86,29 @@ function Dia({ fecha, setFecha, hoy }) {
         ))}
       </dl>
 
-      {pendientes.length > 0 && (
-        <div className="alert alert-warn" role="status">
-          <strong>
-            {datos.turnos_pendientes === 1
-              ? 'Falta 1 cierre'
-              : `Faltan ${datos.turnos_pendientes} cierres`}
-          </strong>
-          {datos.es_hoy && ' (el de la noche se carga a las 21)'}
+      {pendientes.length > 0 ? (
+        <div className="estado estado-pendiente" role="status">
+          <p className="estado-titulo">
+            <CircleAlert size={26} strokeWidth={2.5} aria-hidden="true" />
+            <strong>
+              {datos.turnos_pendientes === 1
+                ? 'Falta 1 cierre'
+                : `Faltan ${datos.turnos_pendientes} cierres`}
+            </strong>
+          </p>
+          {datos.es_hoy && <p>El de la noche se carga a las 21.</p>}
           <ul>
             {pendientes.map((s) => (
               <li key={s.sucursal_id}>{describirPendientes(s)}</li>
             ))}
           </ul>
+        </div>
+      ) : (
+        <div className="estado estado-ok" role="status">
+          <p className="estado-titulo">
+            <CircleCheck size={26} strokeWidth={2.5} aria-hidden="true" />
+            <strong>Están todos los cierres cargados</strong>
+          </p>
         </div>
       )}
 
@@ -109,7 +120,20 @@ function Dia({ fecha, setFecha, hoy }) {
             etiqueta={s.sucursal}
             monto={s.vendido}
             maximo={maximo}
-            nota={s.turnos_cargados.length === 0 ? 'sin cierres' : null}
+            nota={
+              s.turnos_cargados.length === 0
+                ? 'sin cierres'
+                : s.turnos_pendientes.length === 0
+                  ? 'completo'
+                  : 'falta 1 cierre'
+            }
+            tono={
+              s.turnos_cargados.length === 0
+                ? 'danger'
+                : s.turnos_pendientes.length === 0
+                  ? 'ok'
+                  : 'warn'
+            }
           />
         ))}
       </ul>
@@ -125,6 +149,8 @@ function Indicador({ titulo, monto, variacion, bueno, mesAnterior }) {
       <span className="muted">{titulo}</span>
       <strong aria-label={titulo}>{pesos(monto)}</strong>
       <span className={`variacion variacion-${v.tono}`}>
+        {v.sube === true && <TrendingUp size={20} strokeWidth={2.5} aria-hidden="true" />}
+        {v.sube === false && <TrendingDown size={20} strokeWidth={2.5} aria-hidden="true" />}
         {v.texto}
         {v.tono !== 'sin-datos' && <span className="muted"> vs. {mesAnterior}</span>}
       </span>
@@ -166,7 +192,7 @@ function Mes({ mes, setMes, mesActual }) {
       )}
       <button
         type="button"
-        className="boton-excel"
+        className="boton-excel boton-principal"
         onClick={() => {
           setErrorExcel('');
           apiDescargar(`/dashboard/excel?mes=${datos.mes}`, `resumen-${datos.mes}.xlsx`).catch(
@@ -174,6 +200,7 @@ function Mes({ mes, setMes, mesActual }) {
           );
         }}
       >
+        <Download size={22} strokeWidth={2.5} aria-hidden="true" />
         Descargar Excel del mes
       </button>
 
@@ -220,7 +247,8 @@ function Mes({ mes, setMes, mesActual }) {
             etiqueta={s.sucursal}
             monto={s.vendido}
             maximo={maxSucursal}
-            nota={s.turnos_sin_cargar > 0 ? `${s.turnos_sin_cargar} sin cierre` : null}
+            nota={s.turnos_sin_cargar > 0 ? `${s.turnos_sin_cargar} sin cierre` : 'completo'}
+            tono={s.turnos_sin_cargar > 0 ? 'warn' : 'ok'}
           />
         ))}
       </ul>

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ADMIN, crearUsuario, entrar, unico } from './helpers.js';
+import { abrirMenu, ADMIN, crearUsuario, entrar, unico } from './helpers.js';
 
 test('con la contraseña equivocada no entra', async ({ page }) => {
   await entrar(page, { usuario: ADMIN.usuario, password: 'no-es-esta' });
@@ -17,8 +17,10 @@ test('una empleada sin permiso de caja no ve el cierre', async ({ page, baseURL 
   await crearUsuario(baseURL, empleada);
   await entrar(page, { ...empleada, sucursal: 'Café' });
 
-  const pestañas = page.getByRole('navigation');
-  await expect(pestañas.getByRole('button', { name: 'Tablero de Pedidos' })).toBeVisible();
+  // El menú del celular está cerrado y muestra la sección en la que arranca.
+  await expect(page.getByRole('button', { name: 'Menú · Pedidos' })).toBeVisible();
+  const pestañas = await abrirMenu(page);
+  await expect(pestañas.getByRole('button', { name: 'Pedidos' })).toBeVisible();
   await expect(pestañas.getByRole('button', { name: 'Cierre de caja' })).toHaveCount(0);
   await expect(pestañas.getByRole('button', { name: 'Revisión de cierres' })).toHaveCount(0);
 });

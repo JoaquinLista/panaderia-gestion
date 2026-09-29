@@ -583,3 +583,19 @@ permiso de caja; cerrar sesión.
 | Dos hojas: "Resumen" (este mes, mes anterior y variación) y "Ventas por día" (una columna por sucursal y totales) | La primera es para leer; la segunda, para que el contador o la familia armen sus propios gráficos. |
 | La variación va como porcentaje de Excel con signo (+10,0 %) y "sin datos" si el mes anterior era cero | Se puede usar en fórmulas, y no aparece un porcentaje inventado. |
 | Google Sheets queda para cuando el negocio tenga su cuenta de Google | Sin esa cuenta no hay dónde sincronizar; el Excel ya se puede subir a Drive a mano. |
+
+## La Fueguina Stats — Menú de secciones en columna
+
+| Decisión | Por qué |
+|----------|---------|
+| En la compu, las secciones van en una columna fija a la izquierda | Pedido del PM: con las pestañas en fila no se veían todas y había que deslizar. En columna entran todas y el menú acompaña al bajar. |
+| En el celular, un botón "☰" con el nombre de la sección abre la lista | Una columna al costado no entra en el ancho del celular. El botón dice dónde estás y la lista se cierra sola al elegir. |
+| El menú es una `nav` "Secciones" y la sección activa lleva `aria-current` | Los lectores de pantalla anuncian el menú y la sección en la que estás. |
+| Botones del menú grandes (64 px de alto, letra de 18 px en negrita, relleno de 14 × 20 px), separados y con borde; el activo en el marrón del logo con una barra amarilla a la izquierda | Pedido del PM: lo usan personas que no están acostumbradas a la compu. Cada sección se ve como un botón distinto y se reconoce por el dibujo. |
+| Logo y colores de La Fueguina (marrón #5a261d y crema) en la cabecera, el login y el ícono de la pestaña | La app pasa a ser de la panadería. Los logos se guardan achicados en `frontend/public` (entre 2 y 44 KB). |
+| Íconos de Lucide (SVG) simples, del mismo color que el texto, en vez de emojis o cuadrados de colores | El PM probó los cuadrados de colores y se veían como emojis. Con íconos de un solo color el menú se ve profesional y el ícono acompaña al texto sin competir con él. |
+| Estados en colores de semáforo: rojo para lo que falta ("Faltan 4 cierres", "sin cierres"), naranja para lo incompleto, verde para lo completo ("Están todos los cierres cargados") | Los dueños tienen 57 y 64 años: el color y el tamaño dicen si hay que hacer algo antes de leer el detalle. |
+| Números principales de 32 a 40 px en negrita; texto secundario más oscuro (contraste 7:1); "Descargar Excel del mes" como botón principal marrón con letra blanca | Pedido del PM siguiendo WCAG 2.1 para adultos mayores: se lee sin forzar la vista. |
+| Menú en un panel marrón como la cabecera, agrupado en "Plata" (Resumen, Cierre de caja, Revisión de cierres, Caja central), "Panaderías" (Pedidos, Stock e insumos, Sucursales) y "Equipo" (Usuarios) | Agrupar por tema ayuda a encontrar las cosas: los dueños van casi siempre a "Plata". Un grupo sin secciones permitidas no se muestra. |
+| Sección activa en crema con letra marrón y barra amarilla; el resto en crema sobre marrón | Es el mayor contraste posible dentro de los colores de la marca: se ve de lejos dónde estás. |
+| Nombres cortos: "Pedidos", "Stock e insumos", "Sucursales" | Menos palabras para leer; el título de cada pantalla sigue diciendo el nombre completo. |

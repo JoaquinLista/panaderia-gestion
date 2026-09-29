@@ -338,7 +338,7 @@ describe('revisión de cierres: detalle', () => {
 
   it('vuelve a la lista', async () => {
     const { user } = await abrirDetalle();
-    await user.click(screen.getByRole('button', { name: '← Volver a la lista' }));
+    await user.click(screen.getByRole('button', { name: 'Volver a la lista' }));
     expect(await screen.findByRole('list', { name: 'Cierres' })).toBeInTheDocument();
   });
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ADMIN, crearUsuario, entrar, unico } from './helpers.js';
+import { ADMIN, crearUsuario, entrar, irA, unico } from './helpers.js';
 
 // El flujo crítico del MVP (#8, #9, #10): la empleada carga el cierre desde el
 // celular y la dueña lo ve, lo corrige si hace falta y lo marca revisado.
@@ -52,7 +52,7 @@ test('la empleada carga un cierre con diferencia y la dueña lo revisa', async (
   const celularDueña = await browser.newContext();
   const dueña = await celularDueña.newPage();
   await entrar(dueña, ADMIN);
-  await dueña.getByRole('button', { name: 'Revisión de cierres' }).click();
+  await irA(dueña, 'Revisión de cierres');
   await dueña.getByLabel('Sólo los que hay que revisar').check();
 
   const lista = dueña.getByRole('list', { name: 'Cierres', exact: true });
@@ -66,7 +66,7 @@ test('la empleada carga un cierre con diferencia y la dueña lo revisa', async (
   await expect(dueña.getByText(/revisado por/)).toBeVisible();
 
   // Ya no aparece entre los que hay que revisar.
-  await dueña.getByRole('button', { name: '← Volver a la lista' }).click();
+  await dueña.getByRole('button', { name: 'Volver a la lista' }).click();
   await dueña.getByLabel('Sólo los que hay que revisar').check();
   await expect(
     dueña
