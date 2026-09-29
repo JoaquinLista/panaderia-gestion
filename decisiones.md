@@ -613,4 +613,5 @@ permiso de caja; cerrar sesión.
 | CSP sin `unsafe-inline`, ni para scripts ni para estilos | La app no escribe scripts ni estilos dentro del HTML: los anchos de las barras los pone React desde JavaScript, y eso la CSP lo permite. Probado con las e2e en un servidor con la misma política. |
 | HSTS aunque en la compu se use HTTP | Por HTTP los navegadores la ignoran; en Azure, con HTTPS, empieza a valer sola. |
 | El backend no manda `X-Powered-By` y Nginx no dice su versión | Menos pistas sobre qué software atacar. |
+| La acción de Trivy se fija por el SHA del commit (con la versión en un comentario) | CodeQL lo marcó: una etiqueta de otra organización se puede mover y cambiar el código que corre con nuestros permisos. Dependabot sigue actualizando el SHA. |
 | El límite de intentos de login ya existía (Sprint 2) | No se tocó; la historia lo pedía y ya estaba cubierto con tests. |
