@@ -131,6 +131,23 @@ jobs:
       - name: Pruebas del blue-green
         run: bash infra/scripts/pruebas/blue-green.test.sh
 
+  alertas:
+    name: Monitoreo · reglas y alertas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # promtool viene en la misma imagen de Prometheus que usa el compose:
+      # revisa la configuración y prueba las alertas con horarios simulados.
+      - name: promtool
+        run: |
+          set -euo pipefail
+          imagen=$(grep -m1 -oE 'image: prom/prometheus:[^ ]+' docker-compose.yml | cut -d' ' -f2)
+          promtool() { docker run --rm -v "$PWD/monitoreo/prometheus:/p:ro" -w /p --entrypoint promtool "$imagen" "$@"; }
+          promtool check config prometheus.yml
+          promtool test rules alertas.test.yml
+          python3 -m json.tool monitoreo/grafana/tableros/la-fueguina.json >/dev/null
+
   docker:
     name: Docker · build y smoke test
     needs: [test, migraciones]
@@ -249,6 +266,31 @@ jobs:
           E2E_URL: http://localhost
         run: npx playwright test
 
+      # ---- Monitoreo (Sprint 8, #18) ----
+      # Prometheus lee las métricas del backend y carga las alertas; Grafana
+      # arranca conectado a Prometheus y con el tablero de La Fueguina.
+      - name: Monitoreo · Prometheus y Grafana
+        run: |
+          set -euo pipefail
+          docker compose --profile monitoreo up -d prometheus grafana
+          esperar() {  # esperar <descripción> <comando...>
+            local que=$1; shift
+            for _ in $(seq 1 30); do "$@" >/dev/null 2>&1 && { echo "OK: $que"; return 0; }; sleep 2; done
+            echo "No pasó: $que"; return 1
+          }
+          consulta() { curl -fsS http://localhost:9090/api/v1/query --data-urlencode "query=$1"; }
+          esperar 'Prometheus listo' curl -fsS http://localhost:9090/-/ready
+          esperar 'Prometheus lee al backend' bash -c "curl -fsS http://localhost:9090/api/v1/query --data-urlencode 'query=up{job=\"backend\"} == 1' | grep -q '\"value\"'"
+          cierres=$(consulta 'lafueguina_cierre_cargado_hoy{sucursal="Estrada",turno="NOCHE"}'); echo "$cierres"
+          grep -q '"1"\]' <<<"$cierres"
+          reglas=$(curl -fsS http://localhost:9090/api/v1/rules)
+          grep -q CierreDeLaNocheSinCargar <<<"$reglas"
+          esperar 'Grafana listo' curl -fsS http://localhost:3001/api/health
+          tablero=$(curl -fsS -u admin:admin 'http://localhost:3001/api/dashboards/uid/la-fueguina'); echo "$tablero" | head -c 300; echo
+          grep -q '"title":"La Fueguina"' <<<"$tablero"
+          fuente=$(curl -fsS -u admin:admin http://localhost:3001/api/datasources/uid/prometheus/health); echo "$fuente"
+          grep -q '"status":"OK"' <<<"$fuente"
+
       - name: Guardar reporte de Playwright si falló
         if: failure()
         uses: actions/upload-artifact@v7
@@ -261,11 +303,11 @@ jobs:
 
       - name: Logs si algo falló
         if: failure()
-        run: docker compose logs --no-color
+        run: docker compose --profile monitoreo logs --no-color
 
       - name: Apagar
         if: always()
-        run: docker compose down -v
+        run: docker compose --profile monitoreo down -v
 
   # ---- Imágenes (Sprint 4, #11) ----
   # Cada imagen se construye para amd64 y arm64 y Trivy la revisa. En los PR sólo

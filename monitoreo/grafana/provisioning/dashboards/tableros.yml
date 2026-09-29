@@ -1,0 +1,11 @@
+# Los tableros de monitoreo/grafana/tableros se cargan solos al arrancar.
+# Para cambiar uno: editarlo en Grafana, exportar el JSON y reemplazar el archivo.
+apiVersion: 1
+providers:
+  - name: La Fueguina
+    folder: La Fueguina
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/tableros

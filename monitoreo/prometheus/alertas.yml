@@ -1,0 +1,46 @@
+# Alertas de La Fueguina (Sprint 8, #18).
+#
+# Prometheus trabaja en UTC y Río Negro está siempre en UTC−3 (Argentina no
+# cambia la hora): las 21:30 de Viedma son las 00:30 UTC.
+# Se prueban con `promtool test rules alertas.test.yml` (lo corre el CI).
+groups:
+  - name: cierres-de-caja
+    rules:
+      # Las sucursales cierran a las 21; se da media hora para cargar el cierre.
+      # Avisa desde las 21:30 hasta las 23:59 de Argentina (00:30 a 02:59 UTC):
+      # a medianoche empieza otro día y el cierre de la noche vuelve a "pendiente".
+      - alert: CierreDeLaNocheSinCargar
+        expr: |
+          lafueguina_cierre_cargado_hoy{turno="NOCHE"} == 0
+          and on() ((hour() == 0 and minute() >= 30) or (hour() >= 1 and hour() < 3))
+        labels:
+          severidad: aviso
+        annotations:
+          resumen: '{{ $labels.sucursal }} no cargó el cierre de la noche'
+          descripcion: >-
+            Son más de las 21:30 y el cierre de la noche de {{ $labels.sucursal }}
+            todavía no está cargado.
+
+  - name: backend
+    rules:
+      - alert: BackendCaido
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severidad: critica
+        annotations:
+          resumen: El backend no responde
+          descripcion: Prometheus no puede leer /metrics desde hace 2 minutos.
+
+      # Más de 5 % de respuestas 5xx durante 5 minutos, con algo de tráfico.
+      - alert: MuchosErrores
+        expr: |
+          sum(rate(lafueguina_http_errores_total[5m]))
+            / sum(rate(lafueguina_http_duracion_segundos_count[5m])) > 0.05
+          and sum(rate(lafueguina_http_duracion_segundos_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severidad: critica
+        annotations:
+          resumen: La API está devolviendo errores
+          descripcion: 'Más del 5 % de las respuestas son errores 5xx ({{ $value | humanizePercentage }}).'
