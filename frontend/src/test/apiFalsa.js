@@ -41,6 +41,7 @@ export const PERMISOS_ADMIN = [
   'pedidos:crear',
   'pedidos:cambiar-estado',
   'caja:cerrar',
+  'caja:revisar',
   'usuarios:administrar',
 ];
 

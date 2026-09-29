@@ -3,9 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/contexto.js';
 import { apiGet, apiPost } from '../lib/api.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
-
-const TURNOS = { MEDIODIA: 'Mediodía', NOCHE: 'Noche' };
-const DEL_TURNO = { MEDIODIA: 'del mediodía', NOCHE: 'de la noche' };
+import { aCampo, centavosDe, DEL_TURNO, diaMes, TURNOS } from '../lib/cierres.js';
+import { BadgeDiferencia, CampoMonto, Diferencia } from './CamposCierre.jsx';
 
 const VACIO = {
   numeroZ: '',
@@ -19,75 +18,19 @@ const VACIO = {
 
 const OBLIGATORIOS = ['totalControlador', 'efectivoContado', 'cambioFijo'];
 
-/** "2026-09-28" → "28/09" */
-const diaMes = (fecha) => fecha.split('-').reverse().slice(0, 2).join('/');
-
-/** Texto y color de la diferencia, en palabras de la caja. */
-function Diferencia({ centavos }) {
-  if (centavos === 0) {
-    return (
-      <div className="cuadre cuadre-ok" role="status">
-        <strong>Cuadra</strong>
-        <span>Diferencia {mostrarPesos(0)}</span>
-      </div>
-    );
-  }
-  const texto = centavos < 0 ? 'Faltan' : 'Sobran';
-  return (
-    <div className="cuadre cuadre-mal" role="status">
-      <strong>
-        {texto} {mostrarPesos(Math.abs(centavos))}
-      </strong>
-      <span>Se guarda igual y la dueña lo revisa. Si sabés por qué, dejalo en el comentario.</span>
-    </div>
-  );
-}
-
 /** Un cierre ya enviado, en una línea. */
 function CierreCargado({ cierre }) {
-  const centavos = Math.round(cierre.diferencia * 100);
   return (
     <li>
       <div className="row-between">
         <strong>{TURNOS[cierre.turno]}</strong>
-        {centavos === 0 ? (
-          <span className="badge badge-ok">CUADRA</span>
-        ) : (
-          <span className="badge badge-warn">
-            {centavos < 0 ? 'FALTAN' : 'SOBRAN'} {mostrarPesos(Math.abs(centavos))}
-          </span>
-        )}
+        <BadgeDiferencia diferencia={cierre.diferencia} />
       </div>
       <p className="muted">
-        Controlador {mostrarPesos(Math.round(cierre.total_controlador * 100))} · cargó{' '}
+        Controlador {mostrarPesos(centavosDe(cierre.total_controlador))} · cargó{' '}
         {cierre.cargado_por_nombre}
       </p>
     </li>
-  );
-}
-
-/** Campo de monto: teclado numérico en el celular y aviso si no se entiende. */
-function CampoMonto({ id, label, valor, onChange, ayuda }) {
-  const invalido = leerMonto(valor) === null;
-  return (
-    <div className="campo-monto">
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="0"
-        value={valor}
-        onChange={onChange}
-        aria-invalid={invalido}
-        aria-describedby={ayuda || invalido ? `${id}-ayuda` : undefined}
-      />
-      {(invalido || ayuda) && (
-        <p id={`${id}-ayuda`} className={invalido ? 'campo-error' : 'ayuda'}>
-          {invalido ? 'No se entiende el monto. Ejemplo: 12.500,50' : ayuda}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -118,7 +61,7 @@ export default function CierreCaja({ sucursales }) {
       setTurno(r.turnos_pendientes[0] ?? '');
       setDatos({
         ...VACIO,
-        cambioFijo: r.cambio_sugerido === null ? '' : String(r.cambio_sugerido).replace('.', ','),
+        cambioFijo: r.cambio_sugerido === null ? '' : aCampo(r.cambio_sugerido),
       });
       setGastos([]);
     } catch (e) {
@@ -330,7 +273,12 @@ export default function CierreCaja({ sucursales }) {
               </button>
             </fieldset>
 
-            {cuadre && <Diferencia centavos={cuadre.diferencia} />}
+            {cuadre && (
+              <Diferencia
+                centavos={cuadre.diferencia}
+                aviso="Se guarda igual y la dueña lo revisa. Si sabés por qué, dejalo en el comentario."
+              />
+            )}
 
             <label htmlFor="cierre-comentario">Comentario (opcional)</label>
             <textarea

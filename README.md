@@ -68,6 +68,11 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | PUT | `/api/usuarios/:id/password` | La dueña pone una contraseña nueva y se cortan las sesiones abiertas de ese usuario (sólo admin) |
 | GET | `/api/cierres/hoy` | Turnos de hoy ya cerrados en la sucursal, los pendientes y el cambio fijo sugerido (la dueña pasa `?sucursal_id=`) |
 | POST | `/api/cierres` | Carga el cierre de un turno; `409` si ese turno de hoy ya está cargado |
+| GET | `/api/cierres` | Cierres filtrados por `sucursal_id`, `desde`, `hasta` (AAAA-MM-DD) y `a_revisar=true` (sólo admin) |
+| GET | `/api/cierres/pendientes` | Qué sucursales todavía no cargaron cada turno de hoy (sólo admin) |
+| GET | `/api/cierres/:id` | Un cierre con su historial de correcciones (sólo admin) |
+| PUT | `/api/cierres/:id` | La dueña corrige fecha, turno, montos, gastos o comentario; cada cambio queda registrado (sólo admin) |
+| PUT | `/api/cierres/:id/revisado` | `{ revisado: true \| false }`: saca o vuelve a poner el cierre en "a revisar" (sólo admin) |
 
 **Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de
 login) y el login, todas las rutas responden `401` sin sesión y `403` si el rol no

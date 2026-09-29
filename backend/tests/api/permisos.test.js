@@ -63,6 +63,11 @@ const RUTAS_PROTEGIDAS = [
   ['put', '/api/usuarios/2/password'],
   ['get', '/api/cierres/hoy'],
   ['post', '/api/cierres'],
+  ['get', '/api/cierres'],
+  ['get', '/api/cierres/pendientes'],
+  ['get', '/api/cierres/1'],
+  ['put', '/api/cierres/1'],
+  ['put', '/api/cierres/1/revisado'],
 ];
 
 describe('sin sesión', () => {
@@ -93,6 +98,13 @@ describe('rol incorrecto: 403', () => {
     // Cerrar caja es un permiso que la dueña da a cada empleada.
     ['empleadaSinCaja', 'get', '/api/cierres/hoy'],
     ['empleadaSinCaja', 'post', '/api/cierres'],
+    // Revisar y corregir cierres es sólo de la dueña: ni la empleada que cierra puede.
+    ['empleada', 'get', '/api/cierres'],
+    ['empleada', 'get', '/api/cierres/pendientes'],
+    ['empleada', 'get', '/api/cierres/1'],
+    ['empleada', 'put', '/api/cierres/1'],
+    ['empleada', 'put', '/api/cierres/1/revisado'],
+    ['chofer', 'get', '/api/cierres'],
   ])('%s: %s %s', async (quien, metodo, ruta) => {
     const res = await request(app)[metodo](ruta).set('Cookie', cookies[quien]).send({});
     expect(res.status).toBe(403);
