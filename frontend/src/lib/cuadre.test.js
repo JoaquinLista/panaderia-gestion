@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { aCentavos, aPesos, calcularCuadre, leerMonto, mostrarPesos } from './cuadre.js';
+import {
+  aCentavos,
+  aPesos,
+  calcularCuadre,
+  formatearMonto,
+  leerMonto,
+  mostrarPesos,
+} from './cuadre.js';
 
 // Los mismos casos que backend/tests/unit/cuadre.test.js.
 describe('aCentavos', () => {
@@ -46,12 +53,38 @@ describe('leerMonto: como se escribe en Argentina', () => {
     ['1500.50', 150050],
     ['$ 12.000', 1200000],
     ['0,10', 10],
+    ['1.500,', 150000],
   ])('"%s" son %i centavos', (texto, centavos) => {
     expect(leerMonto(texto)).toBe(centavos);
   });
 
   it.each(['abc', '12,5,0', '-100', '1.5000', '10,123'])('"%s" no se entiende', (texto) => {
     expect(leerMonto(texto)).toBeNull();
+  });
+});
+
+describe('formatearMonto: puntos de miles mientras se escribe', () => {
+  it.each([
+    ['', ''],
+    ['0', '0'],
+    ['15000', '15.000'],
+    ['1545659', '1.545.659'],
+    ['15456,59', '15.456,59'],
+    ['15456,599', '15.456,59'],
+    ['1.5000', '15.000'],
+    ['1.50', '150'],
+    ['1.500,', '1.500,'],
+    [',5', '0,5'],
+    ['007', '7'],
+    ['$ 12.000', '12.000'],
+    ['1,2,3', '1,23'],
+    ['abc', ''],
+  ])('"%s" queda "%s"', (texto, esperado) => {
+    expect(formatearMonto(texto)).toBe(esperado);
+  });
+
+  it('lo que devuelve se lee como el mismo monto', () => {
+    expect(leerMonto(formatearMonto('15456,59'))).toBe(1545659);
   });
 });
 

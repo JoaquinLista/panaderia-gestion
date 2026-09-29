@@ -3,7 +3,7 @@ import { ADMIN, crearUsuario, entrar, unico } from './helpers.js';
 
 // El flujo crítico del MVP (#8, #9, #10): la empleada carga el cierre desde el
 // celular y la dueña lo ve, lo corrige si hace falta y lo marca revisado.
-test('la empleada carga un cierre que no cuadra y la dueña lo revisa', async ({
+test('la empleada carga un cierre con diferencia y la dueña lo revisa', async ({
   browser,
   baseURL,
 }) => {
@@ -27,8 +27,9 @@ test('la empleada carga un cierre que no cuadra y la dueña lo revisa', async ({
   await form.getByLabel('Total del controlador (Z)').fill('205.350');
   await form.getByLabel('Efectivo contado en la caja').fill('113.000');
   await form.getByLabel('Cambio fijo que queda').fill('15.000');
-  await form.getByLabel('Posnet (débito y crédito)').fill('74.250');
-  await form.getByLabel('QR y transferencias').fill('31.100');
+  // Se escribe sin puntos: el campo los pone solo.
+  await form.getByLabel('Posnet (débito, crédito y QR)').fill('105350');
+  await expect(form.getByLabel('Posnet (débito, crédito y QR)')).toHaveValue('105.350');
 
   // La diferencia se ve mientras carga: faltan $2.000
   await expect(form.getByRole('status')).toContainText('Faltan');

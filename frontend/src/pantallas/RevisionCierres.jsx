@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { apiGet, apiSend } from '../lib/api.js';
-import { aCampo, centavosDe, diaMes, TURNOS } from '../lib/cierres.js';
+import { aCampo, centavosDe, diaMes, TURNOS, valorGasto } from '../lib/cierres.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
 import { formatFecha } from '../lib/formato.js';
 import { BadgeDiferencia, CampoMonto, Diferencia } from './CamposCierre.jsx';
@@ -10,8 +10,7 @@ const MONTOS = [
   ['total_controlador', 'Total del controlador (Z)'],
   ['efectivo_contado', 'Efectivo contado en la caja'],
   ['cambio_fijo', 'Cambio fijo que quedó'],
-  ['posnet', 'Posnet (débito y crédito)'],
-  ['transferencias', 'QR y transferencias'],
+  ['posnet', 'Posnet (débito, crédito y QR)'],
 ];
 
 const NOMBRE_CAMPO = {
@@ -21,9 +20,10 @@ const NOMBRE_CAMPO = {
   comentario: 'Comentario',
   gastos: 'Gastos',
   ...Object.fromEntries(MONTOS),
+  transferencias: 'Transferencias',
 };
 
-const ES_MONTO = new Set(MONTOS.map(([k]) => k));
+const ES_MONTO = new Set([...MONTOS.map(([k]) => k), 'transferencias']);
 
 /** Valor del historial para mostrar: los montos como plata ("$ 205.350,00"). */
 const valorHistorial = (campo, valor) => {
@@ -37,6 +37,9 @@ const aFormulario = (cierre) => ({
   numero_z: cierre.numero_z === null ? '' : String(cierre.numero_z),
   comentario: cierre.comentario ?? '',
   ...Object.fromEntries(MONTOS.map(([k]) => [k, aCampo(cierre[k])])),
+  // Ya no se cargan (todo entra por el posnet), pero un cierre viejo puede
+  // tenerlas: cuentan en la diferencia y la API las conserva.
+  transferencias: centavosDe(cierre.transferencias),
   gastos: cierre.gastos.map((g) => ({ detalle: g.detalle, monto: aCampo(g.monto) })),
 });
 
@@ -100,10 +103,11 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
   };
 
   const campo = (nombre) => (e) => setForm((prev) => ({ ...prev, [nombre]: e.target.value }));
+  const monto = (nombre) => (valor) => setForm((prev) => ({ ...prev, [nombre]: valor }));
   const cambiarGasto = (i, nombre) => (e) =>
     setForm((prev) => ({
       ...prev,
-      gastos: prev.gastos.map((g, j) => (j === i ? { ...g, [nombre]: e.target.value } : g)),
+      gastos: prev.gastos.map((g, j) => (j === i ? { ...g, [nombre]: valorGasto(nombre, e) } : g)),
     }));
 
   if (!form) {
@@ -126,7 +130,7 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
         efectivoContado: centavos.efectivo_contado,
         cambioFijo: centavos.cambio_fijo,
         posnet: centavos.posnet,
-        transferencias: centavos.transferencias,
+        transferencias: form.transferencias,
         gastos: gastosCentavos,
       })
     : null;
@@ -218,7 +222,7 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
               id={`corr-${k}`}
               label={label}
               valor={form[k]}
-              onChange={campo(k)}
+              onChange={monto(k)}
             />
           ))}
           <div className="campo-monto">

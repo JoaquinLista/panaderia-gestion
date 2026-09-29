@@ -91,7 +91,7 @@ describe('revisión de cierres: lista', () => {
     expect(fila.textContent.replace(/\s/g, ' ')).toContain('FALTAN $ 2.000,00');
     expect(within(fila).getByText('“Faltó cargar un gasto”')).toBeInTheDocument();
     const otra = lista().getByRole('button', { name: '28/09 · Estrada · Mediodía' }).closest('li');
-    expect(within(otra).getByText('CUADRA')).toBeInTheDocument();
+    expect(within(otra).getByText('SIN DIFERENCIA')).toBeInTheDocument();
   });
 
   it('filtra por sucursal, fechas y "a revisar"', async () => {
@@ -143,7 +143,7 @@ describe('revisión de cierres: detalle', () => {
   it('muestra los datos cargados y la diferencia', async () => {
     await abrirDetalle();
     expect(screen.getByRole('heading', { name: 'Estrada · 28/09 · Noche' })).toBeInTheDocument();
-    expect(corregir().getByLabelText('Total del controlador (Z)')).toHaveValue('205350');
+    expect(corregir().getByLabelText('Total del controlador (Z)')).toHaveValue('205.350');
     expect(corregir().getByLabelText('Detalle del gasto 1')).toHaveValue('Sodero');
     expect(screen.getByRole('status').textContent.replace(/\s/g, ' ')).toContain(
       'Sobran $ 4.000,00'
@@ -173,7 +173,7 @@ describe('revisión de cierres: detalle', () => {
     const total = corregir().getByLabelText('Total del controlador (Z)');
     await user.clear(total);
     await user.type(total, '209.350');
-    expect(screen.getByRole('status')).toHaveTextContent('Cuadra');
+    expect(screen.getByRole('status')).toHaveTextContent('Sin diferencia');
     await user.click(corregir().getByRole('button', { name: 'Guardar corrección' }));
 
     expect(await screen.findByText('Corrección guardada.')).toBeInTheDocument();
@@ -185,6 +185,8 @@ describe('revisión de cierres: detalle', () => {
       total_controlador: '209350.00',
       gastos: [{ detalle: 'Sodero', monto: '6000.00' }],
     });
+    // Las transferencias de un cierre viejo cuentan en la diferencia pero no se reenvían.
+    expect(JSON.parse(opciones.body)).not.toHaveProperty('transferencias');
     const historial = screen.getByRole('list', { name: 'Historial de correcciones' });
     expect(historial.textContent.replace(/\s/g, ' ')).toContain(
       'Total del controlador (Z): $ 205.350,00 → $ 209.350,00'
@@ -194,9 +196,9 @@ describe('revisión de cierres: detalle', () => {
     expect(llamadas(fetchMock, 'GET', '/api/cierres').length).toBeGreaterThan(1);
   });
 
-  it('no guarda con un monto inválido', async () => {
+  it('no guarda con un monto vacío', async () => {
     const { user, fetchMock } = await abrirDetalle();
-    await user.type(corregir().getByLabelText('Posnet (débito y crédito)'), 'x');
+    await user.clear(corregir().getByLabelText('Posnet (débito, crédito y QR)'));
     await user.click(corregir().getByRole('button', { name: 'Guardar corrección' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Revisá los montos');
     expect(llamadas(fetchMock, 'PUT', '/api/cierres/10')).toHaveLength(0);
