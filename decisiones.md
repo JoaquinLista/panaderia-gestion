@@ -645,3 +645,15 @@ permiso de caja; cerrar sesión.
 | Las alertas se ven en el tablero y en Prometheus; todavía no mandan mensajes | Para mandar un mail o un Telegram hace falta una cuenta de envío del negocio. Se agrega con Alertmanager o con los contactos de Grafana cuando esté. |
 | `promtool test rules` en el CI con horarios simulados (21:10, 21:45, 23:30, 00:10) | Una alerta que nunca suena o que suena siempre no se nota hasta que hace falta. Así se prueba como cualquier otro código. |
 | El CI levanta Prometheus y Grafana y verifica que leen el cierre del smoke test y cargan el tablero | Prueba de punta a punta: del cierre cargado al dato en Grafana. |
+
+## La Fueguina Stats — Sprint 8 · PR 4: "Reportar un problema" (#18)
+
+| Decisión | Por qué |
+|----------|---------|
+| El botón va al pie del menú, separado de las secciones, para todos los roles | Es el lugar que ya conocen; no es una sección del negocio. |
+| Dos preguntas en palabras simples: "¿Qué pasó?" y "¿Qué esperabas?" (opcional) | Son las dos primeras de la plantilla de bug. Los pasos, el entorno y la versión los completa la app sola. |
+| El formulario se abre encima de la sección, que queda montada | Si alguien estaba cargando un cierre y reporta, al volver no perdió lo que escribió. |
+| Siempre se guarda en la base; el issue de GitHub es un extra si hay token | Así funciona desde el primer día, y un problema de GitHub nunca pierde un reporte. |
+| El issue lleva rol, sucursal y sección, no el nombre de la persona | El repo es público. |
+| Token fine-grained sólo con permiso de Issues | Si alguien lo roba, no puede tocar el código. |
+| Hasta 10 reportes por hora por persona | Evita que un error de pantalla en bucle (o alguien) llene GitHub de issues. |

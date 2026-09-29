@@ -1249,3 +1249,51 @@ label.check input {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---- Reportar un problema (Sprint 8) ---- */
+/* Al pie del menú, separado de las secciones del negocio. */
+.menu-ayuda {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid rgba(253, 243, 231, 0.25);
+}
+
+.reportar form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+}
+
+.reportar label {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.reportar textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 16px;
+  resize: vertical;
+  margin-bottom: 8px;
+}
+
+.reportar-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.reportar .boton-principal {
+  padding: 12px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.reportar .link {
+  font-size: 1rem;
+}

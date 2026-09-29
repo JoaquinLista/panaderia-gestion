@@ -57,10 +57,11 @@ describe('pestañas según el rol', () => {
         'Stock e insumos',
         'Sucursales',
         'Usuarios',
+        'Reportar un problema',
       ],
     ],
-    ['empleada', sesionEmpleada, ['Pedidos', 'Sucursales']],
-    ['chofer', sesionChofer, ['Pedidos', 'Stock e insumos', 'Sucursales']],
+    ['empleada', sesionEmpleada, ['Pedidos', 'Sucursales', 'Reportar un problema']],
+    ['chofer', sesionChofer, ['Pedidos', 'Stock e insumos', 'Sucursales', 'Reportar un problema']],
   ])('%s ve sólo sus pestañas', async (_rol, sesion, esperadas) => {
     abrirComo(sesion);
     expect(await pestañas()).toEqual(esperadas);
@@ -107,6 +108,30 @@ describe('menú de secciones', () => {
       'aria-current',
       'page'
     );
+  });
+});
+
+describe('reportar un problema', () => {
+  it('se abre desde el menú y al cancelar vuelve a la sección en la que estabas', async () => {
+    const user = userEvent.setup();
+    abrirComo(sesionChofer);
+    await user.click(await screen.findByRole('button', { name: 'Menú · Pedidos' }));
+    const nav = screen.getByRole('navigation', { name: 'Secciones' });
+    await user.click(within(nav).getByRole('button', { name: 'Reportar un problema' }));
+
+    expect(screen.getByRole('form', { name: 'Reportar un problema' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Menú · Reportar un problema' })).toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: 'Reportar un problema' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+    expect(within(nav).getByRole('button', { name: 'Pedidos' })).not.toHaveAttribute(
+      'aria-current'
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('form', { name: 'Reportar un problema' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Menú · Pedidos' })).toBeInTheDocument();
   });
 });
 

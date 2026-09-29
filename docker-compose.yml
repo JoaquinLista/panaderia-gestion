@@ -49,6 +49,10 @@ services:
       # El compose local se usa por http://localhost: sin HTTPS, una cookie
       # Secure no viajaría. En un entorno con HTTPS va en true.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # "Reportar un problema": con un token de GitHub cada reporte abre un
+      # issue; sin token, queda guardado en la base igual.
+      GITHUB_TOKEN_REPORTES: ${GITHUB_TOKEN_REPORTES:-}
+      APP_ENTORNO: ${APP_ENTORNO:-local}
     ports:
       - "3000:3000"
     depends_on:

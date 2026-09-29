@@ -88,6 +88,7 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/dashboard/dia` | Resumen de los dueños: lo vendido por sucursal y medio de pago y qué cierres faltan (`?fecha=AAAA-MM-DD`, hoy si no viene; sólo admin) |
 | GET | `/api/dashboard/mes` | Acumulado del mes (hasta hoy si está en curso): ventas por sucursal y por día, gastos, retiros, resultado y comparación con los mismos días del mes anterior (`?mes=AAAA-MM`; sólo admin) |
 | GET | `/api/dashboard/excel` | El resumen del mes en Excel: hoja "Resumen" comparada con el mes anterior y hoja "Ventas por día" con una columna por sucursal (`?mes=AAAA-MM`; sólo admin) |
+| POST | `/api/reportes` | Reportar un problema: `{ que_paso, esperado?, seccion?, version? }`. Cualquier sesión; abre un issue en GitHub si hay `GITHUB_TOKEN_REPORTES` (máx. 10 por hora por persona) |
 | PUT | `/api/cierres/:id/revisado` | `{ revisado: true \| false }`: saca o vuelve a poner el cierre en "a revisar" (sólo admin) |
 
 **Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de
@@ -305,6 +306,19 @@ Las alertas están en `monitoreo/prometheus/alertas.yml`:
 El CI prueba las alertas con horarios simulados (`promtool test rules
 alertas.test.yml`) y levanta Prometheus y Grafana para verificar que leen al
 backend y cargan el tablero. Para apagar todo: `docker compose --profile monitoreo down`.
+
+### Reportar un problema
+
+Al pie del menú, cualquier persona puede contar qué no anduvo. El reporte se
+guarda en la tabla `reportes_problema` con quién, desde qué sección y qué versión.
+Si el backend tiene `GITHUB_TOKEN_REPORTES`, además abre un issue con la plantilla
+de bug y las etiquetas `bug` y `reportado-desde-la-app`. El repo es público: el
+issue lleva el rol y la sección, nunca el nombre de la persona. Máximo 10 reportes
+por hora por persona.
+
+Para crear el token: GitHub → Settings → Developer settings → Fine-grained tokens →
+*Generate new token*, sólo el repositorio `panaderia-gestion`, permiso **Issues:
+Read and write**. Va en el `.env` (y en Azure, como secreto de la app).
 
 ## Base de datos y migraciones
 

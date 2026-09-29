@@ -21,6 +21,7 @@ import { registroHttp } from './observabilidad/registroHttp.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
 import insumosRoutes from './routes/insumosRoutes.js';
 import pedidosRoutes from './routes/pedidosRoutes.js';
+import reportesRoutes from './routes/reportesRoutes.js';
 import productosRoutes from './routes/productosRoutes.js';
 
 const app = express();
@@ -82,6 +83,7 @@ app.use('/api/usuarios', requerirSesion, usuariosRoutes);
 app.use('/api/cierres', requerirSesion, cierresRoutes);
 app.use('/api/caja-central', requerirSesion, cajaCentralRoutes);
 app.use('/api/dashboard', requerirSesion, dashboardRoutes);
+app.use('/api/reportes', requerirSesion, reportesRoutes);
 
 // ---- 404 ----
 app.use((req, res) => {
