@@ -9,9 +9,9 @@ test('el cierre del mediodía se ve en el resumen y falta el de la noche', async
   // La dueña entra y lo primero que ve es el resumen del día.
   await expect(page.getByRole('heading', { name: /^Hoy / })).toBeVisible();
 
-  // ---- Carga el cierre del mediodía de Estrada ----
+  // ---- Carga el cierre del mediodía de Viedma (ninguna otra prueba la usa) ----
   await page.getByRole('button', { name: 'Cierre de caja' }).click();
-  await page.getByLabel('Sucursal').selectOption({ label: 'Estrada' });
+  await page.getByLabel('Sucursal').selectOption({ label: 'Viedma (Chacra)' });
   const cierre = page.getByRole('form', { name: 'Cierre de caja' });
   await cierre.getByLabel('Mediodía').check();
   await cierre.getByLabel('Total del controlador (Z)').fill('80.000');
@@ -22,13 +22,13 @@ test('el cierre del mediodía se ve en el resumen y falta el de la noche', async
   await cierre.getByRole('button', { name: 'Enviar cierre del mediodía' }).click();
   await expect(page.getByText('Cierre del mediodía enviado.')).toBeVisible();
 
-  // ---- En el resumen: lo vendido en Estrada y que falta su noche ----
+  // ---- En el resumen: lo vendido en Viedma y que falta su noche ----
   await page.getByRole('button', { name: 'Resumen' }).click();
   const porSucursal = page.getByRole('list', { name: 'Vendido por sucursal' });
-  const estrada = porSucursal.getByRole('listitem').filter({ hasText: 'Estrada' });
-  await expect(estrada).toContainText('80.000,00');
-  await expect(estrada).not.toContainText('sin cierres');
+  const viedma = porSucursal.getByRole('listitem').filter({ hasText: 'Viedma' });
+  await expect(viedma).toContainText('80.000,00');
+  await expect(viedma).not.toContainText('sin cierres');
   await expect(page.getByRole('status').filter({ hasText: /Falta/ })).toContainText(
-    'Estrada: noche'
+    'Viedma (Chacra): noche'
   );
 });
