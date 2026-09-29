@@ -563,3 +563,14 @@ permiso de caja; cerrar sesión.
 | Un turno sin cierre cuenta como "falta cargar", no como venta cero | Para que un cierre olvidado no se lea como un día malo. |
 | Todo se calcula al pedirlo, desde los cierres y la caja central | No hay tablas nuevas ni datos duplicados que se puedan desincronizar. Con cuatro sucursales, un mes son unos 240 cierres: se suman al instante. |
 | Permiso nuevo `dashboard:ver`, sólo admin | Son los números de todo el negocio. |
+
+## La Fueguina Stats — Sprint 7 · PR 2: pantalla "Resumen" (#15, #16)
+
+| Decisión | Por qué |
+|----------|---------|
+| "Resumen" es la primera pestaña de los dueños | Es lo que abren para ver cómo va el negocio; el cierre de caja queda a un toque. Las empleadas y el chofer no la ven. |
+| Arriba el día, abajo el mes, en una sola pantalla | En el celular se lee de corrido sin cambiar de pantalla. Cada parte tiene su propio selector de fecha. |
+| Los cierres que faltan se muestran como aviso, con sucursal y turno ("Café: noche") | Un número bajo puede ser un cierre sin cargar, no un mal día. Si es hoy, aclara que el de la noche se carga a las 21. |
+| Barras hechas con CSS, sin librería de gráficos | Son barras simples; una librería sumaría peso a la app para nada. El gráfico por día tiene una descripción para lectores de pantalla. |
+| La variación se pinta verde o roja según qué es bueno | Que las ventas suban es bueno; que los gastos suban, no. Si no hay mes anterior dice "sin datos para comparar". |
+| Prueba e2e: se carga un cierre del mediodía y el resumen lo muestra y marca la noche como pendiente | Es el recorrido completo: de la caja al número que ve la dueña. |

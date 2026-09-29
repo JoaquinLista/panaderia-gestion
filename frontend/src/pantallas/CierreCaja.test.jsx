@@ -48,6 +48,8 @@ const abrir = async ({ sesion = sesionLucia, rutas = {}, esperarHoy = true } = {
     ...rutas,
   });
   render(<App />);
+  // Los dueños arrancan en el resumen: se va a la pestaña del cierre.
+  await user.click(await screen.findByRole('button', { name: 'Cierre de caja' }));
   await screen.findByRole('heading', { name: 'Cierre de caja' });
   // Espera a que llegue /cierres/hoy: la fecha aparece junto a la sucursal.
   if (esperarHoy) await screen.findByText(/ · hoy /);
