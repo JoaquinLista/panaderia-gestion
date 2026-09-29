@@ -136,8 +136,7 @@ describe('sesión abierta', () => {
   it('si la API responde 401 en medio del uso, vuelve al login', async () => {
     apiFalsa({
       'GET /api/sucursales': () => [200, sucursales],
-      'GET /api/productos': () => [200, productos],
-      'GET /api/pedidos': SIN_SESION,
+      'GET /api/productos': SIN_SESION,
     });
     render(<App />);
     expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument();

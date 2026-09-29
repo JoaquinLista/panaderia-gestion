@@ -109,8 +109,8 @@ describe('Red de sucursales', () => {
       'GET /api/pedidos': () => [200, []],
     });
     render(<App />);
-    await screen.findAllByRole('option', { name: 'Estrada (VENTA)' });
-    await user.click(screen.getByRole('button', { name: 'Red de Sucursales' }));
+    await user.click(await screen.findByRole('button', { name: 'Red de Sucursales' }));
+    await screen.findByRole('heading', { name: 'Viedma (Chacra)' });
 
     expect(screen.getByText('Nodos totales', { selector: 'p' }).previousSibling).toHaveTextContent(
       '4'

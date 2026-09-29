@@ -17,7 +17,8 @@ const pedido = (id, estado) => ({
   ],
 });
 
-const montar = (rutasExtra = {}, pedidos = []) => {
+// La dueña entra al cierre de caja: se abre la pestaña de pedidos.
+const montar = async (rutasExtra = {}, pedidos = []) => {
   const fetchMock = apiFalsa({
     'GET /api/sucursales': () => [200, sucursales],
     'GET /api/productos': () => [200, productos],
@@ -25,6 +26,7 @@ const montar = (rutasExtra = {}, pedidos = []) => {
     ...rutasExtra,
   });
   render(<App />);
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Tablero de Pedidos' }));
   return fetchMock;
 };
 
@@ -35,12 +37,12 @@ const formularioListo = async () => {
 
 describe('Tablero de pedidos', () => {
   it('muestra un mensaje cuando no hay pedidos', async () => {
-    montar();
+    await montar();
     expect(await screen.findByText('Todavía no hay pedidos cargados.')).toBeInTheDocument();
   });
 
   it('lista los pedidos con su detalle y estado', async () => {
-    montar({}, [pedido(7, 'PENDIENTE')]);
+    await montar({}, [pedido(7, 'PENDIENTE')]);
     const fila = (await screen.findByText('Medialunas — 12 docena')).closest('tr');
     expect(within(fila).getByText('PENDIENTE')).toBeInTheDocument();
     expect(within(fila).getByText('Viedma (Chacra)')).toBeInTheDocument();
@@ -48,7 +50,7 @@ describe('Tablero de pedidos', () => {
 
   it('no deja registrar un pedido con origen y destino iguales', async () => {
     const user = userEvent.setup();
-    montar();
+    await montar();
     await formularioListo();
     // Origen por defecto: la primera sucursal (Galpón Central, id 5).
     await user.selectOptions(screen.getByLabelText('Sucursal de destino'), '5');
@@ -58,7 +60,7 @@ describe('Tablero de pedidos', () => {
 
   it('pide al menos un producto con cantidad', async () => {
     const user = userEvent.setup();
-    montar();
+    await montar();
     await formularioListo();
     await user.click(screen.getByRole('button', { name: 'Registrar pedido' }));
     expect(
@@ -68,7 +70,7 @@ describe('Tablero de pedidos', () => {
 
   it('registra un pedido con varios productos y limpia el formulario', async () => {
     const user = userEvent.setup();
-    const fetchMock = montar({ 'POST /api/pedidos': () => [201, { id: 9 }] });
+    const fetchMock = await montar({ 'POST /api/pedidos': () => [201, { id: 9 }] });
     await formularioListo();
 
     await user.selectOptions(screen.getByLabelText('Producto'), '1');
@@ -96,7 +98,7 @@ describe('Tablero de pedidos', () => {
 
   it('permite quitar un ítem pero siempre deja al menos uno', async () => {
     const user = userEvent.setup();
-    montar();
+    await montar();
     await formularioListo();
     await user.click(screen.getByRole('button', { name: '+ Agregar producto' }));
     expect(screen.getAllByLabelText('Producto')).toHaveLength(2);
@@ -107,7 +109,7 @@ describe('Tablero de pedidos', () => {
 
   it('muestra el error del backend si el alta falla', async () => {
     const user = userEvent.setup();
-    montar({ 'POST /api/pedidos': () => [400, { error: 'Alguna sucursal no existe' }] });
+    await montar({ 'POST /api/pedidos': () => [400, { error: 'Alguna sucursal no existe' }] });
     await formularioListo();
     await user.selectOptions(screen.getByLabelText('Producto'), '1');
     await user.type(screen.getByLabelText('Cantidad'), '1');
@@ -117,7 +119,7 @@ describe('Tablero de pedidos', () => {
 
   it('avanza el estado de un pedido', async () => {
     const user = userEvent.setup();
-    const fetchMock = montar(
+    const fetchMock = await montar(
       { 'PUT /api/pedidos/7/estado': () => [200, pedido(7, 'EN_PREPARACION')] },
       [pedido(7, 'PENDIENTE')]
     );
@@ -132,7 +134,7 @@ describe('Tablero de pedidos', () => {
   it('pide confirmación antes de cancelar y no hace nada si se rechaza', async () => {
     const user = userEvent.setup();
     const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    const fetchMock = montar({}, [pedido(7, 'PENDIENTE')]);
+    const fetchMock = await montar({}, [pedido(7, 'PENDIENTE')]);
     await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
     expect(confirmar).toHaveBeenCalled();
     expect(fetchMock.mock.calls.some(([, o]) => o?.method === 'PUT')).toBe(false);
@@ -141,7 +143,7 @@ describe('Tablero de pedidos', () => {
   it('muestra el error si la transición es inválida', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    montar({ 'PUT /api/pedidos/7/estado': () => [409, { error: 'Transición inválida' }] }, [
+    await montar({ 'PUT /api/pedidos/7/estado': () => [409, { error: 'Transición inválida' }] }, [
       pedido(7, 'PENDIENTE'),
     ]);
     await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
@@ -149,13 +151,13 @@ describe('Tablero de pedidos', () => {
   });
 
   it('no ofrece acciones para un pedido en estado final', async () => {
-    montar({}, [pedido(7, 'RECIBIDO')]);
+    await montar({}, [pedido(7, 'RECIBIDO')]);
     const fila = (await screen.findByText('RECIBIDO')).closest('tr');
     expect(within(fila).queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('muestra el error si no se pueden cargar los pedidos', async () => {
-    montar({ 'GET /api/pedidos': () => [500, { error: 'Base caída' }] });
+    await montar({ 'GET /api/pedidos': () => [500, { error: 'Base caída' }] });
     expect(await screen.findByText('Base caída')).toBeInTheDocument();
   });
 });

@@ -518,3 +518,154 @@ label.check input {
 .reset-password {
   margin-top: 12px;
 }
+
+/* ---- Cierre de caja (pensado para el celular) ---- */
+/* 16 px en los campos: con menos, el iPhone hace zoom al tocarlos. */
+.cierre-caja input,
+.cierre-caja select,
+.cierre-caja textarea {
+  font-size: 16px;
+}
+
+.cierre-caja textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  margin-bottom: 12px;
+  resize: vertical;
+}
+
+.cierre-caja fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.cierre-caja legend {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.turnos {
+  display: flex;
+  gap: 8px;
+}
+
+.turno {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.turno input {
+  width: auto;
+  margin: 0;
+}
+
+.turno.activo {
+  border-color: var(--color-primary);
+  background: #f6ede2;
+}
+
+.montos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 10px;
+}
+
+.montos label {
+  min-height: 2.4em;
+}
+
+.campo-monto input {
+  margin-bottom: 4px;
+}
+
+.campo-monto {
+  margin-bottom: 10px;
+}
+
+.cierre-caja .ayuda,
+.campo-error {
+  font-size: 0.75rem;
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.campo-error {
+  color: var(--color-danger);
+}
+
+.cierre-caja input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.gasto-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 40px;
+  gap: 8px;
+}
+
+.gasto-row button {
+  height: 40px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cuadre {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+}
+
+.cuadre strong {
+  font-size: 1.1rem;
+}
+
+.cuadre-ok {
+  background: var(--color-ok-bg);
+  color: var(--color-ok);
+}
+
+.cuadre-mal {
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.boton-enviar {
+  width: 100%;
+  padding: 14px;
+  font-size: 1rem;
+}
+
+.lista-cierres {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-cierres li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lista-cierres p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+}
