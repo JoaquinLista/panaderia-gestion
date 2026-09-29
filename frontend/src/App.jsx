@@ -1,4 +1,15 @@
 import { useEffect, useState } from 'react';
+import {
+  Boxes,
+  ClipboardCheck,
+  Landmark,
+  LayoutDashboard,
+  Menu,
+  Store,
+  Truck,
+  Users,
+  Wallet,
+} from 'lucide-react';
 
 import { AuthProvider } from './auth/AuthProvider.jsx';
 import { tienePermiso, useAuth } from './auth/contexto.js';
@@ -14,18 +25,56 @@ import RedSucursales from './pantallas/RedSucursales.jsx';
 import Resumen from './pantallas/Resumen.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
+// Cada sección tiene su ícono y un color por grupo (verde: plata; naranja:
+// pedidos y stock; azul: sucursales; violeta: usuarios) para reconocerla de un vistazo.
 // Cada sección del menú aparece sólo si la sesión tiene el permiso (matriz del backend).
 // Los dueños arrancan en el resumen; el resto, en el cierre de caja, que es lo
 // que se usa todos los días (MVP del PRD).
 const TABS = [
-  { id: 'resumen', icono: '📊', label: 'Resumen', permiso: 'dashboard:ver' },
-  { id: 'cierre', icono: '💵', label: 'Cierre de caja', permiso: 'caja:cerrar' },
-  { id: 'revision', icono: '✅', label: 'Revisión de cierres', permiso: 'caja:revisar' },
-  { id: 'caja-central', icono: '🏦', label: 'Caja central', permiso: 'caja-central:administrar' },
-  { id: 'pedidos', icono: '📦', label: 'Tablero de Pedidos', permiso: 'pedidos:ver' },
-  { id: 'insumos', icono: '🧺', label: 'Stock e Insumos', permiso: 'insumos:ver' },
-  { id: 'red', icono: '🏪', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
-  { id: 'usuarios', icono: '👥', label: 'Usuarios', permiso: 'usuarios:administrar' },
+  {
+    id: 'resumen',
+    Icono: LayoutDashboard,
+    color: 'resumen',
+    label: 'Resumen',
+    permiso: 'dashboard:ver',
+  },
+  { id: 'cierre', Icono: Wallet, color: 'caja', label: 'Cierre de caja', permiso: 'caja:cerrar' },
+  {
+    id: 'revision',
+    Icono: ClipboardCheck,
+    color: 'caja',
+    label: 'Revisión de cierres',
+    permiso: 'caja:revisar',
+  },
+  {
+    id: 'caja-central',
+    Icono: Landmark,
+    color: 'caja',
+    label: 'Caja central',
+    permiso: 'caja-central:administrar',
+  },
+  {
+    id: 'pedidos',
+    Icono: Truck,
+    color: 'pedidos',
+    label: 'Tablero de Pedidos',
+    permiso: 'pedidos:ver',
+  },
+  {
+    id: 'insumos',
+    Icono: Boxes,
+    color: 'pedidos',
+    label: 'Stock e Insumos',
+    permiso: 'insumos:ver',
+  },
+  { id: 'red', Icono: Store, color: 'red', label: 'Red de Sucursales', permiso: 'sucursales:ver' },
+  {
+    id: 'usuarios',
+    Icono: Users,
+    color: 'usuarios',
+    label: 'Usuarios',
+    permiso: 'usuarios:administrar',
+  },
 ];
 
 const ROL_ETIQUETA = { ADMIN: 'Administración', EMPLEADA: 'Empleada', CHOFER: 'Chofer' };
@@ -93,9 +142,7 @@ function Panel() {
             aria-label={`Menú · ${actual?.label ?? 'Secciones'}`}
             onClick={() => setMenuAbierto((a) => !a)}
           >
-            <span className="menu-hamburguesa" aria-hidden="true">
-              ☰
-            </span>
+            <Menu className="menu-hamburguesa" size={30} strokeWidth={2.5} aria-hidden="true" />
             <span>
               <small>Menú</small>
               {actual?.label ?? 'Secciones'}
@@ -117,8 +164,8 @@ function Panel() {
                   setMenuAbierto(false);
                 }}
               >
-                <span className="menu-icono" aria-hidden="true">
-                  {t.icono}
+                <span className={`menu-icono icono-${t.color}`} aria-hidden="true">
+                  <t.Icono size={26} strokeWidth={2.25} />
                 </span>
                 {t.label}
               </button>

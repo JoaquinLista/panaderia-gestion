@@ -3,7 +3,8 @@
   --color-surface: #ffffff;
   --color-border: #e2dccd;
   --color-text: #2f2a24;
-  --color-muted: #7a7365;
+  /* Texto secundario oscuro: se lee bien sobre blanco (contraste 7:1). */
+  --color-muted: #574f44;
   --color-primary: #8a5a2b;
   --color-primary-dark: #6f4620;
   --color-accent: #c8892f;
@@ -19,6 +20,13 @@
   --color-marca: #5a261d;
   --color-marca-oscuro: #431b14;
   --color-crema: #fdf3e7;
+  --color-resaltado: #f2b33d;
+  /* Color de cada grupo de secciones en el menú. */
+  --icono-resumen: #334155;
+  --icono-caja: #15803d;
+  --icono-pedidos: #c2410c;
+  --icono-red: #1d4ed8;
+  --icono-usuarios: #6d28d9;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(47, 42, 36, 0.12), 0 1px 2px rgba(47, 42, 36, 0.08);
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -165,8 +173,7 @@ body {
 }
 
 .menu-hamburguesa {
-  font-size: 1.6rem;
-  line-height: 1;
+  flex-shrink: 0;
 }
 
 .menu-lista {
@@ -182,17 +189,18 @@ body {
 
 .menu-btn {
   appearance: none;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 10px 16px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  gap: 14px;
+  min-height: 64px;
+  padding: 14px 20px;
+  font-size: 1.125rem;
+  font-weight: 700;
   text-align: left;
   color: var(--color-text);
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
+  border: 2px solid #d4c8b3;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   cursor: pointer;
@@ -201,26 +209,62 @@ body {
     border-color 0.15s;
 }
 
+/* Cuadradito de color con el ícono en blanco: se reconoce aunque no se lea. */
 .menu-icono {
-  font-size: 1.4rem;
-  width: 1.6rem;
-  text-align: center;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  color: #fff;
+}
+
+.icono-resumen {
+  background: var(--icono-resumen);
+}
+
+.icono-caja {
+  background: var(--icono-caja);
+}
+
+.icono-pedidos {
+  background: var(--icono-pedidos);
+}
+
+.icono-red {
+  background: var(--icono-red);
+}
+
+.icono-usuarios {
+  background: var(--icono-usuarios);
 }
 
 .menu-btn:hover {
   border-color: var(--color-marca);
+  background: #fbf7f0;
 }
 
 .menu-btn:focus-visible,
-.menu-abrir:focus-visible {
-  outline: 3px solid var(--color-accent);
+.menu-abrir:focus-visible,
+.boton-principal:focus-visible {
+  outline: 3px solid var(--color-resaltado);
   outline-offset: 2px;
 }
 
+/* La sección en la que estás: fondo de la marca y una barra amarilla a la izquierda. */
 .menu-btn.active {
   background: var(--color-marca);
   border-color: var(--color-marca);
-  color: var(--color-crema);
+  color: #fff;
+  box-shadow:
+    inset 8px 0 0 var(--color-resaltado),
+    var(--shadow);
+  padding-left: 26px;
+}
+
+.menu-btn.active .menu-icono {
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .contenido {
@@ -230,7 +274,7 @@ body {
 @media (min-width: 860px) {
   .panel {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 290px minmax(0, 1fr);
     gap: 24px;
     align-items: start;
   }
@@ -926,16 +970,49 @@ label.check input {
   cursor: pointer;
 }
 
+/* Acción principal de la pantalla: fondo de la marca y letra blanca grande. */
+.boton-principal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  border: none;
+  background: var(--color-marca);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.boton-principal:hover {
+  background: var(--color-marca-oscuro);
+}
+
 /* ---- Resumen de los dueños (Sprint 7) ---- */
+.resumen h2 {
+  font-size: 1.5rem;
+}
+
 .resumen h3 {
-  font-size: 1rem;
+  font-size: 1.2rem;
   margin: 20px 0 8px;
 }
 
 .resumen input[type='date'],
 .resumen input[type='month'] {
   width: auto;
-  font-size: 0.85rem;
+  font-size: 1rem;
+  padding: 8px 10px;
+}
+
+.resumen .lista-cierres li {
+  font-size: 1.05rem;
+}
+
+.resumen .nota,
+.resumen .subtitle,
+.resumen .muted {
+  font-size: 1rem;
 }
 
 .alert-warn {
@@ -943,14 +1020,74 @@ label.check input {
   color: var(--color-warn);
 }
 
-.alert-warn ul {
-  margin: 6px 0 0;
-  padding-left: 18px;
+/* ---- Estados con colores de semáforo, bien marcados ---- */
+.pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.pill-danger {
+  background: #fde8e6;
+  color: #a61b1b;
+}
+
+.pill-warn {
+  background: #fff1d6;
+  color: #8a4b00;
+}
+
+.pill-ok {
+  background: #e3f4e4;
+  color: #1b6a22;
+}
+
+.estado {
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  border: 2px solid currentColor;
+  font-size: 1rem;
+}
+
+.estado p {
+  margin: 0;
+}
+
+.estado-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+}
+
+.estado ul {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  font-weight: 600;
+}
+
+.estado-pendiente {
+  background: #fde8e6;
+  color: #a61b1b;
+}
+
+.estado-ok {
+  background: #e3f4e4;
+  color: #1b6a22;
 }
 
 .numero-grande {
-  margin: 0 0 12px;
-  font-size: 2rem;
+  margin: 0 0 16px;
+  font-size: 2.5rem;
+  line-height: 1.15;
+  color: var(--color-marca);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -958,7 +1095,7 @@ label.check input {
 
 .medios {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 8px 16px;
   margin: 0 0 16px;
 }
@@ -974,11 +1111,14 @@ label.check input {
 
 .medios dt {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .medios dd {
   margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -993,7 +1133,7 @@ label.check input {
 
 .barra .row-between {
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
 }
 
 .barra strong {
@@ -1001,12 +1141,8 @@ label.check input {
   white-space: nowrap;
 }
 
-.barra .badge {
-  margin-left: 6px;
-}
-
 .barra-fondo {
-  height: 8px;
+  height: 12px;
   margin-top: 4px;
   border-radius: 4px;
   background: var(--color-bg);
@@ -1021,33 +1157,36 @@ label.check input {
 
 .indicadores {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
 .indicador {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
+  padding: 14px 16px;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
 }
 
 .indicador > span:first-child {
-  font-size: 0.8rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .indicador strong {
-  font-size: 1.15rem;
+  /* Grande, pero sin partir el número en dos renglones. */
+  font-size: clamp(1.5rem, 2vw + 0.5rem, 2rem);
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .variacion {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .variacion .muted {
@@ -1104,8 +1243,15 @@ label.check input {
   color: var(--color-muted);
 }
 
-@media (min-width: 860px) {
+@media (min-width: 600px) {
+  .medios {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Los cuatro números del mes en 2 × 2 (en 4 columnas no entran grandes). */
+@media (min-width: 600px) {
   .indicadores {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
