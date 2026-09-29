@@ -61,3 +61,46 @@ export function CampoMonto({ id, label, valor, onChange, ayuda }) {
     </div>
   );
 }
+
+/**
+ * Un gasto pagado con la caja: categoría (como las columnas de la planilla),
+ * detalle y monto. `onCambiar(campo)` devuelve el handler de cada control.
+ */
+export function FilaGasto({ numero, gasto, categorias, onCambiar, onQuitar }) {
+  const guardada =
+    gasto.categoria_id !== '' && !categorias.some((c) => String(c.id) === gasto.categoria_id);
+  return (
+    <div className="gasto-row">
+      <select
+        aria-label={`Categoría del gasto ${numero}`}
+        value={gasto.categoria_id}
+        onChange={onCambiar('categoria_id')}
+      >
+        <option value="">Categoría…</option>
+        {categorias.map((c) => (
+          <option key={c.id} value={String(c.id)}>
+            {c.nombre}
+          </option>
+        ))}
+        {guardada && <option value={gasto.categoria_id}>{gasto.categoria}</option>}
+      </select>
+      <input
+        aria-label={`Detalle del gasto ${numero}`}
+        placeholder="Ej: sodero"
+        value={gasto.detalle}
+        onChange={onCambiar('detalle')}
+      />
+      <input
+        aria-label={`Monto del gasto ${numero}`}
+        inputMode="decimal"
+        placeholder="0"
+        value={gasto.monto}
+        aria-invalid={leerMonto(gasto.monto) === null}
+        onChange={onCambiar('monto')}
+      />
+      <button type="button" aria-label={`Quitar gasto ${numero}`} onClick={onQuitar}>
+        ✕
+      </button>
+    </div>
+  );
+}

@@ -461,3 +461,13 @@ permiso de caja; cerrar sesión.
 | Los montos se muestran con puntos de miles y coma decimal mientras se escriben (`15.456,59`) | Pedido del PM: con `15000` es fácil poner un cero de más o de menos. Los puntos los pone el campo; los decimales van con coma y son dos como máximo. |
 | Un solo campo "Posnet (débito, crédito y QR)" y ya no se piden transferencias | En las sucursales el mismo posnet cobra débito, crédito y QR, y no se reciben transferencias. La API sigue aceptando `transferencias` como opcional (vale 0) y un cierre viejo que las tenga las conserva al corregirlo. |
 | "Sin diferencia" en lugar de "Cuadra" | En la panadería "la cuadra" es donde se produce: la palabra se prestaba a confusión. |
+
+## La Fueguina Stats — Sprint 5 · PR 1: cierre con débito, crédito, QR y gastos con categoría
+
+| Decisión | Por qué |
+|----------|---------|
+| Débito, crédito y QR vuelven a ser tres campos | La planilla "Egresos de caja" los anota por separado y el Excel que vamos a exportar tiene que salir igual. Aunque los cobre el mismo posnet, el ticket de cierre del posnet los separa. Confirmado por el PM. |
+| La columna `posnet` pasa a llamarse `debito`, y se suman `credito` y `qr` | Lo cargado hasta ahora son datos de prueba; queda como débito. Si se vuelve atrás la migración, crédito y QR se suman al débito para no perder plata. |
+| Cada gasto del cierre lleva una categoría (tabla `categorias_gasto`) | Son las columnas de la planilla: Personal, Supermercado, Carne, Gasoil, Bebidas, Proveedores, Servicios, Mantenimiento, Obra y Varios. Así el Excel sale por columna y la dueña ve en qué se gasta. Los gastos viejos quedan en "Varios". |
+| Las categorías se desactivan, no se borran | Un gasto viejo conserva su categoría aunque ya no se ofrezca para gastos nuevos; al corregirlo, se sigue viendo. |
+| El detalle del gasto sigue siendo obligatorio | La categoría dice el tipo; el detalle dice qué fue ("sodero", "bolsas"). |

@@ -1,16 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { apiGet, apiSend } from '../lib/api.js';
-import { aCampo, centavosDe, diaMes, TURNOS, valorGasto } from '../lib/cierres.js';
+import {
+  aCampo,
+  centavosDe,
+  diaMes,
+  GASTO_VACIO,
+  gastoCompleto,
+  gastoParaApi,
+  TURNOS,
+  valorGasto,
+} from '../lib/cierres.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
 import { formatFecha } from '../lib/formato.js';
-import { BadgeDiferencia, CampoMonto, Diferencia } from './CamposCierre.jsx';
+import { BadgeDiferencia, CampoMonto, Diferencia, FilaGasto } from './CamposCierre.jsx';
+import { useCategorias } from '../lib/useCategorias.js';
 
 const MONTOS = [
   ['total_controlador', 'Total del controlador (Z)'],
   ['efectivo_contado', 'Efectivo contado en la caja'],
   ['cambio_fijo', 'Cambio fijo que quedó'],
-  ['posnet', 'Posnet (débito, crédito y QR)'],
+  ['debito', 'Débito'],
+  ['credito', 'Crédito'],
+  ['qr', 'QR'],
 ];
 
 const NOMBRE_CAMPO = {
@@ -20,10 +32,12 @@ const NOMBRE_CAMPO = {
   comentario: 'Comentario',
   gastos: 'Gastos',
   ...Object.fromEntries(MONTOS),
+  // Campos de cierres viejos que pueden aparecer en el historial.
+  posnet: 'Posnet',
   transferencias: 'Transferencias',
 };
 
-const ES_MONTO = new Set([...MONTOS.map(([k]) => k), 'transferencias']);
+const ES_MONTO = new Set([...MONTOS.map(([k]) => k), 'posnet', 'transferencias']);
 
 /** Valor del historial para mostrar: los montos como plata ("$ 205.350,00"). */
 const valorHistorial = (campo, valor) => {
@@ -37,10 +51,15 @@ const aFormulario = (cierre) => ({
   numero_z: cierre.numero_z === null ? '' : String(cierre.numero_z),
   comentario: cierre.comentario ?? '',
   ...Object.fromEntries(MONTOS.map(([k]) => [k, aCampo(cierre[k])])),
-  // Ya no se cargan (todo entra por el posnet), pero un cierre viejo puede
+  // Ya no se cargan (no hay transferencias), pero un cierre viejo puede
   // tenerlas: cuentan en la diferencia y la API las conserva.
   transferencias: centavosDe(cierre.transferencias),
-  gastos: cierre.gastos.map((g) => ({ detalle: g.detalle, monto: aCampo(g.monto) })),
+  gastos: cierre.gastos.map((g) => ({
+    categoria_id: String(g.categoria_id),
+    categoria: g.categoria,
+    detalle: g.detalle,
+    monto: aCampo(g.monto),
+  })),
 });
 
 /** Sucursales que todavía no cargaron algún turno de hoy. */
@@ -74,6 +93,7 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
   const [okMsg, setOkMsg] = useState('');
+  const categorias = useCategorias(setError);
 
   const mostrar = (c) => {
     setCierre(c);
@@ -122,14 +142,15 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
   const gastosCentavos = form.gastos.map((g) => leerMonto(g.monto));
   const valido =
     MONTOS.every(([k]) => form[k].trim() !== '' && centavos[k] !== null) &&
-    gastosCentavos.every((c) => c !== null && c > 0) &&
-    form.gastos.every((g) => g.detalle.trim() !== '');
+    form.gastos.every((g, i) => gastoCompleto(g, gastosCentavos[i]));
   const cuadre = valido
     ? calcularCuadre({
         totalControlador: centavos.total_controlador,
         efectivoContado: centavos.efectivo_contado,
         cambioFijo: centavos.cambio_fijo,
-        posnet: centavos.posnet,
+        debito: centavos.debito,
+        credito: centavos.credito,
+        qr: centavos.qr,
         transferencias: form.transferencias,
         gastos: gastosCentavos,
       })
@@ -138,7 +159,9 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
   const guardar = (evt) => {
     evt.preventDefault();
     if (!valido) {
-      setError('Revisá los montos: todos tienen que ser números y cada gasto necesita detalle.');
+      setError(
+        'Revisá los montos: todos tienen que ser números y cada gasto necesita categoría, detalle y monto.'
+      );
       return;
     }
     hacer(
@@ -149,10 +172,7 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
           numero_z: form.numero_z.trim() || null,
           comentario: form.comentario,
           ...Object.fromEntries(MONTOS.map(([k]) => [k, aPesos(centavos[k])])),
-          gastos: form.gastos.map((g, i) => ({
-            detalle: g.detalle.trim(),
-            monto: aPesos(gastosCentavos[i]),
-          })),
+          gastos: form.gastos.map((g, i) => gastoParaApi(g, gastosCentavos[i])),
         }),
       'Corrección guardada.'
     );
@@ -240,35 +260,22 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
           <legend>Gastos pagados con la caja</legend>
           {form.gastos.length === 0 && <p className="muted">Sin gastos.</p>}
           {form.gastos.map((g, i) => (
-            <div key={i} className="gasto-row">
-              <input
-                aria-label={`Detalle del gasto ${i + 1}`}
-                value={g.detalle}
-                onChange={cambiarGasto(i, 'detalle')}
-              />
-              <input
-                aria-label={`Monto del gasto ${i + 1}`}
-                inputMode="decimal"
-                value={g.monto}
-                aria-invalid={leerMonto(g.monto) === null}
-                onChange={cambiarGasto(i, 'monto')}
-              />
-              <button
-                type="button"
-                aria-label={`Quitar gasto ${i + 1}`}
-                onClick={() =>
-                  setForm((prev) => ({ ...prev, gastos: prev.gastos.filter((_, j) => j !== i) }))
-                }
-              >
-                ✕
-              </button>
-            </div>
+            <FilaGasto
+              key={i}
+              numero={i + 1}
+              gasto={g}
+              categorias={categorias}
+              onCambiar={(nombre) => cambiarGasto(i, nombre)}
+              onQuitar={() =>
+                setForm((prev) => ({ ...prev, gastos: prev.gastos.filter((_, j) => j !== i) }))
+              }
+            />
           ))}
           <button
             type="button"
             className="link"
             onClick={() =>
-              setForm((prev) => ({ ...prev, gastos: [...prev.gastos, { detalle: '', monto: '' }] }))
+              setForm((prev) => ({ ...prev, gastos: [...prev.gastos, { ...GASTO_VACIO }] }))
             }
           >
             + Agregar gasto

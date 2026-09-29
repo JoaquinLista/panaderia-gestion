@@ -71,6 +71,7 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | PATCH | `/api/usuarios/:id` | Cambia `nombre`, `rol`, `puedeCerrarCaja` o `activo` (sólo admin) |
 | PUT | `/api/usuarios/:id/password` | La dueña pone una contraseña nueva y se cortan las sesiones abiertas de ese usuario (sólo admin) |
 | GET | `/api/cierres/hoy` | Turnos de hoy ya cerrados en la sucursal, los pendientes y el cambio fijo sugerido (la dueña pasa `?sucursal_id=`) |
+| GET | `/api/cierres/categorias` | Categorías de gasto activas, en el orden de la planilla "Egresos de caja" |
 | POST | `/api/cierres` | Carga el cierre de un turno; `409` si ese turno de hoy ya está cargado |
 | GET | `/api/cierres` | Cierres filtrados por `sucursal_id`, `desde`, `hasta` (AAAA-MM-DD) y `a_revisar=true` (sólo admin) |
 | GET | `/api/cierres/pendientes` | Qué sucursales todavía no cargaron cada turno de hoy (sólo admin) |
@@ -104,17 +105,20 @@ hasta dos decimales, como número o texto:
   "total_controlador": 485300,
   "efectivo_contado": 232500,
   "cambio_fijo": 20000,
-  "posnet": 168900,
-  "transferencias": 92400,
-  "gastos": [{ "detalle": "Sodero", "monto": 6000 }],
+  "debito": 100000,
+  "credito": 68900,
+  "qr": 92400,
+  "gastos": [{ "categoria_id": 6, "detalle": "Sodero", "monto": 6000 }],
   "comentario": "opcional"
 }
 ```
 
-`turno` es `MEDIODIA` o `NOCHE`. La fecha la pone el servidor (hoy, en hora de
+`turno` es `MEDIODIA` o `NOCHE`. Cada gasto lleva una categoría de
+`/api/cierres/categorias`. `transferencias` es opcional (vale 0): ya no se usa,
+pero un cierre viejo que la tenga la conserva. La fecha la pone el servidor (hoy, en hora de
 Argentina) y la sucursal sale de la sesión: la empleada cierra su sucursal del día
 y la dueña manda `sucursal_id`. La API calcula
-`diferencia = (efectivo_contado − cambio_fijo) + posnet + transferencias + gastos − total_controlador`
+`diferencia = (efectivo_contado − cambio_fijo) + debito + credito + qr + transferencias + gastos − total_controlador`
 (negativa: falta plata). Un cierre con diferencia se guarda igual.
 
 Errores del login: `400` si faltan datos o la sucursal no es válida, `401` con el

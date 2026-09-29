@@ -16,8 +16,8 @@ const LARGO_COMENTARIO = 500;
 const CIERRE_SELECT = `
   SELECT c.id, c.sucursal_id, s.nombre AS sucursal_nombre,
          to_char(c.fecha, 'YYYY-MM-DD') AS fecha, c.turno, c.numero_z,
-         c.total_controlador, c.efectivo_contado, c.cambio_fijo, c.posnet,
-         c.transferencias, c.diferencia, c.comentario,
+         c.total_controlador, c.efectivo_contado, c.cambio_fijo, c.debito,
+         c.credito, c.qr, c.transferencias, c.diferencia, c.comentario,
          c.cargado_por, u.nombre AS cargado_por_nombre, c.creado_en,
          c.revisado_en, r.nombre AS revisado_por_nombre,
          (c.diferencia <> 0 AND c.revisado_en IS NULL) AS a_revisar
@@ -30,7 +30,9 @@ const MONTOS = [
   'total_controlador',
   'efectivo_contado',
   'cambio_fijo',
-  'posnet',
+  'debito',
+  'credito',
+  'qr',
   'transferencias',
   'diferencia',
 ];
@@ -40,15 +42,23 @@ const MONTOS = [
 const aRespuesta = (fila, gastos) => {
   const cierre = { ...fila };
   for (const m of MONTOS) cierre[m] = Number(fila[m]);
-  cierre.gastos = gastos.map((g) => ({ id: g.id, detalle: g.detalle, monto: Number(g.monto) }));
+  cierre.gastos = gastos.map((g) => ({
+    id: g.id,
+    categoria_id: g.categoria_id,
+    categoria: g.categoria,
+    detalle: g.detalle,
+    monto: Number(g.monto),
+  }));
   return cierre;
 };
 
 const adjuntarGastos = async (filas) => {
   if (filas.length === 0) return [];
   const { rows: gastos } = await query(
-    `SELECT id, cierre_id, detalle, monto FROM cierre_gastos
-      WHERE cierre_id = ANY($1::int[]) ORDER BY id ASC`,
+    `SELECT g.id, g.cierre_id, g.categoria_id, k.nombre AS categoria, g.detalle, g.monto
+       FROM cierre_gastos g
+       JOIN categorias_gasto k ON k.id = g.categoria_id
+      WHERE g.cierre_id = ANY($1::int[]) ORDER BY g.id ASC`,
     [filas.map((f) => f.id)]
   );
   return filas.map((f) =>
@@ -127,8 +137,41 @@ const validarGastos = (gastos = []) => {
     }
     const centavos = aCentavos(g.monto);
     if (!centavos) throw errorHttp(400, `El gasto "${detalle}" necesita un monto mayor a cero`);
-    return { detalle, centavos };
+    const categoriaId = Number(g.categoria_id);
+    if (!Number.isInteger(categoriaId) || categoriaId <= 0) {
+      throw errorHttp(400, `Elegí la categoría del gasto "${detalle}"`);
+    }
+    return { detalle, centavos, categoriaId };
   });
+};
+
+/**
+ * Completa cada gasto con el nombre de su categoría y rechaza las que no
+ * existen o ya no se usan.
+ * @param {{ detalle: string, centavos: number, categoriaId: number }[]} gastos
+ */
+const conCategorias = async (gastos) => {
+  if (gastos.length === 0) return gastos;
+  const ids = [...new Set(gastos.map((g) => g.categoriaId))];
+  const { rows } = await query(
+    'SELECT id, nombre FROM categorias_gasto WHERE activa AND id = ANY($1::int[])',
+    [ids]
+  );
+  const nombres = new Map(rows.map((r) => [r.id, r.nombre]));
+  return gastos.map((g) => {
+    if (!nombres.has(g.categoriaId)) {
+      throw errorHttp(400, `La categoría del gasto "${g.detalle}" no existe`);
+    }
+    return { ...g, categoria: nombres.get(g.categoriaId) };
+  });
+};
+
+/** Categorías de gasto que se pueden elegir, en el orden de la planilla. */
+export const listarCategorias = async () => {
+  const { rows } = await query(
+    'SELECT id, nombre FROM categorias_gasto WHERE activa ORDER BY orden ASC, nombre ASC'
+  );
+  return rows;
 };
 
 const validarNumeroZ = (numeroZ) => {
@@ -166,10 +209,12 @@ export const crearCierre = async (datos = {}, sesion, ahora = new Date()) => {
     totalControlador: monto(datos, 'total_controlador', { obligatorio: true }),
     efectivoContado: monto(datos, 'efectivo_contado', { obligatorio: true }),
     cambioFijo: monto(datos, 'cambio_fijo', { obligatorio: true }),
-    posnet: monto(datos, 'posnet', { obligatorio: false }),
+    debito: monto(datos, 'debito', { obligatorio: false }),
+    credito: monto(datos, 'credito', { obligatorio: false }),
+    qr: monto(datos, 'qr', { obligatorio: false }),
     transferencias: monto(datos, 'transferencias', { obligatorio: false }),
   };
-  const gastos = validarGastos(datos.gastos);
+  const gastos = await conCategorias(validarGastos(datos.gastos));
   const numeroZ = validarNumeroZ(datos.numero_z);
   const comentario = validarComentario(datos.comentario);
   const sucursal = await resolverSucursal(sesion, datos.sucursal_id);
@@ -184,8 +229,8 @@ export const crearCierre = async (datos = {}, sesion, ahora = new Date()) => {
     const { rows } = await client.query(
       `INSERT INTO cierres_caja
          (sucursal_id, fecha, turno, numero_z, total_controlador, efectivo_contado,
-          cambio_fijo, posnet, transferencias, diferencia, comentario, cargado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          cambio_fijo, debito, credito, qr, transferencias, diferencia, comentario, cargado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING id`,
       [
         sucursal.id,
@@ -195,7 +240,9 @@ export const crearCierre = async (datos = {}, sesion, ahora = new Date()) => {
         aPesos(montos.totalControlador),
         aPesos(montos.efectivoContado),
         aPesos(montos.cambioFijo),
-        aPesos(montos.posnet),
+        aPesos(montos.debito),
+        aPesos(montos.credito),
+        aPesos(montos.qr),
         aPesos(montos.transferencias),
         aPesos(diferencia),
         comentario,
@@ -205,8 +252,8 @@ export const crearCierre = async (datos = {}, sesion, ahora = new Date()) => {
     id = rows[0].id;
     for (const g of gastos) {
       await client.query(
-        'INSERT INTO cierre_gastos (cierre_id, detalle, monto) VALUES ($1, $2, $3)',
-        [id, g.detalle, aPesos(g.centavos)]
+        'INSERT INTO cierre_gastos (cierre_id, categoria_id, detalle, monto) VALUES ($1, $2, $3, $4)',
+        [id, g.categoriaId, g.detalle, aPesos(g.centavos)]
       );
     }
     await client.query('COMMIT');
@@ -350,14 +397,16 @@ const MONTOS_EDITABLES = {
   total_controlador: 'totalControlador',
   efectivo_contado: 'efectivoContado',
   cambio_fijo: 'cambioFijo',
-  posnet: 'posnet',
+  debito: 'debito',
+  credito: 'credito',
+  qr: 'qr',
   transferencias: 'transferencias',
 };
 
 const textoGastos = (gastos) =>
   gastos.length === 0
     ? 'sin gastos'
-    : gastos.map((g) => `${g.detalle} ${aPesos(g.centavos)}`).join('; ');
+    : gastos.map((g) => `${g.categoria}: ${g.detalle} ${aPesos(g.centavos)}`).join('; ');
 
 /**
  * La dueña corrige un cierre. Sólo cambian los campos que vienen en `datos`;
@@ -374,14 +423,17 @@ export const corregirCierre = async (id, datos = {}, sesion) => {
     await client.query('BEGIN');
     const { rows } = await client.query(
       `SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, turno, numero_z, total_controlador,
-              efectivo_contado, cambio_fijo, posnet, transferencias, comentario, sucursal_id
+              efectivo_contado, cambio_fijo, debito, credito, qr, transferencias, comentario,
+              sucursal_id
          FROM cierres_caja WHERE id = $1 FOR UPDATE`,
       [cierreId]
     );
     const actual = rows[0];
     if (!actual) throw errorHttp(404, 'No existe ese cierre');
     const { rows: gastosActuales } = await client.query(
-      'SELECT detalle, monto FROM cierre_gastos WHERE cierre_id = $1 ORDER BY id ASC',
+      `SELECT g.categoria_id, k.nombre AS categoria, g.detalle, g.monto
+         FROM cierre_gastos g JOIN categorias_gasto k ON k.id = g.categoria_id
+        WHERE g.cierre_id = $1 ORDER BY g.id ASC`,
       [cierreId]
     );
 
@@ -391,7 +443,12 @@ export const corregirCierre = async (id, datos = {}, sesion) => {
       numero_z: actual.numero_z,
       comentario: actual.comentario,
       ...Object.fromEntries(Object.keys(MONTOS_EDITABLES).map((k) => [k, aCentavos(actual[k])])),
-      gastos: gastosActuales.map((g) => ({ detalle: g.detalle, centavos: aCentavos(g.monto) })),
+      gastos: gastosActuales.map((g) => ({
+        categoriaId: g.categoria_id,
+        categoria: g.categoria,
+        detalle: g.detalle,
+        centavos: aCentavos(g.monto),
+      })),
     };
     const despues = { ...antes };
 
@@ -406,7 +463,7 @@ export const corregirCierre = async (id, datos = {}, sesion) => {
     for (const campo of Object.keys(MONTOS_EDITABLES)) {
       if (campo in datos) despues[campo] = monto(datos, campo, { obligatorio: true });
     }
-    if ('gastos' in datos) despues.gastos = validarGastos(datos.gastos);
+    if ('gastos' in datos) despues.gastos = await conCategorias(validarGastos(datos.gastos));
 
     const cambios = [];
     const comparar = (campo, mostrar = (v) => (v === null ? null : String(v))) => {
@@ -430,7 +487,7 @@ export const corregirCierre = async (id, datos = {}, sesion) => {
       `UPDATE cierres_caja
           SET fecha = $2, turno = $3, numero_z = $4, comentario = $5,
               total_controlador = $6, efectivo_contado = $7, cambio_fijo = $8,
-              posnet = $9, transferencias = $10, diferencia = $11
+              debito = $9, credito = $10, qr = $11, transferencias = $12, diferencia = $13
         WHERE id = $1`,
       [
         cierreId,
@@ -441,7 +498,9 @@ export const corregirCierre = async (id, datos = {}, sesion) => {
         aPesos(despues.total_controlador),
         aPesos(despues.efectivo_contado),
         aPesos(despues.cambio_fijo),
-        aPesos(despues.posnet),
+        aPesos(despues.debito),
+        aPesos(despues.credito),
+        aPesos(despues.qr),
         aPesos(despues.transferencias),
         aPesos(diferencia),
       ]
@@ -450,8 +509,8 @@ export const corregirCierre = async (id, datos = {}, sesion) => {
       await client.query('DELETE FROM cierre_gastos WHERE cierre_id = $1', [cierreId]);
       for (const g of despues.gastos) {
         await client.query(
-          'INSERT INTO cierre_gastos (cierre_id, detalle, monto) VALUES ($1, $2, $3)',
-          [cierreId, g.detalle, aPesos(g.centavos)]
+          'INSERT INTO cierre_gastos (cierre_id, categoria_id, detalle, monto) VALUES ($1, $2, $3, $4)',
+          [cierreId, g.categoriaId, g.detalle, aPesos(g.centavos)]
         );
       }
     }

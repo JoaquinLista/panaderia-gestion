@@ -28,8 +28,15 @@ test('la empleada carga un cierre con diferencia y la dueña lo revisa', async (
   await form.getByLabel('Efectivo contado en la caja').fill('113.000');
   await form.getByLabel('Cambio fijo que queda').fill('15.000');
   // Se escribe sin puntos: el campo los pone solo.
-  await form.getByLabel('Posnet (débito, crédito y QR)').fill('105350');
-  await expect(form.getByLabel('Posnet (débito, crédito y QR)')).toHaveValue('105.350');
+  await form.getByLabel('Débito').fill('50000');
+  await expect(form.getByLabel('Débito')).toHaveValue('50.000');
+  await form.getByLabel('Crédito').fill('30.350');
+  await form.getByLabel('QR').fill('20.000');
+  // Un gasto chico pagado con la caja, con su categoría de la planilla.
+  await form.getByRole('button', { name: '+ Agregar gasto' }).click();
+  await form.getByLabel('Categoría del gasto 1').selectOption({ label: 'Proveedores' });
+  await form.getByLabel('Detalle del gasto 1').fill('Sodero');
+  await form.getByLabel('Monto del gasto 1').fill('5.000');
 
   // La diferencia se ve mientras carga: faltan $2.000
   await expect(form.getByRole('status')).toContainText('Faltan');

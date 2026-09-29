@@ -25,6 +25,7 @@ vi.stubEnv('JWT_SECRET', 'secreto-de-integracion-de-al-menos-32-caracteres');
 let app;
 let pool;
 let estrada;
+let varios;
 let cookieLucia;
 let cookieDueña;
 
@@ -53,6 +54,9 @@ beforeAll(async () => {
   );
   const { rows } = await pool.query(`SELECT id FROM sucursales WHERE nombre = 'Estrada'`);
   estrada = rows[0].id;
+  ({
+    rows: [{ id: varios }],
+  } = await pool.query(`SELECT id FROM categorias_gasto WHERE nombre = 'Varios'`));
 
   cookieLucia = await entrar({ usuario: 'lucia', password: 'clave-de-lucia', sucursalId: estrada });
   cookieDueña = await entrar({ usuario: 'dueña', password: 'clave-de-la-dueña' });
@@ -73,7 +77,7 @@ describe('cierre de caja contra Postgres', () => {
       total_controlador: '0.30',
       efectivo_contado: '1000.10',
       cambio_fijo: '1000.00',
-      posnet: '0.20',
+      debito: '0.20',
       gastos: [],
     });
     expect(res.status).toBe(201);
@@ -100,7 +104,7 @@ describe('cierre de caja contra Postgres', () => {
         total_controlador: 10,
         efectivo_contado: 10,
         cambio_fijo: 0,
-        gastos: [{ detalle: 'Sodero', monto: 5 }],
+        gastos: [{ categoria_id: varios, detalle: 'Sodero', monto: 5 }],
       });
     expect(res.status).toBe(409);
     const { rows } = await pool.query('SELECT count(*)::int AS n FROM cierre_gastos');
@@ -116,13 +120,23 @@ describe('cierre de caja contra Postgres', () => {
         total_controlador: 205350,
         efectivo_contado: 113000,
         cambio_fijo: 15000,
-        posnet: 74250,
-        transferencias: 31100,
-        gastos: [{ detalle: 'Bolsas', monto: '0.01' }],
+        debito: 40000,
+        credito: 34250,
+        qr: 31100,
+        gastos: [{ categoria_id: varios, detalle: 'Bolsas', monto: '0.01' }],
       });
     expect(res.status).toBe(201);
     expect(res.body.diferencia).toBe(-1999.99);
-    expect(res.body.gastos).toEqual([{ id: expect.any(Number), detalle: 'Bolsas', monto: 0.01 }]);
+    expect(res.body).toMatchObject({ debito: 40000, credito: 34250, qr: 31100, transferencias: 0 });
+    expect(res.body.gastos).toEqual([
+      {
+        id: expect.any(Number),
+        categoria_id: varios,
+        categoria: 'Varios',
+        detalle: 'Bolsas',
+        monto: 0.01,
+      },
+    ]);
   });
 
   it('/hoy muestra los dos turnos cerrados y sugiere el último cambio fijo', async () => {
@@ -149,10 +163,48 @@ describe('cierre de caja contra Postgres', () => {
   it('la base rechaza montos negativos aunque alguien se saltee la API', async () => {
     await expect(
       pool.query(
-        `INSERT INTO cierre_gastos (cierre_id, detalle, monto)
-         SELECT id, 'x', -1 FROM cierres_caja LIMIT 1`
+        `INSERT INTO cierre_gastos (cierre_id, categoria_id, detalle, monto)
+         SELECT id, ${varios}, 'x', -1 FROM cierres_caja LIMIT 1`
       )
     ).rejects.toThrow(/check/i);
+  });
+});
+
+describe('categorías de gasto', () => {
+  it('vienen cargadas con las columnas de la planilla, en orden', async () => {
+    const res = await request(app).get('/api/cierres/categorias').set('Cookie', cookieLucia);
+    expect(res.status).toBe(200);
+    expect(res.body.map((c) => c.nombre)).toEqual([
+      'Personal',
+      'Supermercado (La Anónima, Tía)',
+      'Carne',
+      'Gasoil',
+      'Bebidas (Coca, Cohiue)',
+      'Proveedores',
+      'Servicios',
+      'Mantenimiento',
+      'Obra',
+      'Varios',
+    ]);
+  });
+
+  it('una categoría desactivada no se puede elegir', async () => {
+    await pool.query(`UPDATE categorias_gasto SET activa = false WHERE nombre = 'Obra'`);
+    const { rows } = await pool.query(`SELECT id FROM categorias_gasto WHERE nombre = 'Obra'`);
+    const res = await request(app)
+      .post('/api/cierres')
+      .set('Cookie', cookieDueña)
+      .send({
+        sucursal_id: estrada,
+        turno: 'MEDIODIA',
+        total_controlador: 1,
+        efectivo_contado: 1,
+        cambio_fijo: 0,
+        gastos: [{ categoria_id: rows[0].id, detalle: 'Ladrillos', monto: 1 }],
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('no existe');
+    await pool.query(`UPDATE categorias_gasto SET activa = true WHERE nombre = 'Obra'`);
   });
 });
 
@@ -230,7 +282,7 @@ describe('revisión de la dueña contra Postgres', () => {
     expect(porCampo).toEqual({
       total_controlador: ['205350.00', '203350.01', 'Administración'],
       comentario: [null, 'Mal tipeada la Z', 'Administración'],
-      gastos: ['Bolsas 0.01', 'sin gastos', 'Administración'],
+      gastos: ['Varios: Bolsas 0.01', 'sin gastos', 'Administración'],
     });
   });
 

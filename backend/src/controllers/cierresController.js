@@ -4,6 +4,7 @@ import {
   cierresPendientes,
   corregirCierre,
   detalleCierre,
+  listarCategorias,
   listarCierres,
   marcarRevisado,
 } from '../services/cierresService.js';
@@ -74,6 +75,18 @@ export const putCierre = async (req, res, next) => {
 export const putRevisado = async (req, res, next) => {
   try {
     res.json(await marcarRevisado(req.params.id, req.body?.revisado, req.sesion));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/cierres/categorias
+ * Categorías de gasto que se pueden elegir al cargar o corregir un cierre.
+ */
+export const getCategorias = async (req, res, next) => {
+  try {
+    res.json(await listarCategorias());
   } catch (error) {
     next(error);
   }

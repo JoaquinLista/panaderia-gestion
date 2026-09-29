@@ -616,6 +616,10 @@ label.check input {
   gap: 8px;
 }
 
+.gasto-row select {
+  grid-column: 1 / -1;
+}
+
 .gasto-row button {
   height: 40px;
   border: 1px solid var(--color-border);

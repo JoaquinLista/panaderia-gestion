@@ -25,7 +25,9 @@ const filaCierre = (extra = {}) => ({
   total_controlador: '1000.00',
   efectivo_contado: '1500.00',
   cambio_fijo: '500.00',
-  posnet: '0.00',
+  debito: '0.00',
+  credito: '0.00',
+  qr: '0.00',
   transferencias: '0.00',
   diferencia: '0.00',
   comentario: null,
@@ -40,9 +42,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   actualizaciones = [];
-  db.query.mockImplementation(async (sql) => {
+  db.query.mockImplementation(async (sql, params) => {
     if (sql.includes('FROM cierre_correcciones')) return { rows: [] };
     if (sql.includes('FROM cierre_gastos')) return { rows: [] };
+    if (sql.includes('FROM categorias_gasto')) {
+      return {
+        rows: [{ id: 5, nombre: 'Bebidas (Coca, Cohiue)' }].filter((c) => params[0].includes(c.id)),
+      };
+    }
     if (sql.includes('FROM cierres_caja c')) return { rows: [filaCierre()] };
     if (sql.includes('FROM sucursales s')) {
       return {
@@ -67,15 +74,19 @@ beforeEach(() => {
               total_controlador: '1000.00',
               efectivo_contado: '1500.00',
               cambio_fijo: '500.00',
-              posnet: '0.00',
+              debito: '0.00',
+              credito: '0.00',
+              qr: '0.00',
               transferencias: '0.00',
               comentario: null,
             },
           ],
         };
       }
-      if (sql.startsWith('SELECT detalle'))
-        return { rows: [{ detalle: 'Sodero', monto: '100.00' }] };
+      if (sql.startsWith('SELECT g.categoria_id'))
+        return {
+          rows: [{ categoria_id: 10, categoria: 'Varios', detalle: 'Sodero', monto: '100.00' }],
+        };
       if (sql.startsWith('UPDATE') || sql.startsWith('INSERT') || sql.startsWith('DELETE')) {
         actualizaciones.push({ sql, params });
       }
@@ -151,7 +162,7 @@ describe('PUT /api/cierres/:id', () => {
       fecha: '2026-09-27',
       turno: 'mediodia',
       numero_z: '1533',
-      posnet: '10',
+      qr: '10',
     });
     expect(res.status).toBe(200);
     const registros = actualizaciones
@@ -161,23 +172,29 @@ describe('PUT /api/cierres/:id', () => {
       ['fecha', '2026-09-28', '2026-09-27'],
       ['turno', 'NOCHE', 'MEDIODIA'],
       ['numero_z', '1532', '1533'],
-      ['posnet', '0.00', '10.00'],
+      ['qr', '0.00', '10.00'],
     ]);
     // no mandó gastos: no se tocan
     expect(actualizaciones.some((a) => a.sql.startsWith('DELETE'))).toBe(false);
     // la diferencia se recalcula con el gasto que ya tenía: 1500 − 500 + 10 + 100 − 1000
     const update = actualizaciones.find((a) => a.sql.startsWith('UPDATE'));
-    expect(update.params[10]).toBe('110.00');
+    expect(update.params[12]).toBe('110.00');
   });
 
   it('reemplaza los gastos si vienen', async () => {
     const res = await request(app)
       .put('/api/cierres/10')
-      .send({ gastos: [{ detalle: 'Bolsas', monto: 50 }] });
+      .send({ gastos: [{ categoria_id: 5, detalle: 'Bolsas', monto: 50 }] });
     expect(res.status).toBe(200);
     expect(actualizaciones.some((a) => a.sql.startsWith('DELETE FROM cierre_gastos'))).toBe(true);
     const registro = actualizaciones.find((a) => a.sql.includes('cierre_correcciones'));
-    expect(registro.params.slice(2)).toEqual(['gastos', 'Sodero 100.00', 'Bolsas 50.00']);
+    expect(registro.params.slice(2)).toEqual([
+      'gastos',
+      'Varios: Sodero 100.00',
+      'Bebidas (Coca, Cohiue): Bolsas 50.00',
+    ]);
+    const gasto = actualizaciones.find((a) => a.sql.startsWith('INSERT INTO cierre_gastos'));
+    expect(gasto.params).toEqual([10, 5, 'Bolsas', '50.00']);
   });
 
   it.each([
@@ -185,6 +202,7 @@ describe('PUT /api/cierres/:id', () => {
     [{ fecha: '28/09/2026' }, 'fecha'],
     [{ total_controlador: '' }, 'total_controlador'],
     [{ numero_z: 'x' }, 'número de Z'],
+    [{ gastos: [{ categoria_id: 99, detalle: 'Bolsas', monto: 50 }] }, 'no existe'],
     [{}, 'No hay cambios'],
   ])('%j: 400 y deshace', async (body, mensaje) => {
     const res = await request(app).put('/api/cierres/10').send(body);
@@ -196,7 +214,7 @@ describe('PUT /api/cierres/:id', () => {
 
   it('si el cierre no existe: 404', async () => {
     client.query.mockResolvedValue({ rows: [] });
-    const res = await request(app).put('/api/cierres/10').send({ posnet: 1 });
+    const res = await request(app).put('/api/cierres/10').send({ debito: 1 });
     expect(res.status).toBe(404);
   });
 
@@ -212,7 +230,7 @@ describe('PUT /api/cierres/:id', () => {
 
   it('otro error de la base: 500', async () => {
     client.query.mockRejectedValueOnce(new Error('se cortó'));
-    const res = await request(app).put('/api/cierres/10').send({ posnet: 1 });
+    const res = await request(app).put('/api/cierres/10').send({ debito: 1 });
     expect(res.status).toBe(500);
   });
 });
