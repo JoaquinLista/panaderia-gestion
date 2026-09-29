@@ -66,6 +66,8 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | POST | `/api/usuarios` | Alta: `{ usuario, nombre, password, rol, puedeCerrarCaja? }` (sólo admin) |
 | PATCH | `/api/usuarios/:id` | Cambia `nombre`, `rol`, `puedeCerrarCaja` o `activo` (sólo admin) |
 | PUT | `/api/usuarios/:id/password` | La dueña pone una contraseña nueva y se cortan las sesiones abiertas de ese usuario (sólo admin) |
+| GET | `/api/cierres/hoy` | Turnos de hoy ya cerrados en la sucursal, los pendientes y el cambio fijo sugerido (la dueña pasa `?sucursal_id=`) |
+| POST | `/api/cierres` | Carga el cierre de un turno; `409` si ese turno de hoy ya está cargado |
 
 **Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de
 login) y el login, todas las rutas responden `401` sin sesión y `403` si el rol no
@@ -82,6 +84,29 @@ Respuesta de login y de `/me`:
   "permisos": ["sucursales:ver", "productos:ver", "pedidos:ver", "pedidos:crear"]
 }
 ```
+
+Cierre de caja (`POST /api/cierres`, permiso `caja:cerrar`). Montos en pesos, con
+hasta dos decimales, como número o texto:
+
+```json
+{
+  "turno": "NOCHE",
+  "numero_z": 1532,
+  "total_controlador": 485300,
+  "efectivo_contado": 232500,
+  "cambio_fijo": 20000,
+  "posnet": 168900,
+  "transferencias": 92400,
+  "gastos": [{ "detalle": "Sodero", "monto": 6000 }],
+  "comentario": "opcional"
+}
+```
+
+`turno` es `MEDIODIA` o `NOCHE`. La fecha la pone el servidor (hoy, en hora de
+Argentina) y la sucursal sale de la sesión: la empleada cierra su sucursal del día
+y la dueña manda `sucursal_id`. La API calcula
+`diferencia = (efectivo_contado − cambio_fijo) + posnet + transferencias + gastos − total_controlador`
+(negativa: falta plata). Un cierre con diferencia se guarda igual.
 
 Errores del login: `400` si faltan datos o la sucursal no es válida, `401` con el
 mensaje genérico "Usuario o contraseña incorrectos" y `429` después de 5 intentos

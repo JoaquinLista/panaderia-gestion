@@ -27,6 +27,7 @@ export const crearUsuarios = async () => {
     usuario(2, 'lucia', 'EMPLEADA', { puede_cerrar_caja: true }),
     usuario(3, 'marcos', 'CHOFER'),
     usuario(4, 'ex-empleada', 'EMPLEADA', { activo: false }),
+    usuario(5, 'sofia', 'EMPLEADA'), // sin permiso de cerrar caja
   ];
 };
 
