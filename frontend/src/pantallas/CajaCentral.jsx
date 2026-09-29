@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { apiGet, apiSend } from '../lib/api.js';
+import { apiDescargar, apiGet, apiSend } from '../lib/api.js';
 import {
   CUENTAS,
   describir,
@@ -414,19 +414,34 @@ function ResumenDelMes({ mes, version }) {
     };
   }, [mes, version]);
 
-  if (error) {
-    return (
+  const descargar = async () => {
+    try {
+      await apiDescargar(`/caja-central/excel?mes=${mes}`, `caja-central-${mes}.xlsx`);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  if (!resumen) {
+    return error ? (
       <div className="card">
         <div className="alert alert-error">{error}</div>
       </div>
-    );
+    ) : null;
   }
-  if (!resumen) return null;
   const pesos = (monto) => mostrarPesos(centavosDe(monto));
 
   return (
     <div className="card">
       <h2>Resumen de {nombreMes(mes)}</h2>
+      {error && (
+        <div className="alert alert-error" role="alert">
+          {error}
+        </div>
+      )}
+      <button type="button" className="boton-excel" onClick={descargar}>
+        Descargar Excel del mes
+      </button>
 
       <h3>Entró de las sucursales</h3>
       <ul className="lista-cierres" aria-label="Entradas del mes por sucursal">

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -119,6 +119,35 @@ describe('revisión de cierres: lista', () => {
     expect(
       within(screen.getByLabelText('Sucursal')).queryByRole('option', { name: 'Galpón Central' })
     ).not.toBeInTheDocument();
+  });
+
+  it('descarga el Excel con la sucursal y las fechas elegidas', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:planilla');
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const { user, fetchMock } = await abrir({
+      'GET /api/cierres?sucursal_id=3': () => [200, []],
+      'GET /api/cierres?sucursal_id=3&a_revisar=true': () => [200, []],
+      'GET /api/cierres/excel': () => [200, 'xlsx'],
+      'GET /api/cierres/excel?sucursal_id=3': () => [200, 'xlsx'],
+    });
+    await user.click(screen.getByRole('button', { name: 'Descargar Excel' }));
+    expect(llamadas(fetchMock, 'GET', '/api/cierres/excel')).toHaveLength(1);
+
+    await user.selectOptions(screen.getByLabelText('Sucursal'), 'Café');
+    await user.click(screen.getByLabelText('Sólo los que hay que revisar'));
+    await user.click(screen.getByRole('button', { name: 'Descargar Excel' }));
+    // "a revisar" es para la lista: el Excel lleva todos los cierres.
+    expect(llamadas(fetchMock, 'GET', '/api/cierres/excel?sucursal_id=3')).toHaveLength(1);
+    expect(click).toHaveBeenCalledTimes(2);
+  });
+
+  it('si no se puede descargar el Excel lo dice', async () => {
+    const { user } = await abrir({
+      'GET /api/cierres/excel': () => [500, { error: 'Sin planilla' }],
+    });
+    await user.click(screen.getByRole('button', { name: 'Descargar Excel' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sin planilla');
   });
 
   it('muestra el error si no puede cargar', async () => {

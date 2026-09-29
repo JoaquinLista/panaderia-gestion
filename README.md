@@ -82,6 +82,8 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | POST | `/api/caja-central/movimientos` | Carga un depósito, pago, retiro de un dueño, ajuste o saldo inicial (sólo admin) |
 | DELETE | `/api/caja-central/movimientos/:id` | Anula un movimiento mal cargado: deja de contar pero queda registrado (sólo admin) |
 | GET | `/api/caja-central/mensual` | Totales del mes por sucursal, por dueño y por categoría (`?mes=AAAA-MM`; sólo admin) |
+| GET | `/api/caja-central/excel` | Descarga el Excel del mes (`?mes=AAAA-MM`) con las columnas de la planilla "Retiros" y una hoja de resumen (sólo admin) |
+| GET | `/api/cierres/excel` | Descarga el Excel de los cierres con las columnas de "Egresos de caja"; mismos filtros que la lista, sin fechas el mes en curso (sólo admin) |
 | GET | `/api/caja-central/duenos` | Dueños que pueden retirar plata (sólo admin) |
 | PUT | `/api/cierres/:id/revisado` | `{ revisado: true \| false }`: saca o vuelve a poner el cierre en "a revisar" (sólo admin) |
 

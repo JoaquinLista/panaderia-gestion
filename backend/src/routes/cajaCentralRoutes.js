@@ -7,6 +7,7 @@ import {
   getResumen,
   postMovimiento,
 } from '../controllers/cajaCentralController.js';
+import { getExcelCajaCentral } from '../controllers/planillasController.js';
 import { ACCIONES } from '../domain/permisos.js';
 import { permitir } from '../middlewares/permisos.js';
 
@@ -19,6 +20,7 @@ router.get('/duenos', getDuenos);
 router.get('/resumen', getResumen);
 router.get('/mensual', getMensual);
 router.get('/movimientos', getMovimientos);
+router.get('/excel', getExcelCajaCentral);
 router.post('/movimientos', postMovimiento);
 router.delete('/movimientos/:id', deleteMovimiento);
 

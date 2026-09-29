@@ -36,3 +36,26 @@ export async function apiSend(method, path, payload) {
 
 export const apiPost = (path, payload) => apiSend('POST', path, payload);
 export const apiPut = (path, payload) => apiSend('PUT', path, payload);
+
+/**
+ * Descarga un archivo de la API (por ejemplo un Excel) y lo guarda con el
+ * nombre que manda el servidor, o con `nombre` si no manda ninguno.
+ */
+export async function apiDescargar(path, nombre) {
+  const res = await fetch(`${API}${path}`);
+  avisarSiVencio(res);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Error ${res.status} al descargar ${path}`);
+  }
+  const disposicion = res.headers?.get('Content-Disposition') ?? '';
+  const archivo = /filename="([^"]+)"/.exec(disposicion)?.[1] ?? nombre;
+  const url = URL.createObjectURL(await res.blob());
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = archivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+}

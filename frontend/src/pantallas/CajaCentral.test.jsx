@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -441,5 +441,25 @@ describe('caja central: movimientos y resumen del mes', () => {
   it('si no puede traer los dueños lo dice', async () => {
     await abrir({ 'GET /api/caja-central/duenos': () => [500, { error: 'Sin dueños' }] });
     expect(await screen.findByText('Sin dueños')).toBeInTheDocument();
+  });
+
+  it('descarga el Excel del mes', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:planilla');
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const { user, fetchMock } = await abrir({
+      'GET /api/caja-central/excel?mes=2026-09': () => [200, 'xlsx'],
+    });
+    await user.click(await screen.findByRole('button', { name: 'Descargar Excel del mes' }));
+    expect(llamadas(fetchMock, 'GET', '/api/caja-central/excel?mes=2026-09')).toHaveLength(1);
+    expect(click).toHaveBeenCalledTimes(1);
+  });
+
+  it('si no se puede descargar el Excel lo dice', async () => {
+    const { user } = await abrir({
+      'GET /api/caja-central/excel?mes=2026-09': () => [500, { error: 'Sin planilla' }],
+    });
+    await user.click(await screen.findByRole('button', { name: 'Descargar Excel del mes' }));
+    expect(await screen.findByText('Sin planilla')).toBeInTheDocument();
   });
 });

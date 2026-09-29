@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import pg from 'pg';
 import request from 'supertest';
+import ExcelJS from 'exceljs';
 
 // Caja central de punta a punta contra un Postgres real: el retiro de cada
 // cierre entra solo, las salidas bajan el saldo y los totales del mes salen
@@ -414,5 +415,45 @@ describe('caja central contra Postgres', () => {
         [dueñaId]
       )
     ).rejects.toThrow(/check/);
+  });
+
+  it('las planillas de Excel salen con los totales del mes', async () => {
+    const descargar = async (ruta) => {
+      const res = await request(app)
+        .get(ruta)
+        .set('Cookie', cookieDueña)
+        .buffer(true)
+        .parse((r, fin) => {
+          const partes = [];
+          r.on('data', (p) => partes.push(p));
+          r.on('end', () => fin(null, Buffer.concat(partes)));
+        });
+      expect(res.status).toBe(200);
+      const libro = new ExcelJS.Workbook();
+      await libro.xlsx.load(res.body);
+      return libro.worksheets[0];
+    };
+    // La última fila son los totales; se leen por encabezado.
+    const totales = (hoja) => {
+      const encabezados = hoja.getRow(1).values;
+      const valores = hoja.getRow(hoja.rowCount).values;
+      return Object.fromEntries(encabezados.map((e, i) => [e, valores[i]]).filter(([e]) => e));
+    };
+
+    const caja = await descargar('/api/caja-central/excel?mes=2026-09');
+    expect(totales(caja)).toMatchObject({
+      Fecha: 'Total',
+      // Estrada (ya corregido) 99.000,50 + Café 212.500
+      'Retiro sucursales': 311500.5,
+      Depósitos: 800000,
+      Fernanda: 100000,
+      Gabriel: 0,
+      Egresos: 300000, // el pago de gasoil se anuló
+      Ajustes: -500.5,
+    });
+
+    const cierres = await descargar('/api/cierres/excel?desde=2026-09-01&hasta=2026-09-30');
+    expect(cierres.rowCount).toBe(5); // encabezado, 3 cierres y totales
+    expect(totales(cierres)).toMatchObject({ Retiro: 311500.5, Carne: 12000, Varios: 7000 });
   });
 });

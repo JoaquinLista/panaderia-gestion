@@ -9,6 +9,7 @@ import {
   putCierre,
   putRevisado,
 } from '../controllers/cierresController.js';
+import { getExcelCierres } from '../controllers/planillasController.js';
 import { ACCIONES } from '../domain/permisos.js';
 import { permitir } from '../middlewares/permisos.js';
 
@@ -23,6 +24,7 @@ router.get('/categorias', permitir(ACCIONES.CERRAR_CAJA), getCategorias);
 // un cierre después de enviarlo (#10).
 router.get('/', permitir(ACCIONES.REVISAR_CAJA), getCierres);
 router.get('/pendientes', permitir(ACCIONES.REVISAR_CAJA), getPendientes);
+router.get('/excel', permitir(ACCIONES.REVISAR_CAJA), getExcelCierres);
 router.get('/:id', permitir(ACCIONES.REVISAR_CAJA), getCierre);
 router.put('/:id', permitir(ACCIONES.REVISAR_CAJA), putCierre);
 router.put('/:id/revisado', permitir(ACCIONES.REVISAR_CAJA), putRevisado);

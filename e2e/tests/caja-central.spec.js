@@ -44,4 +44,11 @@ test('el retiro de un cierre entra a la caja central y un pago baja el saldo', a
   await expect(page.getByRole('list', { name: 'Movimientos del mes' })).toContainText(
     'Proveedores · Prueba e2e: harina'
   );
+
+  // ---- Y la planilla del mes se descarga ----
+  const [descarga] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Descargar Excel del mes' }).click(),
+  ]);
+  expect(descarga.suggestedFilename()).toMatch(/^caja-central-\d{4}-\d{2}\.xlsx$/);
 });
