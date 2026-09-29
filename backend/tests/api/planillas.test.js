@@ -36,6 +36,34 @@ vi.mock('../../src/services/cierresService.js', async (original) => ({
   listarCategorias: vi.fn(async () => [{ id: 1, nombre: 'Personal' }]),
 }));
 
+vi.mock('../../src/services/dashboardService.js', async (original) => ({
+  ...(await original()),
+  resumenDelMes: vi.fn(async (mes) => {
+    if (mes === '2026-13') {
+      throw Object.assign(new Error('"mes" tiene que tener el formato AAAA-MM'), { status: 400 });
+    }
+    const vacio = {
+      ventas: 0,
+      medios: { efectivo: 0, debito: 0, credito: 0, qr: 0 },
+      gastos: { sucursales: 0, caja_central: 0, obra: 0, total: 0 },
+      retiros_duenos: 0,
+      resultado: 0,
+    };
+    return {
+      mes: mes ?? '2026-09',
+      desde: '2026-09-01',
+      hasta: '2026-09-29',
+      ...vacio,
+      retiros_por_dueno: [],
+      ventas_por_sucursal: [],
+      ventas_por_dia: [],
+      anterior: { mes: '2026-08', desde: '2026-08-01', hasta: '2026-08-29', ...vacio },
+      variacion: { ventas: null, gastos: null, retiros_duenos: null, resultado: null },
+    };
+  }),
+}));
+
+const dashboard = await import('../../src/services/dashboardService.js');
 const caja = await import('../../src/services/cajaCentralService.js');
 const cierres = await import('../../src/services/cierresService.js');
 const { default: app } = await import('../../src/app.js');
@@ -122,5 +150,29 @@ describe('GET /api/cierres/excel', () => {
     cierres.listarCierres.mockRejectedValueOnce(new Error('se cayó la base'));
     const res = await request(app).get('/api/cierres/excel');
     expect(res.status).toBe(500);
+  });
+});
+
+describe('GET /api/dashboard/excel', () => {
+  it('descarga el resumen del mes en curso', async () => {
+    const res = await request(app).get('/api/dashboard/excel').buffer(true).parse(binario);
+    expect(res.status).toBe(200);
+    expect(res.headers['content-disposition']).toBe('attachment; filename="resumen-2026-09.xlsx"');
+    expect(await hojas(res.body)).toEqual(['Resumen', 'Ventas por día']);
+    expect(dashboard.resumenDelMes).toHaveBeenCalledWith(undefined, expect.any(Date));
+  });
+
+  it('de otro mes', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/excel?mes=2026-08')
+      .buffer(true)
+      .parse(binario);
+    expect(res.headers['content-disposition']).toContain('resumen-2026-08.xlsx');
+    expect(dashboard.resumenDelMes).toHaveBeenCalledWith('2026-08', expect.any(Date));
+  });
+
+  it('un mes inválido es un 400', async () => {
+    const res = await request(app).get('/api/dashboard/excel?mes=2026-13');
+    expect(res.status).toBe(400);
   });
 });

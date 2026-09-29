@@ -31,4 +31,9 @@ test('el cierre del mediodía se ve en el resumen y falta el de la noche', async
   await expect(page.getByRole('status').filter({ hasText: /Falta/ })).toContainText(
     'Estrada: noche'
   );
+
+  // Y el mes se baja en Excel.
+  const descarga = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Descargar Excel del mes' }).click();
+  expect((await descarga).suggestedFilename()).toMatch(/^resumen-\d{4}-\d{2}\.xlsx$/);
 });

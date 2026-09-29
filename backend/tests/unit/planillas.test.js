@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import ExcelJS from 'exceljs';
 
-import { libroCajaCentral, libroCierres } from '../../src/domain/planillas.js';
+import { libroCajaCentral, libroCierres, libroResumenMes } from '../../src/domain/planillas.js';
 
 // Se arma el archivo, se escribe y se vuelve a abrir, como lo haría Excel.
 const abrir = async (libro) => {
@@ -281,5 +281,94 @@ describe('planilla "Egresos de caja"', () => {
       'Total gastos': 5499.5,
       Diferencia: -500,
     });
+  });
+});
+
+const RESUMEN_MES = {
+  mes: '2026-09',
+  desde: '2026-09-01',
+  hasta: '2026-09-02',
+  ventas: 330000,
+  medios: { efectivo: 200000.5, debito: 80000, credito: 29999.5, qr: 20000 },
+  gastos: { sucursales: 5000, caja_central: 12000, obra: 3000, total: 20000 },
+  retiros_duenos: 100000,
+  resultado: 210000,
+  retiros_por_dueno: [{ dueno_id: 1, dueno: 'Fernanda', total: 100000 }],
+  ventas_por_sucursal: [
+    { sucursal_id: 3, sucursal: 'Café', vendido: 130000, cierres: 3, turnos_sin_cargar: 1 },
+    { sucursal_id: 2, sucursal: 'Estrada', vendido: 200000, cierres: 4, turnos_sin_cargar: 0 },
+  ],
+  ventas_por_dia: [
+    { fecha: '2026-09-01', vendido: 150000, por_sucursal: { 2: 100000, 3: 50000 } },
+    { fecha: '2026-09-02', vendido: 180000, por_sucursal: { 2: 100000, 3: 80000 } },
+  ],
+  anterior: {
+    mes: '2026-08',
+    desde: '2026-08-01',
+    hasta: '2026-08-02',
+    ventas: 300000,
+    medios: { efectivo: 200000, debito: 60000, credito: 20000, qr: 20000 },
+    gastos: { sucursales: 5000, caja_central: 5000, obra: 0, total: 10000 },
+    retiros_duenos: 0,
+    resultado: 290000,
+  },
+  variacion: { ventas: 10, gastos: 100, retiros_duenos: null, resultado: -27.6 },
+};
+
+describe('planilla del resumen del mes', () => {
+  it('compara los números con el mes anterior', async () => {
+    const libro = await abrir(libroResumenMes(RESUMEN_MES));
+    expect(libro.worksheets.map((h) => h.name)).toEqual(['Resumen', 'Ventas por día']);
+    const valores = [];
+    libro.getWorksheet('Resumen').eachRow((fila) => valores.push(fila.values.slice(1)));
+    expect(valores).toEqual(
+      expect.arrayContaining([
+        ['Resumen de 2026-09'],
+        ['Del 01/09/2026 al 02/09/2026, comparado con 01/08/2026 al 02/08/2026'],
+        ['', 'Este mes', 'Mes anterior', 'Variación'],
+        ['Ventas', 330000, 300000, 0.1],
+        ['Obra', 3000, 0],
+        ['Total de gastos', 20000, 10000, 1],
+        ['Retiros de los dueños', 100000, 0, 'sin datos'],
+        ['Resultado', 210000, 290000, -0.276],
+        ['Crédito', 29999.5, 20000],
+        ['Café', 130000, 3, 1],
+        ['Fernanda', 100000],
+      ])
+    );
+  });
+
+  it('el porcentaje lleva signo y la cantidad de cierres no es plata', async () => {
+    const libro = await abrir(libroResumenMes(RESUMEN_MES));
+    const hoja = libro.getWorksheet('Resumen');
+    let ventas;
+    let cafe;
+    hoja.eachRow((fila) => {
+      if (fila.getCell(1).value === 'Ventas') ventas = fila;
+      if (fila.getCell(1).value === 'Café') cafe = fila;
+    });
+    expect(ventas.getCell(4).numFmt).toBe('+0.0%;-0.0%;0.0%');
+    expect(ventas.getCell(2).numFmt).toBe('#,##0.00');
+    expect(cafe.getCell(3).numFmt).toBe('0');
+  });
+
+  it('una fila por día con una columna por sucursal y los totales', async () => {
+    const libro = await abrir(libroResumenMes(RESUMEN_MES));
+    const dias = filas(libro.getWorksheet('Ventas por día'));
+    expect(dias).toHaveLength(3);
+    expect(dias[0]).toMatchObject({ Café: 50000, Estrada: 100000, Total: 150000 });
+    expect(dias[0].Fecha).toEqual(new Date(Date.UTC(2026, 8, 1)));
+    expect(dias[2]).toEqual({ Fecha: 'Total', Café: 130000, Estrada: 200000, Total: 330000 });
+  });
+
+  it('un día sin dato de una sucursal queda en cero', async () => {
+    const libro = await abrir(
+      libroResumenMes({
+        ...RESUMEN_MES,
+        ventas_por_dia: [{ fecha: '2026-09-01', vendido: 100000, por_sucursal: { 2: 100000 } }],
+      })
+    );
+    const [dia] = filas(libro.getWorksheet('Ventas por día'));
+    expect(dia).toMatchObject({ Café: 0, Estrada: 100000 });
   });
 });

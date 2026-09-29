@@ -211,3 +211,108 @@ export const libroCierres = ({ cierres, categorias }) => {
   agregarTotales(hoja, columnas, filas);
   return libro;
 };
+
+const MEDIOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito', qr: 'QR' };
+
+/** Variación en % (15.3) → fracción para el formato de porcentaje de Excel. */
+const aFraccion = (v) => (v === null ? 'sin datos' : v / 100);
+
+/**
+ * Resumen del mes para los dueños: los números de la pantalla "Resumen"
+ * comparados con los mismos días del mes anterior, y las ventas de cada día
+ * por sucursal.
+ * @param {object} resumen lo que devuelve resumenDelMes
+ */
+export const libroResumenMes = (resumen) => {
+  const libro = libroNuevo();
+  const { anterior } = resumen;
+
+  // ---- Hoja "Resumen" ----
+  const r = libro.addWorksheet('Resumen');
+  r.columns = [
+    { key: 'a', width: 34 },
+    { key: 'b', width: 16 },
+    { key: 'c', width: 16 },
+    { key: 'd', width: 12 },
+  ];
+  for (const col of ['b', 'c']) r.getColumn(col).numFmt = PESOS;
+  const titulo = (texto) => {
+    r.addRow([]);
+    r.addRow([texto]).font = { bold: true };
+  };
+  r.addRow([`Resumen de ${resumen.mes}`]).font = { bold: true, size: 13 };
+  const f = (texto) => texto.split('-').reverse().join('/');
+  r.addRow([
+    `Del ${f(resumen.desde)} al ${f(resumen.hasta)}, comparado con ${f(anterior.desde)} al ${f(anterior.hasta)}`,
+  ]);
+
+  titulo('Números del mes');
+  r.addRow(['', 'Este mes', 'Mes anterior', 'Variación']).font = { bold: true };
+  const conVariacion = (nombre, actual, antes, v) => {
+    const fila = r.addRow([nombre, actual, antes, aFraccion(v)]);
+    fila.getCell('d').numFmt = '+0.0%;-0.0%;0.0%';
+    return fila;
+  };
+  conVariacion('Ventas', resumen.ventas, anterior.ventas, resumen.variacion.ventas);
+  r.addRow(['Gastos de las sucursales', resumen.gastos.sucursales, anterior.gastos.sucursales]);
+  r.addRow(['Pagos de la caja central', resumen.gastos.caja_central, anterior.gastos.caja_central]);
+  r.addRow(['Obra', resumen.gastos.obra, anterior.gastos.obra]);
+  conVariacion(
+    'Total de gastos',
+    resumen.gastos.total,
+    anterior.gastos.total,
+    resumen.variacion.gastos
+  );
+  conVariacion(
+    'Retiros de los dueños',
+    resumen.retiros_duenos,
+    anterior.retiros_duenos,
+    resumen.variacion.retiros_duenos
+  );
+  conVariacion(
+    'Resultado',
+    resumen.resultado,
+    anterior.resultado,
+    resumen.variacion.resultado
+  ).font = { bold: true };
+  r.addRow(['Resultado = ventas − gastos − retiros de los dueños. Los depósitos no cuentan.']);
+
+  titulo('Ventas por medio de pago');
+  for (const [clave, nombre] of Object.entries(MEDIOS)) {
+    r.addRow([nombre, resumen.medios[clave], anterior.medios[clave]]);
+  }
+
+  titulo('Ventas por sucursal');
+  r.addRow(['Sucursal', 'Vendido', 'Cierres', 'Turnos sin cargar']).font = { bold: true };
+  for (const s of resumen.ventas_por_sucursal) {
+    // Cierres y turnos son cantidades, no plata.
+    r.addRow([s.sucursal, s.vendido, s.cierres, s.turnos_sin_cargar]).getCell('c').numFmt = '0';
+  }
+
+  titulo('Retiros de los dueños');
+  for (const d of resumen.retiros_por_dueno) r.addRow([d.dueno, d.total]);
+
+  // ---- Hoja "Ventas por día" ----
+  const sucursales = resumen.ventas_por_sucursal;
+  const columnas = [
+    { header: 'Fecha', key: 'fecha', width: 12, fecha: true },
+    ...sucursales.map((s) => ({
+      header: s.sucursal,
+      key: `suc_${s.sucursal_id}`,
+      width: 16,
+      plata: true,
+    })),
+    { header: 'Total', key: 'total', width: 16, plata: true },
+  ];
+  const hoja = hojaConColumnas(libro, 'Ventas por día', columnas);
+  const filas = resumen.ventas_por_dia.map((d) => ({
+    fecha: aFecha(d.fecha),
+    ...Object.fromEntries(
+      sucursales.map((s) => [`suc_${s.sucursal_id}`, d.por_sucursal[s.sucursal_id] ?? 0])
+    ),
+    total: d.vendido,
+  }));
+  hoja.addRows(filas);
+  agregarTotales(hoja, columnas, filas);
+  return libro;
+};

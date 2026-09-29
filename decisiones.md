@@ -574,3 +574,12 @@ permiso de caja; cerrar sesión.
 | Barras hechas con CSS, sin librería de gráficos | Son barras simples; una librería sumaría peso a la app para nada. El gráfico por día tiene una descripción para lectores de pantalla. |
 | La variación se pinta verde o roja según qué es bueno | Que las ventas suban es bueno; que los gastos suban, no. Si no hay mes anterior dice "sin datos para comparar". |
 | Prueba e2e: se carga un cierre del mediodía y el resumen lo muestra y marca la noche como pendiente | Es el recorrido completo: de la caja al número que ve la dueña. |
+
+## La Fueguina Stats — Sprint 7 · PR 3: Excel del resumen del mes (#16)
+
+| Decisión | Por qué |
+|----------|---------|
+| El Excel sale de los mismos cálculos que la pantalla (`resumenDelMes`) | Lo que se ve y lo que se baja dan siempre igual; no hay una segunda cuenta que se pueda desviar. |
+| Dos hojas: "Resumen" (este mes, mes anterior y variación) y "Ventas por día" (una columna por sucursal y totales) | La primera es para leer; la segunda, para que el contador o la familia armen sus propios gráficos. |
+| La variación va como porcentaje de Excel con signo (+10,0 %) y "sin datos" si el mes anterior era cero | Se puede usar en fórmulas, y no aparece un porcentaje inventado. |
+| Google Sheets queda para cuando el negocio tenga su cuenta de Google | Sin esa cuenta no hay dónde sincronizar; el Excel ya se puede subir a Drive a mano. |
