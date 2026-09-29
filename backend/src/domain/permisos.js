@@ -21,6 +21,8 @@ export const ACCIONES = Object.freeze({
   // Ver todos los cierres, corregirlos y marcarlos revisados: sólo la dueña o un socio.
   REVISAR_CAJA: 'caja:revisar',
   ADMINISTRAR_USUARIOS: 'usuarios:administrar',
+  // Caja central: depósitos, pagos grandes y retiros de los dueños (Sprint 5).
+  ADMINISTRAR_CAJA_CENTRAL: 'caja-central:administrar',
 });
 
 const MATRIZ = Object.freeze({

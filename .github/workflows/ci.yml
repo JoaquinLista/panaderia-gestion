@@ -151,7 +151,7 @@ jobs:
           grep -q '<div id="root">' <<<"$home"
 
           # Sin sesión, /me y las rutas de negocio responden 401.
-          for ruta in auth/me pedidos insumos usuarios cierres/hoy; do
+          for ruta in auth/me pedidos insumos usuarios cierres/hoy caja-central/resumen; do
             codigo=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost/api/$ruta")
             echo "/api/$ruta sin sesión: $codigo"; test "$codigo" = 401
           done
@@ -168,12 +168,18 @@ jobs:
           # Las categorías de gasto de la planilla vienen cargadas por la migración.
           categorias=$(curl -fsS -b cookies.txt http://localhost/api/cierres/categorias); echo "$categorias"
           grep -q '"nombre":"Varios"' <<<"$categorias"
+          # La caja central arranca con los dueños de la planilla.
+          duenos=$(curl -fsS -b cookies.txt http://localhost/api/caja-central/duenos); echo "$duenos"
+          grep -q '"nombre":"Fernanda"' <<<"$duenos"
           # La dueña carga un cierre de caja y un segundo del mismo turno da 409.
           cierre='{"sucursal_id":2,"turno":"NOCHE","total_controlador":1000,"efectivo_contado":1500,"cambio_fijo":500}'
           creado=$(curl -fsS -b cookies.txt -H 'Content-Type: application/json' -d "$cierre" http://localhost/api/cierres); echo "$creado"
           grep -q '"diferencia":0' <<<"$creado"
           codigo=$(curl -s -o /dev/null -w '%{http_code}' -b cookies.txt -H 'Content-Type: application/json' -d "$cierre" http://localhost/api/cierres)
           echo "cierre repetido: $codigo"; test "$codigo" = 409
+          # El efectivo de ese cierre (1500 − 500 de cambio) entra solo a la caja central.
+          resumen=$(curl -fsS -b cookies.txt http://localhost/api/caja-central/resumen); echo "$resumen"
+          grep -q '"total_entradas":1000' <<<"$resumen"
 
       # ---- Pruebas end-to-end (Sprint 4, #11) ----
       # Un Chromium del tamaño de un celular usa el sistema recién levantado,

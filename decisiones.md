@@ -471,3 +471,19 @@ permiso de caja; cerrar sesión.
 | Cada gasto del cierre lleva una categoría (tabla `categorias_gasto`) | Son las columnas de la planilla: Personal, Supermercado, Carne, Gasoil, Bebidas, Proveedores, Servicios, Mantenimiento, Obra y Varios. Así el Excel sale por columna y la dueña ve en qué se gasta. Los gastos viejos quedan en "Varios". |
 | Las categorías se desactivan, no se borran | Un gasto viejo conserva su categoría aunque ya no se ofrezca para gastos nuevos; al corregirlo, se sigue viendo. |
 | El detalle del gasto sigue siendo obligatorio | La categoría dice el tipo; el detalle dice qué fue ("sodero", "bolsas"). |
+
+## La Fueguina Stats — Sprint 5 · PR 2: API de la caja central (#12, #13)
+
+| Decisión | Por qué |
+|----------|---------|
+| Lo que entra de cada sucursal no se guarda: se calcula de cada cierre (efectivo contado − cambio fijo) | Es la columna "Retiro" de la planilla. Si la dueña corrige un cierre, la caja central se actualiza sola y nunca hay dos números distintos para la misma plata. |
+| Dos cuentas: `CAJA` (caja central, efectivo) y `BANCO` (Banco Patagonia) | Son las dos que aparecen en "Retiros". El depósito saca de la caja y pone en el banco en un solo movimiento. |
+| Cinco tipos de movimiento: saldo inicial, depósito, pago, retiro de un dueño y ajuste | Cubren las columnas de la planilla. La obra es un pago con la categoría "Obra": así se suma igual que el resto de los gastos. |
+| Saldo inicial, uno por cuenta; lo anterior no cuenta | El sistema no sabe cuánta plata había antes. La dueña carga una vez con cuánto arranca cada cuenta y los cierres anteriores a esa fecha no se suman (ya están en ese saldo). No se pueden cargar movimientos con fecha anterior. |
+| El ajuste es el único monto que puede ser negativo, y pide motivo | Es para anotar la diferencia de un arqueo sin tocar lo ya cargado. |
+| Un movimiento mal cargado se anula, no se borra | Deja de contar en los saldos pero queda quién y cuándo lo anuló. Son movimientos de plata: no se pierde nada. |
+| Dueños en una tabla (Fernanda, Gabriel, Mary) | Comparten la cuenta de admin, así que no alcanza con saber quién está logueado: cada retiro elige quién se llevó la plata. Un dueño se puede desactivar y sus retiros viejos se siguen viendo. |
+| El resumen del mes suma los gastos por categoría de las sucursales y de la caja central por separado | La planilla "Egresos de caja" tiene los de las sucursales y "Retiros", los grandes. Así se ven juntos y separados. |
+| Permiso nuevo `caja-central:administrar`, sólo admin | Son los números del negocio y los retiros de la familia. |
+| Los saldos se calculan en el servidor en centavos enteros, igual que el cuadre | Sin errores de redondeo. Con el volumen de una panadería (unos pocos movimientos por día) recalcular todo es instantáneo y más simple que guardar saldos. |
+

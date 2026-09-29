@@ -50,6 +50,7 @@ export const PERMISOS_ADMIN = [
   'caja:cerrar',
   'caja:revisar',
   'usuarios:administrar',
+  'caja-central:administrar',
 ];
 
 export const sesionAdmin = {
