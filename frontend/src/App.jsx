@@ -11,11 +11,14 @@ import CierreCaja from './pantallas/CierreCaja.jsx';
 import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
+import Resumen from './pantallas/Resumen.jsx';
 import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
 // Cada pestaña aparece sólo si la sesión tiene el permiso (matriz del backend).
-// El cierre de caja va primero: es lo que se usa todos los días (MVP del PRD).
+// Los dueños arrancan en el resumen; el resto, en el cierre de caja, que es lo
+// que se usa todos los días (MVP del PRD).
 const TABS = [
+  { id: 'resumen', label: 'Resumen', permiso: 'dashboard:ver' },
   { id: 'cierre', label: 'Cierre de caja', permiso: 'caja:cerrar' },
   { id: 'revision', label: 'Revisión de cierres', permiso: 'caja:revisar' },
   { id: 'caja-central', label: 'Caja central', permiso: 'caja-central:administrar' },
@@ -89,6 +92,7 @@ function Panel() {
         ))}
       </nav>
 
+      {tab === 'resumen' && <Resumen />}
       {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
       {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
       {tab === 'caja-central' && <CajaCentral />}

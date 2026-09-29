@@ -46,6 +46,7 @@ describe('pestañas según el rol', () => {
       'admin',
       sesionAdmin,
       [
+        'Resumen',
         'Cierre de caja',
         'Revisión de cierres',
         'Caja central',

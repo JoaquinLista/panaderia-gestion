@@ -10,6 +10,7 @@ test('el retiro de un cierre entra a la caja central y un pago baja el saldo', a
   await entrar(page, ADMIN);
 
   // ---- La dueña carga el cierre del mediodía del Café ----
+  await page.getByRole('button', { name: 'Cierre de caja' }).click();
   await page.getByLabel('Sucursal').selectOption({ label: 'Café' });
   const cierre = page.getByRole('form', { name: 'Cierre de caja' });
   await cierre.getByLabel('Mediodía').check();
