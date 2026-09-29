@@ -307,6 +307,21 @@ El CI prueba las alertas con horarios simulados (`promtool test rules
 alertas.test.yml`) y levanta Prometheus y Grafana para verificar que leen al
 backend y cargan el tablero. Para apagar todo: `docker compose --profile monitoreo down`.
 
+### Métricas DORA
+
+El workflow **Métricas DORA** (`.github/workflows/dora.yml`) corre los lunes y a
+mano (*Actions → Métricas DORA → Run workflow*). Calcula, para los últimos 30 días:
+
+| Métrica | Cómo se mide acá |
+|---------|------------------|
+| Frecuencia de despliegue | Despliegues a producción que terminaron bien, por semana. Mientras no haya producción, los merges a main |
+| Lead time | Mediana desde el primer commit de un PR hasta que llegó a producción (o al merge) |
+| Tasa de fallas | Despliegues cuyo CI en main dio rojo o que tuvieron que volver atrás |
+| Tiempo de recuperación | Mediana desde que main se pone rojo hasta la siguiente corrida verde |
+
+El informe queda en el resumen de la corrida y en el artefacto `dora.json`. En la
+compu: `GITHUB_REPOSITORY=JoaquinLista/panaderia-gestion node herramientas/dora/reporte.mjs 30`.
+
 ### Reportar un problema
 
 Al pie del menú, cualquier persona puede contar qué no anduvo. El reporte se

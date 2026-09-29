@@ -131,6 +131,10 @@ jobs:
       - name: Pruebas del blue-green
         run: bash infra/scripts/pruebas/blue-green.test.sh
 
+      # El cálculo de las métricas DORA (herramientas/dora), con datos de mentira.
+      - name: Pruebas de las métricas DORA
+        run: node --test herramientas/dora/*.test.mjs
+
   alertas:
     name: Monitoreo · reglas y alertas
     runs-on: ubuntu-latest
