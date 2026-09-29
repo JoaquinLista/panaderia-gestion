@@ -510,6 +510,15 @@ permiso de caja; cerrar sesión.
 | Sin límite de filas en el Excel de cierres | La lista en pantalla muestra hasta 200 cierres; un mes de cuatro sucursales pasa de 240. |
 
 
+## La Fueguina Stats — Sprint 6 · PR 1: la app lista para la nube (#14)
+
+| Decisión | Por qué |
+|----------|---------|
+| `POSTGRES_SSL=true` conecta con SSL y verifica el certificado | Azure Database for PostgreSQL no acepta conexiones sin cifrar. Se verifica el certificado (`rejectUnauthorized`) para no hablar con un servidor falso; el de Azure está firmado por autoridades que Node ya conoce. En el compose no hace falta: la base está en la red interna. |
+| `TRUST_PROXY` configurable; en Azure vale `2` | En Azure hay dos proxies adelante del backend: la entrada de Container Apps y el Nginx del frontend. La entrada usa IPs que no son de red privada, así que con la regla de siempre todos los celulares parecerían la misma IP y el límite de intentos de login bloquearía a todos juntos. |
+| La imagen lleva el SHA del commit (`APP_VERSION`) y se ve en `/api/health` y al pie de la pantalla | Con blue-green conviven dos versiones: hay que poder preguntar cuál contesta. También sirve para saber qué versión tiene cada ambiente sin entrar a Azure. |
+| La configuración de Nginx es una plantilla (`nginx.conf.template`) con `BACKEND_URL` y `NGINX_RESOLVER` | La imagen oficial de Nginx completa las variables al arrancar. En el compose siguen siendo `http://backend:3000` y el DNS de Docker (valores por defecto del Dockerfile); en Azure los dos contenedores van juntos y el backend es `http://127.0.0.1:3000`. La misma imagen sirve para los dos lugares. |
+
 ## La Fueguina Stats — Sprint 6 · PR 2: infraestructura con Terraform (#14)
 
 | Decisión | Por qué |

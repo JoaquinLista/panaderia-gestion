@@ -34,4 +34,9 @@ COPY migrations ./migrations
 USER app
 EXPOSE 3000
 
+# Versión que muestra /api/health: el pipeline pasa el SHA del commit. Va al
+# final para no invalidar la caché de las capas de arriba.
+ARG APP_VERSION=local
+ENV APP_VERSION=$APP_VERSION
+
 CMD ["node", "src/index.js"]
