@@ -1,3 +1,8 @@
+# Nombre fijo del proyecto: Docker lo usa como prefijo de la red y del volumen de
+# la base. Sin esto usaría el nombre de la carpeta, y otro proyecto clonado en una
+# carpeta con el mismo nombre compartiría la base de datos.
+name: lafueguina
+
 services:
   db:
     # Imagen oficial sin scripts propios: el esquema lo crea el backend al
