@@ -23,6 +23,8 @@ export const ACCIONES = Object.freeze({
   ADMINISTRAR_USUARIOS: 'usuarios:administrar',
   // Caja central: depósitos, pagos grandes y retiros de los dueños (Sprint 5).
   ADMINISTRAR_CAJA_CENTRAL: 'caja-central:administrar',
+  // Resumen de ventas, gastos y resultado de todo el negocio (Sprint 7).
+  VER_DASHBOARD: 'dashboard:ver',
 });
 
 const MATRIZ = Object.freeze({

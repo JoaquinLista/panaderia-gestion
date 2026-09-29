@@ -166,7 +166,7 @@ jobs:
           grep -q '<div id="root">' <<<"$home"
 
           # Sin sesión, /me y las rutas de negocio responden 401.
-          for ruta in auth/me pedidos insumos usuarios cierres/hoy caja-central/resumen; do
+          for ruta in auth/me pedidos insumos usuarios cierres/hoy caja-central/resumen dashboard/dia; do
             codigo=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost/api/$ruta")
             echo "/api/$ruta sin sesión: $codigo"; test "$codigo" = 401
           done
@@ -195,6 +195,9 @@ jobs:
           # El efectivo de ese cierre (1500 − 500 de cambio) entra solo a la caja central.
           resumen=$(curl -fsS -b cookies.txt http://localhost/api/caja-central/resumen); echo "$resumen"
           grep -q '"total_entradas":1000' <<<"$resumen"
+          # Y el resumen de los dueños lo cuenta en lo vendido hoy.
+          dia=$(curl -fsS -b cookies.txt http://localhost/api/dashboard/dia); echo "$dia"
+          grep -q '"total":{"vendido":1000,' <<<"$dia"
 
       # ---- Pruebas end-to-end (Sprint 4, #11) ----
       # Un Chromium del tamaño de un celular usa el sistema recién levantado,

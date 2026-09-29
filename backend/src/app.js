@@ -14,6 +14,7 @@ import authRoutes from './routes/authRoutes.js';
 import usuariosRoutes from './routes/usuariosRoutes.js';
 import cierresRoutes from './routes/cierresRoutes.js';
 import cajaCentralRoutes from './routes/cajaCentralRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 import { requerirSesion } from './middlewares/autenticacion.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
 import insumosRoutes from './routes/insumosRoutes.js';
@@ -67,6 +68,7 @@ app.use('/api/productos', requerirSesion, productosRoutes);
 app.use('/api/usuarios', requerirSesion, usuariosRoutes);
 app.use('/api/cierres', requerirSesion, cierresRoutes);
 app.use('/api/caja-central', requerirSesion, cajaCentralRoutes);
+app.use('/api/dashboard', requerirSesion, dashboardRoutes);
 
 // ---- 404 ----
 app.use((req, res) => {
