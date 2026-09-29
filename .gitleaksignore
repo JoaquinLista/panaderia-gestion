@@ -4,3 +4,7 @@
 
 # JWT_SECRET descartable de los tests unitarios (no firma sesiones reales).
 14342d4785f29147d6ffb19e307c1c9e790f3f22:backend/vitest.config.js:generic-api-key:10
+
+# Usuario y contraseña por defecto de Grafana en el smoke test del CI (sólo vive
+# durante el job). Ya se reemplazó por la variable GRAFANA_PASSWORD.
+ef997441b9af5c499eebbbe0f810b2f383d81b05:.github/workflows/ci.yml:curl-auth-user:286
