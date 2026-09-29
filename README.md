@@ -152,6 +152,11 @@ Errores del login: `400` si faltan datos o la sucursal no es válida, `401` con 
 mensaje genérico "Usuario o contraseña incorrectos" y `429` después de 5 intentos
 fallidos en un minuto desde la misma IP.
 
+## Infraestructura en Azure
+
+La app en la nube se describe con Terraform en [`infra/`](infra/README.md): cómo se crea, cómo se conecta
+GitHub con Azure y qué hace el pipeline de infraestructura.
+
 ## Desarrollo fuera de Docker
 
 ```bash
