@@ -82,8 +82,58 @@ services:
     networks:
       - lafueguina_net
 
+  # ---- Monitoreo (Sprint 8, #18) ----
+  # Opcional: sólo se levanta con `docker compose --profile monitoreo up -d`.
+  # Prometheus lee /metrics del backend y evalúa las alertas; Grafana dibuja
+  # el tablero. Los puertos se abren sólo en la propia compu (127.0.0.1).
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: lafueguina_prometheus
+    profiles: [monitoreo]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./monitoreo/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - lafueguina_net
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    container_name: lafueguina_grafana
+    profiles: [monitoreo]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      # Grafana pide cambiarla la primera vez si queda en "admin".
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_DEFAULT_LANGUAGE: es-ES
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/tableros/la-fueguina.json
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+    volumes:
+      - ./monitoreo/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoreo/grafana/tableros:/var/lib/grafana/tableros:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - lafueguina_net
+
 volumes:
   postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:

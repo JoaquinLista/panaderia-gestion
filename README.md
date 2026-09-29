@@ -281,6 +281,31 @@ docker compose logs backend --no-log-prefix | jq 'select(.level >= 40)'   # sól
 `/metrics` está fuera de `/api` a propósito: Nginx no lo reenvía, así que desde
 internet no se ve.
 
+**Tablero y alertas.** Prometheus y Grafana vienen en el compose, apagados por
+defecto:
+
+```bash
+docker compose --profile monitoreo up -d
+```
+
+- **Grafana:** http://localhost:3001 (usuario `admin`, contraseña `GRAFANA_PASSWORD`
+  del `.env`, o `admin` la primera vez). Abre directo en el tablero **La Fueguina**:
+  los cierres de hoy en verde o rojo, las alertas activas, pedidos por minuto,
+  tiempo de respuesta, errores y memoria.
+- **Prometheus:** http://localhost:9090 (pestaña *Alerts*).
+
+Las alertas están en `monitoreo/prometheus/alertas.yml`:
+
+| Alerta | Cuándo suena |
+|--------|--------------|
+| `CierreDeLaNocheSinCargar` | Son más de las 21:30 y una sucursal no cargó el cierre de la noche (hasta las 23:59) |
+| `BackendCaido` | Prometheus no puede leer el backend durante 2 minutos |
+| `MuchosErrores` | Más del 5 % de las respuestas son 5xx durante 5 minutos |
+
+El CI prueba las alertas con horarios simulados (`promtool test rules
+alertas.test.yml`) y levanta Prometheus y Grafana para verificar que leen al
+backend y cargan el tablero. Para apagar todo: `docker compose --profile monitoreo down`.
+
 ## Base de datos y migraciones
 
 El esquema vive en `backend/migrations/` como archivos SQL numerados

@@ -1,0 +1,78 @@
+# Pruebas de las alertas: `promtool test rules alertas.test.yml`.
+# El tiempo simulado arranca en 1970-01-01 00:00 UTC (21:00 de Argentina).
+rule_files:
+  - alertas.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Café no cargó la noche; Estrada sí.
+  - interval: 1m
+    input_series:
+      - series: 'lafueguina_cierre_cargado_hoy{sucursal="Café",turno="NOCHE"}'
+        values: '0x240'
+      - series: 'lafueguina_cierre_cargado_hoy{sucursal="Estrada",turno="NOCHE"}'
+        values: '1x240'
+      - series: 'lafueguina_cierre_cargado_hoy{sucursal="Café",turno="MEDIODIA"}'
+        values: '0x240'
+    alert_rule_test:
+      # 21:10: todavía hay tiempo, no avisa.
+      - eval_time: 10m
+        alertname: CierreDeLaNocheSinCargar
+        exp_alerts: []
+      # 21:45: avisa sólo por Café y sólo por la noche.
+      - eval_time: 45m
+        alertname: CierreDeLaNocheSinCargar
+        exp_alerts:
+          - exp_labels:
+              severidad: aviso
+              sucursal: Café
+              turno: NOCHE
+            exp_annotations:
+              resumen: Café no cargó el cierre de la noche
+              descripcion: >-
+                Son más de las 21:30 y el cierre de la noche de Café todavía no está cargado.
+      # 23:30: sigue avisando.
+      - eval_time: 150m
+        alertname: CierreDeLaNocheSinCargar
+        exp_alerts:
+          - exp_labels:
+              severidad: aviso
+              sucursal: Café
+              turno: NOCHE
+            exp_annotations:
+              resumen: Café no cargó el cierre de la noche
+              descripcion: >-
+                Son más de las 21:30 y el cierre de la noche de Café todavía no está cargado.
+      # 00:10 del día siguiente: ya es otro día, no avisa.
+      - eval_time: 190m
+        alertname: CierreDeLaNocheSinCargar
+        exp_alerts: []
+
+  # Café carga el cierre a las 21:50: la alerta se apaga sola.
+  - interval: 1m
+    input_series:
+      - series: 'lafueguina_cierre_cargado_hoy{sucursal="Café",turno="NOCHE"}'
+        values: '0x49 1x100'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: CierreDeLaNocheSinCargar
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="backend"}'
+        values: '1 1 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: BackendCaido
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: BackendCaido
+        exp_alerts:
+          - exp_labels:
+              job: backend
+              severidad: critica
+            exp_annotations:
+              resumen: El backend no responde
+              descripcion: Prometheus no puede leer /metrics desde hace 2 minutos.

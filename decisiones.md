@@ -631,3 +631,17 @@ permiso de caja; cerrar sesión.
 | Si la base no responde, la métrica de cierres no aparece (en vez de valer 0) | Un 0 diría "no cargaron el cierre" y dispararía una alerta falsa. |
 | El secreto de prueba de `vitest.config.js` va en `.gitleaksignore` y con `gitleaks:allow` | gitleaks lo marcó al tocar esa línea (prueba de que funciona). No es un secreto real: sólo firma sesiones en los tests. |
 | `/metrics` sin contraseña pero fuera de `/api` | Nginx sólo reenvía `/api/`: desde internet devuelve la pantalla. Prometheus lo lee por la red interna. El smoke test verifica las dos cosas. |
+
+## La Fueguina Stats — Sprint 8 · PR 3: tablero de Grafana y alertas (#18)
+
+| Decisión | Por qué |
+|----------|---------|
+| Prometheus y Grafana en el mismo `docker-compose.yml`, bajo el perfil `monitoreo` | Un `docker compose up` normal no cambia (no ocupa memoria ni puertos de más). Hasta que tengamos Azure, el monitoreo corre en la compu con un solo comando. |
+| Puertos 9090 y 3001 sólo en `127.0.0.1` | Nadie de la red del local puede entrar a Grafana o Prometheus. |
+| Grafana arranca con la fuente de datos y el tablero ya cargados (provisioning), en español y abriendo en "La Fueguina" | Nada que configurar a mano; el tablero vive en el repo como JSON y se versiona como el código. |
+| Alerta del cierre de la noche entre las 21:30 y las 23:59 de Argentina, escrita en UTC | Las sucursales cierran a las 21 y se da media hora. Prometheus trabaja en UTC y Argentina está siempre en UTC−3 (no cambia la hora). A medianoche empieza otro día y el cierre vuelve a "pendiente": por eso no sigue sonando. |
+| No hay alerta del mediodía todavía | No tenemos una hora pactada para ese cierre; se agrega con una línea cuando el PM la defina. |
+| Alertas también de backend caído y de más de 5 % de errores | Son las dos cosas que haría que la dueña no pueda cargar nada. |
+| Las alertas se ven en el tablero y en Prometheus; todavía no mandan mensajes | Para mandar un mail o un Telegram hace falta una cuenta de envío del negocio. Se agrega con Alertmanager o con los contactos de Grafana cuando esté. |
+| `promtool test rules` en el CI con horarios simulados (21:10, 21:45, 23:30, 00:10) | Una alerta que nunca suena o que suena siempre no se nota hasta que hace falta. Así se prueba como cualquier otro código. |
+| El CI levanta Prometheus y Grafana y verifica que leen el cierre del smoke test y cargan el tablero | Prueba de punta a punta: del cierre cargado al dato en Grafana. |

@@ -1,0 +1,15 @@
+# Prometheus de La Fueguina (Sprint 8, #18). Lee las métricas del backend cada
+# 15 segundos y evalúa las alertas de alertas.yml.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 30s
+
+rule_files:
+  - alertas.yml
+
+scrape_configs:
+  - job_name: backend
+    metrics_path: /metrics
+    static_configs:
+      # Nombre del servicio en docker-compose.yml: se resuelve por la red interna.
+      - targets: ['backend:3000']
