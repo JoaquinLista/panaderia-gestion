@@ -22,10 +22,10 @@ import CajaCentral from './pantallas/CajaCentral.jsx';
 import CierreCaja from './pantallas/CierreCaja.jsx';
 import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
+import Pedidos from './pantallas/Pedidos.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
 import ReportarProblema from './pantallas/ReportarProblema.jsx';
 import Resumen from './pantallas/Resumen.jsx';
-import TableroPedidos from './pantallas/TableroPedidos.jsx';
 
 // El menú se ordena por lo que hace cada persona, en tres grupos. Cada sección
 // aparece sólo si la sesión tiene el permiso (matriz del backend). Los dueños
@@ -106,15 +106,12 @@ function Panel() {
   const actual = tabs.find((t) => t.id === tab);
   const enPantalla = reportando ? 'Reportar un problema' : (actual?.label ?? 'Secciones');
   const [sucursales, setSucursales] = useState([]);
-  const [productos, setProductos] = useState([]);
   const [errorGlobal, setErrorGlobal] = useState('');
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, p] = await Promise.all([apiGet('/sucursales'), apiGet('/productos')]);
-        setSucursales(s);
-        setProductos(p);
+        setSucursales(await apiGet('/sucursales'));
       } catch (e) {
         setErrorGlobal(e.message);
       }
@@ -221,7 +218,7 @@ function Panel() {
             {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
             {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
             {tab === 'caja-central' && <CajaCentral />}
-            {tab === 'pedidos' && <TableroPedidos sucursales={sucursales} productos={productos} />}
+            {tab === 'pedidos' && <Pedidos sucursales={sucursales} />}
             {tab === 'insumos' && <GestionInsumos />}
             {tab === 'red' && <RedSucursales sucursales={sucursales} />}
             {tab === 'usuarios' && <AdminUsuarios />}

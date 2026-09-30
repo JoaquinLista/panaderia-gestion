@@ -18,3 +18,6 @@ ef997441b9af5c499eebbbe0f810b2f383d81b05:.github/workflows/ci.yml:curl-auth-user
 
 # JWT_SECRET descartable de los tests de integración de pedidos (PR #80).
 09c5b117b8c106cbdf90302bedc8fd0069e15a9c:backend/tests/integracion/pedidos.test.js:generic-api-key:24
+
+# Contraseña de los usuarios de prueba del e2e de pedidos (PR #81).
+ce091027a0c9559061132de36494ee67fe9355ec:e2e/tests/pedidos.spec.js:generic-api-key:11

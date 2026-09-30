@@ -134,10 +134,8 @@ describe('sesión abierta', () => {
   });
 
   it('si la API responde 401 en medio del uso, vuelve al login', async () => {
-    apiFalsa({
-      'GET /api/sucursales': () => [200, sucursales],
-      'GET /api/productos': SIN_SESION,
-    });
+    // Lo primero que pide el panel son las sucursales, y la API dice que la sesión venció.
+    apiFalsa({ 'GET /api/sucursales': SIN_SESION });
     render(<App />);
     expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument();
   });
