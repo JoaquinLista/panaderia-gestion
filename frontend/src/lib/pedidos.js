@@ -67,3 +67,18 @@ export function lugaresDeOrigen(pedidos) {
 export const pedidosPorSalir = (lugar) => [
   ...new Set(lugar.rubros.flatMap((r) => r.renglones.map((x) => x.pedido_id))),
 ];
+
+/**
+ * Orden nuevo de la lista después de mover un rubro: numera de a 10 y
+ * devuelve sólo los que cambiaron, para no tocar el resto.
+ * @returns {Array<{ id: number, orden: number }>}
+ */
+export function reordenar(rubros, desde, hacia) {
+  const lista = [...rubros];
+  const [movido] = lista.splice(desde, 1);
+  lista.splice(hacia, 0, movido);
+  return lista
+    .map((r, i) => ({ id: r.id, orden: (i + 1) * 10, antes: r.orden }))
+    .filter((r) => r.orden !== r.antes)
+    .map(({ id, orden }) => ({ id, orden }));
+}

@@ -195,4 +195,35 @@ describe('pedidos contra Postgres', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('la dueña agrega un rubro al final, no se repite y al desactivarlo deja de pedirse', async () => {
+    const alta = await request(app)
+      .post('/api/pedidos/rubros')
+      .set('Cookie', cookie.dueña)
+      .send({ nombre: 'Prepizzas', sucursal_origen_id: ids['Viedma (Chacra)'] });
+    expect(alta.status).toBe(201);
+    expect(alta.body).toMatchObject({ nombre: 'Prepizzas', orden: 130, activo: true });
+
+    const repetido = await request(app)
+      .post('/api/pedidos/rubros')
+      .set('Cookie', cookie.dueña)
+      .send({ nombre: 'PREPIZZAS', sucursal_origen_id: ids['Galpón Central'] });
+    expect(repetido.status).toBe(409);
+
+    const baja = await request(app)
+      .put(`/api/pedidos/rubros/${alta.body.id}`)
+      .set('Cookie', cookie.dueña)
+      .send({ activo: false });
+    expect(baja.body.activo).toBe(false);
+
+    const paraPedir = await como('lucia').get('/rubros');
+    expect(paraPedir.body.map((r) => r.nombre)).not.toContain('Prepizzas');
+    const todos = await como('dueña').get('/rubros?todos=1');
+    expect(todos.body.at(-1)).toMatchObject({ nombre: 'Prepizzas', activo: false });
+
+    const pedido = await como('lucia').post({
+      items: [{ rubro_id: alta.body.id, detalle: '2 docenas' }],
+    });
+    expect(pedido.status).toBe(400);
+  });
 });

@@ -6,7 +6,8 @@ import {
   marcarItem,
   obtenerRecorrido,
 } from '../services/pedidosService.js';
-import { sucursalRestringida } from '../domain/permisos.js';
+import { actualizarRubro, crearRubro } from '../services/rubrosService.js';
+import { ACCIONES, sucursalRestringida } from '../domain/permisos.js';
 
 /**
  * GET /api/pedidos?estado=abiertos
@@ -25,10 +26,33 @@ export const getPedidos = async (req, res, next) => {
   }
 };
 
-/** GET /api/pedidos/rubros: lo que se puede pedir y de dónde sale. */
-export const getRubros = async (_req, res, next) => {
+/**
+ * GET /api/pedidos/rubros: lo que se puede pedir y de dónde sale.
+ * Con ?todos=1, la dueña ve también los desactivados para administrarlos.
+ */
+export const getRubros = async (req, res, next) => {
   try {
-    res.json(await listarRubros());
+    const incluirInactivos =
+      req.query.todos === '1' && req.sesion.permisos.includes(ACCIONES.ADMINISTRAR_RUBROS);
+    res.json(await listarRubros({ incluirInactivos }));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /api/pedidos/rubros. Body: { nombre, sucursal_origen_id, orden? }. */
+export const postRubro = async (req, res, next) => {
+  try {
+    res.status(201).json(await crearRubro(req.body ?? {}));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** PUT /api/pedidos/rubros/:id. Body: cualquiera de { nombre, sucursal_origen_id, orden, activo }. */
+export const putRubro = async (req, res, next) => {
+  try {
+    res.json(await actualizarRubro(req.params.id, req.body ?? {}));
   } catch (error) {
     next(error);
   }
