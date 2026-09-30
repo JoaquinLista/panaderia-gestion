@@ -21,7 +21,9 @@
 set -euo pipefail
 
 REPO="${REPO:-JoaquinLista/panaderia-gestion}"
-UBICACION="${UBICACION:-brazilsouth}"
+# Las cuentas de estudiante sólo permiten algunas regiones; para verlas:
+#   az policy assignment list --disable-scope-strict-match --query "[].parameters" -o json
+UBICACION="${UBICACION:-chilecentral}"
 GRUPO_APP="rg-lafueguina"
 GRUPO_ESTADO="rg-lafueguina-estado"
 IDENTIDAD="id-github-lafueguina"
@@ -29,6 +31,19 @@ IDENTIDAD="id-github-lafueguina"
 AMBIENTES=(infra staging produccion)
 
 paso() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
+
+# Azure a veces tarda en "ver" algo recién creado (sobre todo en regiones
+# nuevas como Chile): el paso siguiente falla con "not found". Reintenta el
+# comando cada 15 segundos, hasta 3 minutos, antes de darse por vencido.
+reintentar() {
+  local intento
+  for intento in $(seq 1 12); do
+    if "$@"; then return 0; fi
+    echo "  Azure todavía no lo ve, reintento en 15 segundos ($intento/12)..." >&2
+    sleep 15
+  done
+  "$@"
+}
 
 SUSCRIPCION=$(az account show --query id -o tsv)
 TENANT=$(az account show --query tenantId -o tsv)
@@ -57,9 +72,9 @@ az storage account create --name "$CUENTA" --resource-group "$GRUPO_ESTADO" \
   --location "$UBICACION" --sku Standard_LRS --kind StorageV2 \
   --min-tls-version TLS1_2 --allow-blob-public-access false -o none
 # Con versiones, si el estado se rompe se puede volver al anterior.
-az storage account blob-service-properties update --account-name "$CUENTA" \
+reintentar az storage account blob-service-properties update --account-name "$CUENTA" \
   --resource-group "$GRUPO_ESTADO" --enable-versioning true -o none
-CLAVE=$(az storage account keys list --account-name "$CUENTA" \
+CLAVE=$(reintentar az storage account keys list --account-name "$CUENTA" \
   --resource-group "$GRUPO_ESTADO" --query '[0].value' -o tsv)
 az storage container create --name tfstate --account-name "$CUENTA" \
   --account-key "$CLAVE" -o none
@@ -68,7 +83,7 @@ echo "  $CUENTA/tfstate"
 paso "4/4 Identidad de GitHub Actions (OIDC)"
 az identity create --name "$IDENTIDAD" --resource-group "$GRUPO_ESTADO" \
   --location "$UBICACION" -o none
-CLIENT_ID=$(az identity show --name "$IDENTIDAD" --resource-group "$GRUPO_ESTADO" --query clientId -o tsv)
+CLIENT_ID=$(reintentar az identity show --name "$IDENTIDAD" --resource-group "$GRUPO_ESTADO" --query clientId -o tsv)
 PRINCIPAL_ID=$(az identity show --name "$IDENTIDAD" --resource-group "$GRUPO_ESTADO" --query principalId -o tsv)
 
 # Qué workflows pueden usar la identidad: los PRs (sólo para el plan de
@@ -81,7 +96,7 @@ confiar() {
     echo "  $sujeto (ya estaba)"
     return
   fi
-  az identity federated-credential create --name "$nombre" --identity-name "$IDENTIDAD" \
+  reintentar az identity federated-credential create --name "$nombre" --identity-name "$IDENTIDAD" \
     --resource-group "$GRUPO_ESTADO" --issuer https://token.actions.githubusercontent.com \
     --subject "$sujeto" --audiences api://AzureADTokenExchange -o none
   echo "  $sujeto"
@@ -94,7 +109,7 @@ done
 # Permisos mínimos: administrar los recursos de la app y leer/escribir el estado.
 permiso() {
   local rol=$1 alcance=$2
-  az role assignment create --assignee-object-id "$PRINCIPAL_ID" \
+  reintentar az role assignment create --assignee-object-id "$PRINCIPAL_ID" \
     --assignee-principal-type ServicePrincipal --role "$rol" --scope "$alcance" -o none
   echo "  $rol en ${alcance##*/}"
 }

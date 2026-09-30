@@ -30,7 +30,9 @@ secretos de cada app. La del admin se ve en el portal: la app → **Secretos** �
    ```bash
    curl -fsSL https://raw.githubusercontent.com/JoaquinLista/panaderia-gestion/main/infra/bootstrap/preparar-azure.sh | bash
    ```
-   Si la cuenta no permite Brasil, usar otra región: `UBICACION=eastus2` antes de `bash`.
+   Usa Chile Central (la región más cerca que permiten las cuentas de estudiante). Para ver
+   qué regiones permite la cuenta: `az policy assignment list --disable-scope-strict-match --query "[].parameters" -o json`,
+   y para usar otra: `UBICACION=northcentralus` antes de `bash`. Si el script se corta, se puede volver a correr.
 3. **Variables en GitHub:** *Settings → Secrets and variables → Actions → Variables*: cargar las cuatro que imprime el script (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `TFSTATE_CUENTA`).
 4. **Ambientes en GitHub:** *Settings → Environments*: crear `infra`, `staging` y `produccion`. En `infra` y `produccion`, tildar *Required reviewers* y agregarse como aprobador.
 5. **Crear todo:** *Actions → Infra → Run workflow*, y aprobar el job cuando lo pida.
