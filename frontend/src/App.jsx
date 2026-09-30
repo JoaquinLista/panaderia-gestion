@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Menu,
+  Route,
   Store,
   Truck,
   Users,
@@ -23,6 +24,7 @@ import CierreCaja from './pantallas/CierreCaja.jsx';
 import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
 import Pedidos from './pantallas/Pedidos.jsx';
+import Recorrido from './pantallas/Recorrido.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
 import ReportarProblema from './pantallas/ReportarProblema.jsx';
 import Resumen from './pantallas/Resumen.jsx';
@@ -58,6 +60,14 @@ const TABS = [
     Icono: Landmark,
     label: 'Caja central',
     permiso: 'caja-central:administrar',
+  },
+  // El chofer arranca en su recorrido; la sucursal, en sus pedidos.
+  {
+    id: 'recorrido',
+    grupo: 'panaderias',
+    Icono: Route,
+    label: 'Recorrido',
+    permiso: 'pedidos:cambiar-estado',
   },
   { id: 'pedidos', grupo: 'panaderias', Icono: Truck, label: 'Pedidos', permiso: 'pedidos:ver' },
   {
@@ -218,6 +228,7 @@ function Panel() {
             {tab === 'cierre' && <CierreCaja sucursales={sucursales} />}
             {tab === 'revision' && <RevisionCierres sucursales={sucursales} />}
             {tab === 'caja-central' && <CajaCentral />}
+            {tab === 'recorrido' && <Recorrido />}
             {tab === 'pedidos' && <Pedidos sucursales={sucursales} />}
             {tab === 'insumos' && <GestionInsumos />}
             {tab === 'red' && <RedSucursales sucursales={sucursales} />}

@@ -62,3 +62,8 @@ export function lugaresDeOrigen(pedidos) {
     ? (nombres[0] ?? '')
     : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}`;
 }
+
+/** Pedidos (sin repetir) que todavía no salieron de un lugar de carga del recorrido. */
+export const pedidosPorSalir = (lugar) => [
+  ...new Set(lugar.rubros.flatMap((r) => r.renglones.map((x) => x.pedido_id))),
+];

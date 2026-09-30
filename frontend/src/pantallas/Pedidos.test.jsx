@@ -46,11 +46,13 @@ const abrir = async (sesion, { pedidos = [], rutas = {} } = {}) => {
     'GET /api/sucursales': () => [200, sucursales],
     'GET /api/pedidos': () => [200, pedidos],
     'GET /api/pedidos/rubros': () => [200, RUBROS],
+    'GET /api/pedidos/recorrido': () => [200, { cargar: [], paradas: [] }],
     ...rutas,
   });
   render(<App />);
   const user = userEvent.setup();
-  if (sesion === sesionAdmin) {
+  // La dueña arranca en el resumen y el chofer en su recorrido.
+  if (sesion !== sesionEmpleada) {
     await user.click(await screen.findByRole('button', { name: 'Pedidos' }));
   }
   return { user, fetchMock };
