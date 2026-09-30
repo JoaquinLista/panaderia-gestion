@@ -9,6 +9,11 @@
 #  un contenedor por app y una sola versión activa (ver decisiones.md).
 # =============================================================
 
+locals {
+  # El token es secreto, pero si está o no, no.
+  con_token = nonsensitive(var.github_token_reportes != "")
+}
+
 resource "random_password" "jwt" {
   length  = 64
   special = false
@@ -58,6 +63,14 @@ resource "azurerm_container_app" "api" {
   secret {
     name  = "clave-interna"
     value = random_password.clave_interna.result
+  }
+  # Sólo si hay token: Azure no acepta secretos vacíos.
+  dynamic "secret" {
+    for_each = local.con_token ? [1] : []
+    content {
+      name  = "github-token-reportes"
+      value = var.github_token_reportes
+    }
   }
 
   ingress {
@@ -123,6 +136,17 @@ resource "azurerm_container_app" "api" {
       env {
         name        = "CLAVE_INTERNA"
         secret_name = "clave-interna"
+      }
+      env {
+        name  = "APP_ENTORNO"
+        value = var.entorno
+      }
+      dynamic "env" {
+        for_each = local.con_token ? [1] : []
+        content {
+          name        = "GITHUB_TOKEN_REPORTES"
+          secret_name = "github-token-reportes"
+        }
       }
       # Adelante hay tres proxies: la entrada pública, el Nginx y la entrada
       # interna del backend.
