@@ -2,9 +2,8 @@
 #  Volver a la versión anterior
 #
 #  Actions → "Volver a la versión anterior" → Run workflow → elegir el ambiente.
-#  Le devuelve todo el tráfico a la versión que estaba antes del último
-#  despliegue (sigue prendida, así que tarda segundos). Correrlo otra vez
-#  deshace la vuelta atrás.
+#  Vuelve a desplegar las imágenes de la versión que corría antes del último
+#  despliegue (backend y pantalla). Correrlo otra vez deshace la vuelta atrás.
 #
 #  Ojo: la base de datos no vuelve atrás. Por eso las migraciones sólo agregan
 #  (ver decisiones.md, Sprint 6).
@@ -47,12 +46,10 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Devolver el tráfico a la versión anterior
-        run: infra/scripts/blue-green.sh volver "$APP"
-
-      - name: Qué versión quedó
+      - name: Volver a la versión anterior
         run: |
-          url=$(infra/scripts/blue-green.sh url "$APP")
-          health=$(curl -fsS --retry 5 --retry-delay 5 "$url/api/health")
-          echo "$health"
-          echo "${{ inputs.ambiente }} volvió a \`$(jq -r .version <<<"$health" | cut -c1-7)\`: $url" >> "$GITHUB_STEP_SUMMARY"
+          anterior=$(infra/scripts/desplegar.sh anterior "$APP")
+          infra/scripts/desplegar.sh actualizar "$APP" "$anterior"
+          infra/scripts/desplegar.sh esperar "$APP" "$anterior"
+          url=$(infra/scripts/desplegar.sh url "$APP")
+          echo "${{ inputs.ambiente }} volvió a \`${anterior:0:7}\`: $url" >> "$GITHUB_STEP_SUMMARY"

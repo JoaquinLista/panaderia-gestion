@@ -1,7 +1,7 @@
 # =============================================================
 #  Lo que comparten staging y producción: los logs, el ambiente de
 #  Container Apps y un servidor de Postgres con una base para cada uno.
-#  Las dos apps están en modules/app.
+#  Las apps de cada ambiente (pantalla y backend) están en modules/app.
 # =============================================================
 
 # El grupo lo crea el script de preparación (con los permisos de la dueña de la
@@ -48,9 +48,9 @@ resource "azurerm_container_app_environment" "principal" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
   tags                       = local.etiquetas
 
-  # Sin perfiles, Azure crea un ambiente "express", que no permite dos
-  # contenedores en la misma app (nginx + backend). Con el perfil Consumption
-  # sí, y se sigue pagando sólo por uso (no hay máquinas dedicadas).
+  # El perfil que Azure le pone igual a este ambiente: pago por uso, sin
+  # máquinas dedicadas. En la cuenta de estudiante el ambiente es "express"
+  # (una versión y un contenedor por app), por eso hay dos apps por ambiente.
   workload_profile {
     name                  = "Consumption"
     workload_profile_type = "Consumption"

@@ -59,36 +59,64 @@ run "app_de_un_ambiente" {
   }
 
   assert {
-    condition     = azurerm_container_app.app.revision_mode == "Multiple"
-    error_message = "Blue-green necesita varias revisiones activas a la vez."
+    condition     = azurerm_container_app.app.revision_mode == "Single" && azurerm_container_app.api.revision_mode == "Single"
+    error_message = "El ambiente express sólo permite una versión activa por app."
   }
 
   assert {
-    condition     = azurerm_container_app.app.ingress[0].target_port == 80 && azurerm_container_app.app.ingress[0].allow_insecure_connections == false
+    condition     = azurerm_container_app.api.name == "prueba-api"
+    error_message = "El backend se llama como la app con -api (el workflow de despliegue usa ese nombre)."
+  }
+
+  assert {
+    condition     = azurerm_container_app.app.ingress[0].target_port == 80 && azurerm_container_app.app.ingress[0].external_enabled && azurerm_container_app.app.ingress[0].allow_insecure_connections == false
     error_message = "El tráfico entra por HTTPS al Nginx (puerto 80)."
   }
 
   assert {
+    condition     = azurerm_container_app.api.ingress[0].external_enabled == false && azurerm_container_app.api.ingress[0].target_port == 3000 && azurerm_container_app.api.ingress[0].allow_insecure_connections == false
+    error_message = "El backend va con entrada interna y sólo por HTTPS (la clave interna no viaja sin cifrar)."
+  }
+
+  assert {
+    condition     = length(azurerm_container_app.app.template[0].container) == 1 && length(azurerm_container_app.api.template[0].container) == 1
+    error_message = "El ambiente express permite un solo contenedor por app."
+  }
+
+  assert {
+    condition     = [for x in azurerm_container_app.app.secret : x.name] == ["clave-interna"]
+    error_message = "La pantalla sólo conoce la clave interna: el resto de los secretos van en el backend."
+  }
+
+  assert {
     condition = alltrue([
-      for e in azurerm_container_app.app.template[0].container[1].env :
-      e.value == null if contains(["POSTGRES_PASSWORD", "JWT_SECRET", "ADMIN_PASSWORD"], e.name)
+      for c in [azurerm_container_app.app.template[0].container[0], azurerm_container_app.api.template[0].container[0]] :
+      anytrue([for e in c.env : e.name == "CLAVE_INTERNA" && e.secret_name == "clave-interna"])
+    ])
+    error_message = "La pantalla y el backend comparten la clave interna, tomada de un secreto."
+  }
+
+  assert {
+    condition = anytrue([
+      for e in azurerm_container_app.app.template[0].container[0].env :
+      e.name == "BACKEND_URL" && startswith(e.value, "https://")
+    ])
+    error_message = "Nginx le habla al backend por HTTPS."
+  }
+
+  assert {
+    condition = alltrue([
+      for e in azurerm_container_app.api.template[0].container[0].env :
+      e.value == null if contains(["POSTGRES_PASSWORD", "JWT_SECRET", "ADMIN_PASSWORD", "CLAVE_INTERNA"], e.name)
     ])
     error_message = "Las contraseñas tienen que venir de un secreto, nunca escritas en la variable."
   }
 
   assert {
     condition = anytrue([
-      for e in azurerm_container_app.app.template[0].container[1].env :
+      for e in azurerm_container_app.api.template[0].container[0].env :
       e.name == "POSTGRES_SSL" && e.value == "true"
     ])
     error_message = "Azure exige SSL para conectarse a Postgres."
-  }
-
-  assert {
-    condition = anytrue([
-      for e in azurerm_container_app.app.template[0].container[0].env :
-      e.name == "BACKEND_URL" && e.value == "http://127.0.0.1:3000"
-    ])
-    error_message = "El Nginx tiene que hablar con el backend del mismo contenedor."
   }
 }

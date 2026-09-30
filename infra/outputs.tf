@@ -13,6 +13,16 @@ output "app_staging" {
   value       = module.staging.nombre
 }
 
+output "api_staging" {
+  description = "Nombre de la Container App del backend de staging."
+  value       = module.staging.nombre_api
+}
+
+output "api_produccion" {
+  description = "Nombre de la Container App del backend de producción."
+  value       = module.produccion.nombre_api
+}
+
 output "app_produccion" {
   description = "Nombre de la Container App de producción."
   value       = module.produccion.nombre

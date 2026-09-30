@@ -17,14 +17,16 @@ server {
     gzip_min_length 1024;
 
     # Dónde está el backend. Es una plantilla: al arrancar, la imagen oficial de
-    # Nginx reemplaza ${BACKEND_URL} y ${NGINX_RESOLVER} con las variables de
-    # entorno (valores por defecto en el Dockerfile).
-    # - docker compose: http://backend:3000, resuelto con el DNS interno de
-    #   Docker (127.0.0.11) en cada request y no al arrancar. Con el nombre escrito
-    #   directo en proxy_pass, Nginx se niega a levantar si el backend todavía no
-    #   existe ("host not found in upstream").
-    # - Azure: http://127.0.0.1:3000, porque los dos contenedores corren juntos.
-    resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+    # Nginx reemplaza ${BACKEND_URL} con la variable de entorno (por defecto en
+    # el Dockerfile) y ${NGINX_LOCAL_RESOLVERS} con el DNS del contenedor (lo
+    # lee de /etc/resolv.conf porque el Dockerfile activa
+    # NGINX_ENTRYPOINT_LOCAL_RESOLVERS).
+    # - docker compose: http://backend:3000, con el DNS interno de Docker.
+    # - Azure: https://<dirección de la app del backend>, con el DNS de Azure.
+    # El nombre se resuelve en cada request y no al arrancar: escrito directo en
+    # proxy_pass, Nginx se niega a levantar si el backend todavía no existe
+    # ("host not found in upstream").
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
     set $backend_api ${BACKEND_URL};
 
     # Todo lo que llega a /api/ se reenvía al backend.
@@ -33,12 +35,22 @@ server {
     location /api/ {
         proxy_pass $backend_api;
         proxy_http_version 1.1;
-        proxy_set_header Host              $host;
+        # En Azure la entrada del backend elige la app por el nombre: tiene que
+        # llegarle el suyo. El de la pantalla va en X-Forwarded-Host.
+        proxy_set_header Host              $proxy_host;
+        proxy_set_header X-Forwarded-Host  $host;
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         # Id único de cada request: el backend lo pone en sus logs y lo devuelve.
         proxy_set_header X-Request-Id      $request_id;
+        # En Azure el backend tiene dirección pública (la cuenta de estudiante no
+        # deja ocultarlo): sólo contesta si llega esta clave, que conocen las dos
+        # apps. Vacía (docker compose), Nginx no manda la cabecera.
+        proxy_set_header X-Clave-Interna   "${CLAVE_INTERNA}";
+        # Con https, el nombre del backend va en el saludo TLS (SNI): la entrada
+        # de Azure lo necesita para saber a qué app mandarlo.
+        proxy_ssl_server_name on;
         proxy_read_timeout 30s;
     }
 

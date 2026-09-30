@@ -1,6 +1,11 @@
 output "nombre" {
-  description = "Nombre de la Container App."
+  description = "Nombre de la Container App de la pantalla (la del backend es <nombre>-api)."
   value       = azurerm_container_app.app.name
+}
+
+output "nombre_api" {
+  description = "Nombre de la Container App del backend."
+  value       = azurerm_container_app.api.name
 }
 
 output "url" {

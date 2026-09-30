@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # curl de mentira: /api/health contesta con la versión de $VERSION_QUE_CONTESTA.
-echo "curl $*" >>"$ESTADO.log"
+echo "curl $*" >>"$ESTADO/log"
 [[ -n "${VERSION_QUE_CONTESTA:-}" ]] || exit 7
 echo "{\"status\":\"ok\",\"version\":\"$VERSION_QUE_CONTESTA\"}"

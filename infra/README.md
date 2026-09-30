@@ -7,7 +7,7 @@ si hay que cambiar algo, se cambia el código y se abre un PR.
 infra/
 ├── bootstrap/preparar-azure.sh   # se corre una sola vez, a mano, en Azure Cloud Shell
 ├── main.tf                       # logs, ambiente de Container Apps, Postgres y las dos apps
-├── modules/app/                  # una Container App (frontend + backend en la misma revisión)
+├── modules/app/                  # las dos Container Apps de un ambiente (pantalla pública + backend interno)
 └── tests/infra.tftest.hcl        # `terraform test`: revisa el plan sin conectarse a Azure
 ```
 
@@ -15,9 +15,10 @@ infra/
 
 | Recurso | Para qué |
 |---------|----------|
-| `lafueguina-staging` y `lafueguina-produccion` (Container Apps) | La app. Cada una tiene su dirección `https://…azurecontainerapps.io`. Staging se apaga sola cuando nadie la usa. |
+| `lafueguina-staging` y `lafueguina-produccion` (Container Apps) | La pantalla (Nginx). Cada una tiene su dirección `https://…azurecontainerapps.io`. Staging se apaga sola cuando nadie la usa. |
+| `lafueguina-staging-api` y `lafueguina-produccion-api` (Container Apps) | El backend de cada ambiente. En express tiene dirección pública igual, así que sólo contesta a la pantalla (clave interna). |
 | `lafueguina-db-xxxxx` (PostgreSQL Flexible Server, B1ms) | Un servidor con dos bases: `staging` y `produccion`. Backup diario, 7 días. |
-| `lafueguina-apps` (ambiente de Container Apps) | Donde corren las dos apps. |
+| `lafueguina-apps` (ambiente de Container Apps) | Donde corren las cuatro apps. Con la cuenta de estudiante es modo "express": un contenedor y una versión activa por app. |
 | `lafueguina-logs` (Log Analytics) | Los logs de las apps, 30 días. |
 
 Las contraseñas (Postgres, firma de sesiones, primer admin) las genera Terraform y quedan como

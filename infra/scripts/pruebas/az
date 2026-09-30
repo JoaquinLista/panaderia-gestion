@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# `az` de mentira para probar blue-green.sh sin Azure. Guarda la app en
-# $ESTADO (JSON) y aplica los PATCH como JSON Merge Patch, igual que Azure.
+# `az` de mentira para probar desplegar.sh sin Azure. Guarda cada app en
+# $ESTADO/<app>.json y aplica los PATCH como JSON Merge Patch, igual que Azure.
+# Como el ambiente express, cada cambio de plantilla crea una versión nueva y
+# apaga la anterior.
 set -euo pipefail
-echo "az $*" >>"$ESTADO.log"
+echo "az $*" >>"$ESTADO/log"
 if [[ "$1 $2" == "account show" ]]; then echo "sub-prueba"; exit 0; fi
 [[ "$1" == rest ]] || { echo "az de mentira: comando no soportado: $*" >&2; exit 2; }
 shift
@@ -16,14 +18,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 ruta=${url%%\?*}
+app=$(sed -E 's|.*/containerApps/([^/]+).*|\1|' <<<"$ruta")
+archivo="$ESTADO/$app.json"
+[[ -f "$archivo" ]] || { echo "az de mentira: no existe la app $app" >&2; exit 3; }
 case "$metodo:$ruta" in
   get:*/revisions)
-    jq '{value: .revisiones}' "$ESTADO" ;;
-  post:*/deactivate)
-    nombre=$(basename "$(dirname "$ruta")")
-    jq --arg n "$nombre" '.revisiones |= map(if .name == $n then .properties.active = false else . end)' "$ESTADO" >"$ESTADO.tmp" && mv "$ESTADO.tmp" "$ESTADO" ;;
+    jq '{value: .revisiones}' "$archivo" ;;
   get:*)
-    jq 'del(.revisiones)' "$ESTADO" ;;
+    jq 'del(.revisiones)' "$archivo" ;;
   patch:*)
     [[ -z "${FALLA_PATCH:-}" ]] || { echo "error de mentira" >&2; exit 1; }
     jq --argjson c "$cuerpo" '
@@ -31,7 +33,8 @@ case "$metodo:$ruta" in
       | if $c.properties.template then
           (.name + "--" + $c.properties.template.revisionSuffix) as $n
           | .properties.latestRevisionName = $n
-          | .revisiones += [{name: $n, properties: {active: true, template: $c.properties.template}}]
-        else . end' "$ESTADO" >"$ESTADO.tmp" && mv "$ESTADO.tmp" "$ESTADO" ;;
+          | .revisiones |= map(.properties.active = false)
+          | .revisiones += [{name: $n, properties: {active: true, createdTime: ("2026-01-01T00:00:0" + (.revisiones | length | tostring) + "Z"), template: $c.properties.template}}]
+        else . end' "$archivo" >"$archivo.tmp" && mv "$archivo.tmp" "$archivo" ;;
   *) echo "az de mentira: $metodo $ruta no soportado" >&2; exit 2 ;;
 esac
