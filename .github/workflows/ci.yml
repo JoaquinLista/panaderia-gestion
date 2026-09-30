@@ -125,7 +125,7 @@ jobs:
 
       # shellcheck ya viene instalado en los runners de GitHub.
       - name: shellcheck
-        run: shellcheck infra/scripts/*.sh infra/scripts/pruebas/*.sh infra/scripts/pruebas/az infra/scripts/pruebas/curl
+        run: shellcheck infra/bootstrap/*.sh infra/scripts/*.sh infra/scripts/pruebas/*.sh infra/scripts/pruebas/az infra/scripts/pruebas/curl
 
       # blue-green.sh con un `az` de mentira: prepara, pasa el tráfico y vuelve atrás.
       - name: Pruebas del blue-green

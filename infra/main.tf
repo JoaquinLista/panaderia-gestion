@@ -44,6 +44,7 @@ resource "azurerm_container_app_environment" "principal" {
   name                       = "${var.prefijo}-apps"
   location                   = local.ubicacion
   resource_group_name        = local.grupo
+  logs_destination           = "log-analytics"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
   tags                       = local.etiquetas
 }
