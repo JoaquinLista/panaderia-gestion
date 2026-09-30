@@ -63,9 +63,12 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/productos` | Catálogo de productos |
 | GET | `/api/insumos` | Insumos con flag `bajo_stock` |
 | POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) |
-| GET | `/api/pedidos` | Pedidos con su detalle |
-| POST | `/api/pedidos` | Alta de pedido con detalle (transaccional) |
-| PUT | `/api/pedidos/:id/estado` | Cambia el estado del pedido validando la transición |
+| GET | `/api/pedidos` | Pedidos con sus renglones. `?estado=abiertos`: sólo pendientes y en camino; sin filtro, los últimos 200 |
+| GET | `/api/pedidos/rubros` | Lo que se puede pedir (Pan, Facturas, Insumos…) y de dónde sale |
+| POST | `/api/pedidos` | `{ sucursal_id?, nota?, urgente?, items: [{ rubro_id, detalle }] }`. Crea un pedido por lugar de origen (fábrica, galpón) |
+| PUT | `/api/pedidos/:id/estado` | `PENDIENTE → EN_CAMINO → ENTREGADO` los marca el chofer; `RECIBIDO` y `CANCELADO`, la sucursal que pidió |
+| PUT | `/api/pedidos/:id/items/:itemId` | El chofer tilda un renglón: `{ estado: LLEVADO \| NO_HABIA \| PENDIENTE }` |
+| GET | `/api/pedidos/recorrido` | Para el chofer: qué cargar en cada lugar (por rubro) y una parada por sucursal, urgentes primero |
 | GET | `/api/usuarios` | Lista de usuarios (sólo admin) |
 | POST | `/api/usuarios` | Alta: `{ usuario, nombre, password, rol, puedeCerrarCaja? }` (sólo admin) |
 | PATCH | `/api/usuarios/:id` | Cambia `nombre`, `rol`, `puedeCerrarCaja` o `activo` (sólo admin) |
@@ -94,8 +97,8 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 **Sesión y permisos:** salvo `/api/health`, `/api/sucursales` (la usa la pantalla de
 login) y el login, todas las rutas responden `401` sin sesión y `403` si el rol no
 tiene permiso. La matriz está en `backend/src/domain/permisos.js`. La empleada sólo
-ve los pedidos que salen de su sucursal del día o llegan a ella, y sólo crea
-pedidos con origen en esa sucursal.
+ve los pedidos que salen de su sucursal del día o llegan a ella, sólo pide para
+esa sucursal y sólo cancela o confirma los pedidos que hizo ella.
 
 Respuesta de login y de `/me`:
 
@@ -370,5 +373,7 @@ Cada sprint dura una semana y termina con algo demostrable.
 - [x] **Sprint 5 — Gastos y retiros de socios.**
 - [x] **Sprint 6 — IaC + CD:** Terraform, environments staging y producción con aprobación, despliegue sin cortes y vuelta atrás.
 - [x] **Sprint 7 — Dashboard ejecutivo.**
-- [ ] **Sprint 8 — DevSecOps, observabilidad y feedback continuo.** Release v1.0.
-- [ ] **Fase 2 — Galpón, pedidos y chofer:** evoluciona el módulo de pedidos e insumos existente (máquina de estados ya implementada).
+- [x] **Sprint 8 — DevSecOps, observabilidad y feedback continuo.** Release v1.0.
+- [ ] **Sprint 9 — Pedidos de las sucursales y recorrido del chofer (#77).**
+- [ ] **Sprint 10 — Stock del galpón (#76).**
+- [ ] **Sprint 11 — Producción en la cuadra (#78).**

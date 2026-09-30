@@ -57,6 +57,9 @@ const RUTAS_PROTEGIDAS = [
   ['get', '/api/pedidos'],
   ['post', '/api/pedidos'],
   ['put', '/api/pedidos/1/estado'],
+  ['get', '/api/pedidos/rubros'],
+  ['get', '/api/pedidos/recorrido'],
+  ['put', '/api/pedidos/1/items/1'],
   ['get', '/api/usuarios'],
   ['post', '/api/usuarios'],
   ['patch', '/api/usuarios/2'],
@@ -87,7 +90,9 @@ describe('rol incorrecto: 403', () => {
   it.each([
     ['empleada', 'get', '/api/insumos'],
     ['empleada', 'post', '/api/insumos'],
-    ['empleada', 'put', '/api/pedidos/1/estado'],
+    // El recorrido y el tildado de lo que se carga son del chofer.
+    ['empleada', 'get', '/api/pedidos/recorrido'],
+    ['empleada', 'put', '/api/pedidos/1/items/1'],
     ['empleada', 'get', '/api/usuarios'],
     ['empleada', 'put', '/api/usuarios/2/password'],
     ['chofer', 'post', '/api/pedidos'],
@@ -127,6 +132,8 @@ describe('rol incorrecto: 403', () => {
     ['admin', 'get', '/api/usuarios'],
     ['chofer', 'get', '/api/insumos'],
     ['chofer', 'get', '/api/pedidos'],
+    ['chofer', 'get', '/api/pedidos/recorrido'],
+    ['empleada', 'get', '/api/pedidos/rubros'],
     ['empleada', 'get', '/api/productos'],
     ['empleada', 'get', '/api/cierres/hoy'],
   ])('%s sí puede %s %s', async (quien, metodo, ruta) => {
@@ -139,7 +146,7 @@ describe('la empleada y su sucursal del día', () => {
   it('sólo ve los pedidos que salen de su sucursal o llegan a ella', async () => {
     await request(app).get('/api/pedidos').set('Cookie', cookies.empleada);
     const [{ sql, params }] = consultasDeNegocio;
-    expect(sql).toMatch(/WHERE p\.sucursal_origen_id = \$1 OR p\.sucursal_destino_id = \$1/);
+    expect(sql).toMatch(/WHERE \(p\.sucursal_origen_id = \$1 OR p\.sucursal_destino_id = \$1\)/);
     expect(params).toEqual([3]);
   });
 
@@ -151,37 +158,45 @@ describe('la empleada y su sucursal del día', () => {
     }
   });
 
-  const pedido = (origen) => ({
-    sucursal_origen_id: origen,
-    sucursal_destino_id: 1,
-    detalles: [{ producto_id: 1, cantidad: 2 }],
+  const pedido = (sucursalId) => ({
+    sucursal_id: sucursalId,
+    items: [{ rubro_id: 20, detalle: '2 latas de medialunas' }],
   });
 
-  it('no puede crear un pedido desde otra sucursal', async () => {
+  it('no puede pedir para otra sucursal', async () => {
     const res = await request(app)
       .post('/api/pedidos')
       .set('Cookie', cookies.empleada)
       .send(pedido(2));
     expect(res.status).toBe(403);
-    expect(res.body.error).toBe('Sólo podés crear pedidos desde tu sucursal del día (Estrada)');
+    expect(res.body.error).toBe('Sólo podés pedir para tu sucursal del día (Estrada)');
   });
 
-  it('sí puede crear un pedido desde su sucursal', async () => {
+  it('sí puede pedir para su sucursal, aunque no la diga', async () => {
     const res = await request(app)
       .post('/api/pedidos')
       .set('Cookie', cookies.empleada)
-      .send(pedido(3));
+      .send({ items: pedido(3).items });
     // Pasa los permisos y llega a la base (que en esta prueba corta con un error).
     expect(res.status).toBe(500);
     expect(db.getClient).toHaveBeenCalled();
   });
 
-  it('el admin puede crear pedidos desde cualquier sucursal', async () => {
+  it('el admin puede pedir para cualquier sucursal', async () => {
     const res = await request(app)
       .post('/api/pedidos')
       .set('Cookie', cookies.admin)
       .send(pedido(2));
     expect(res.status).not.toBe(403);
+  });
+
+  it('puede intentar cambiar el estado: el servicio decide qué paso le toca', async () => {
+    const res = await request(app)
+      .put('/api/pedidos/1/estado')
+      .set('Cookie', cookies.empleada)
+      .send({ estado: 'RECIBIDO' });
+    expect(res.status).not.toBe(403);
+    expect(db.getClient).toHaveBeenCalled();
   });
 });
 

@@ -15,3 +15,6 @@ ef997441b9af5c499eebbbe0f810b2f383d81b05:.github/workflows/ci.yml:curl-auth-user
 # Contraseña de prueba de Postgres en los tests de Terraform (PR #72). El commit
 # siguiente la marcó con `gitleaks:allow`, pero gitleaks revisa también este.
 59a2bca9169e1b7afddf4d146a298a970d4f3ba4:infra/tests/infra.tftest.hcl:hashicorp-tf-password:154
+
+# JWT_SECRET descartable de los tests de integración de pedidos (PR #80).
+09c5b117b8c106cbdf90302bedc8fd0069e15a9c:backend/tests/integracion/pedidos.test.js:generic-api-key:24

@@ -695,3 +695,16 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | Sin el secreto, la app no lo recibe (bloque `dynamic`) | Azure no acepta secretos vacíos, y los reportes se guardan igual en la base aunque no abran issue. |
 | `APP_ENTORNO` = `staging` o `produccion` | El issue dice de qué ambiente vino el reporte. Los dos usan el mismo token. |
 | Sólo el backend recibe el token | Es el único que habla con GitHub; la pantalla pública no lo necesita. |
+
+## La Fueguina Stats — Sprint 9 · PR 1: pedidos por rubro (#77)
+
+| Decisión | Por qué |
+|----------|---------|
+| La sucursal pide por **rubro** (Pan, Facturas, Tortas…) y escribe el detalle en la observación ("2 latas de medialunas, 2 de vigilantes") | Lo propuso el PM (30/09): se pide así hoy por teléfono, y un catálogo de cada producto sería largo de mantener. |
+| Cada rubro sabe de dónde sale (fábrica o galpón), y un pedido con renglones de dos lugares se guarda como dos pedidos | El chofer ve en cada lugar sólo lo que tiene que cargar ahí, y cada uno avanza por su cuenta. |
+| `sucursal_destino_id` = la sucursal que pide; `sucursal_origen_id` = de donde sale | Se reutiliza la tabla `pedidos` de la primera versión sin perder los datos que hubiera. |
+| Estados: PENDIENTE → EN_CAMINO → ENTREGADO → RECIBIDO, y CANCELADO mientras no salió | Los de la primera versión (EN_PREPARACION, DESPACHADO) no se usaban; la migración los convierte a PENDIENTE y EN_CAMINO. |
+| El chofer (y la dueña) mueven el reparto; la sucursal que pidió cancela y confirma. Si el chofer no marcó "entregado", la sucursal igual puede confirmar | La ruta de estado la puede llamar cualquiera que vea pedidos, y el servicio decide qué paso le toca a cada uno. |
+| Cada renglón se tilda como LLEVADO o NO_HABIA, sólo con el pedido abierto | La sucursal sabe qué no le llegó sin llamar. |
+| El recorrido (`GET /api/pedidos/recorrido`) se arma en una función pura (`domain/recorrido.js`) | Se prueba sin base, y la pantalla del chofer (PR 3) sólo lo dibuja. |
+| Los detalles con producto y cantidad de la primera versión pasan a renglones del rubro "Otros" y se borra `detalles_pedido` | No se pierde nada; el catálogo de productos queda para `/api/productos`, que no se usa para pedir. |
