@@ -151,7 +151,7 @@ run "con_token_de_reportes" {
     postgres_host         = "prueba.postgres.database.azure.com"
     postgres_base         = "produccion"
     postgres_usuario      = "lafueguina"
-    postgres_password     = "no-es-real"
+    postgres_password     = "no-es-real" # gitleaks:allow (valor de prueba)
     admin_usuario         = "admin"
     entorno               = "produccion"
     github_token_reportes = "token-de-mentira"
