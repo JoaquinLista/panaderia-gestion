@@ -101,9 +101,17 @@ confiar() {
     --subject "$sujeto" --audiences api://AzureADTokenExchange -o none
   echo "  $sujeto"
 }
+#
+# GitHub presenta el repo de dos formas: con el nombre (repo:dueño/repo:...) o,
+# en los repos nuevos, con los ids numéricos (repo:dueño@123/repo@456:...).
+# Se confía en las dos, así funciona sea cual sea la que use el repo.
+REPO_IDS=$(curl -fsSL "https://api.github.com/repos/$REPO" |
+  jq -r '"\(.owner.login)@\(.owner.id)/\(.name)@\(.id)"')
 confiar github-pull-request "repo:$REPO:pull_request"
+confiar github-pull-request-ids "repo:$REPO_IDS:pull_request"
 for ambiente in "${AMBIENTES[@]}"; do
   confiar "github-$ambiente" "repo:$REPO:environment:$ambiente"
+  confiar "github-$ambiente-ids" "repo:$REPO_IDS:environment:$ambiente"
 done
 
 # Permisos mínimos: administrar los recursos de la app y leer/escribir el estado.
