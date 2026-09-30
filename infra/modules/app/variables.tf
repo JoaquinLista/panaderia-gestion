@@ -1,5 +1,5 @@
 variable "nombre" {
-  description = "Nombre de la Container App (también forma parte de su dirección web)."
+  description = "Nombre de la Container App de la pantalla (también forma parte de su dirección web). La del backend se llama igual con -api."
   type        = string
 }
 

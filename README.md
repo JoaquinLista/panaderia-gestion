@@ -165,8 +165,7 @@ El `docker compose` de la compu no necesita ninguna de estas. Las usa el desplie
 | `POSTGRES_SSL=true` | backend | Conectar a la base con SSL (Azure lo exige). |
 | `TRUST_PROXY=2` | backend | Cuántos proxies hay adelante, para ver la IP real en el límite de intentos de login. |
 | `APP_VERSION` | los dos | SHA del commit. Lo pone el pipeline al construir la imagen; se ve en `/api/health` y al pie de la pantalla. |
-| `BACKEND_URL` | frontend | Dónde está el backend (por defecto `http://backend:3000`; en Azure `http://127.0.0.1:3000`). |
-| `NGINX_RESOLVER` | frontend | DNS para resolver `BACKEND_URL` (por defecto el de Docker, `127.0.0.11`). |
+| `BACKEND_URL` | frontend | Dónde está el backend (por defecto `http://backend:3000`; en Azure la dirección interna de la app `<ambiente>-api`). El DNS para resolverla se toma del contenedor. |
 
 ## Infraestructura en Azure
 
@@ -177,21 +176,22 @@ GitHub con Azure y qué hace el pipeline de infraestructura.
 
 Cada merge a `main` con el CI en verde se despliega solo con el workflow **Desplegar**:
 
-1. **Staging:** la versión nueva arranca al lado de la actual, sin tráfico, en su propia dirección
-   (`https://lafueguina-staging---verde…`). Se espera que `/api/health` conteste con el SHA del commit,
-   se corren las pruebas de sesión de Playwright contra ella y recién ahí recibe todo el tráfico.
+1. **Staging:** se actualiza primero el backend y después la pantalla. Azure levanta la versión nueva,
+   espera que conteste y recién ahí apaga la vieja, así que no hay cortes. Se espera que `/api/health`
+   conteste con el SHA del commit y se corren las pruebas de sesión de Playwright.
 2. **Producción:** GitHub pide la aprobación del ambiente `produccion` (*Actions → Desplegar → Review deployments*).
-   Se despliegan exactamente las mismas imágenes, con el mismo cambio de versión vieja a nueva.
+   Se despliegan exactamente las mismas imágenes. Si la versión nueva no contesta bien, vuelve sola a la anterior.
 
-Si algo falla antes de pasar el tráfico, nadie se entera: sigue andando la versión anterior.
+Cada ambiente son dos apps en Azure: `lafueguina-<ambiente>` (la pantalla, pública) y
+`lafueguina-<ambiente>-api` (el backend, sólo accesible desde adentro de Azure).
 
-**Volver atrás:** *Actions → Volver a la versión anterior → Run workflow* y elegir el ambiente. La versión
-anterior sigue prendida, así que el cambio tarda segundos. Correrlo otra vez deshace la vuelta atrás.
+**Volver atrás:** *Actions → Volver a la versión anterior → Run workflow* y elegir el ambiente. Vuelve a
+desplegar las imágenes de la versión anterior (tarda un par de minutos). Correrlo otra vez deshace la vuelta atrás.
 
 **Desplegar una versión puntual:** *Actions → Desplegar → Run workflow* con el SHA completo del commit.
 
-La lógica está en `infra/scripts/blue-green.sh` y se prueba sin Azure con
-`bash infra/scripts/pruebas/blue-green.test.sh`.
+La lógica está en `infra/scripts/desplegar.sh` y se prueba sin Azure con
+`bash infra/scripts/pruebas/desplegar.test.sh`.
 
 ## Desarrollo fuera de Docker
 
@@ -365,7 +365,7 @@ Cada sprint dura una semana y termina con algo demostrable.
 - [x] **Sprint 3 — Cierre de caja:** formulario mobile por sucursal (Z, efectivo, posnet, QR, gastos locales).
 - [x] **Sprint 4 — Contenedores en el pipeline + e2e:** imágenes en GHCR, escaneo Trivy, Playwright contra el compose.
 - [x] **Sprint 5 — Gastos y retiros de socios.**
-- [x] **Sprint 6 — IaC + CD:** Terraform, environments staging y producción con aprobación, blue-green.
+- [x] **Sprint 6 — IaC + CD:** Terraform, environments staging y producción con aprobación, despliegue sin cortes y vuelta atrás.
 - [x] **Sprint 7 — Dashboard ejecutivo.**
 - [ ] **Sprint 8 — DevSecOps, observabilidad y feedback continuo.** Release v1.0.
 - [ ] **Fase 2 — Galpón, pedidos y chofer:** evoluciona el módulo de pedidos e insumos existente (máquina de estados ya implementada).

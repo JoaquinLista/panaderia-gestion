@@ -1,13 +1,16 @@
 # =============================================================
-#  Despliegue continuo (blue-green)
+#  Despliegue continuo (rolling)
 #
 #  Después de cada CI en verde sobre main (que publicó las imágenes con el SHA):
-#   1. staging: la versión nueva arranca al lado de la actual sin tráfico, se
-#      prueba en su propia dirección (health + e2e) y recién ahí recibe todo.
+#   1. staging: actualiza el backend y después la pantalla. Azure levanta la
+#      versión nueva, espera que conteste y recién ahí apaga la vieja, sin
+#      cortes. Después se prueba (health + e2e).
 #   2. producción: espera la aprobación del ambiente `produccion` y hace lo
-#      mismo con exactamente las mismas imágenes.
-#  Si algo falla antes de pasar el tráfico, las sucursales ni se enteran:
-#  siguen en la versión anterior. Para volver atrás después: volver-atras.yml.
+#      mismo con exactamente las mismas imágenes. Si la versión nueva no
+#      contesta bien, vuelve sola a la anterior.
+#  Para volver atrás a mano: volver-atras.yml. Por qué así y no con dos
+#  versiones prendidas a la vez: decisiones.md (la cuenta de estudiante sólo
+#  permite una versión activa por app).
 #
 #  Sin las variables de Azure (ver infra/README.md) no hace nada.
 # =============================================================
@@ -92,11 +95,11 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Levantar la versión nueva sin tráfico
-        run: infra/scripts/blue-green.sh preparar "$APP" "$SHA"
+      - name: Actualizar backend y pantalla
+        run: infra/scripts/desplegar.sh actualizar "$APP" "$SHA"
 
-      - name: Esperar que la versión nueva conteste
-        run: infra/scripts/blue-green.sh esperar "$APP" "$SHA"
+      - name: Esperar que conteste la versión nueva
+        run: infra/scripts/desplegar.sh esperar "$APP" "$SHA"
 
       - uses: actions/setup-node@v7
         with:
@@ -104,16 +107,15 @@ jobs:
           cache: npm
           cache-dependency-path: e2e/package-lock.json
 
-      # Contra la dirección de la versión nueva, antes de que la use nadie. Sólo
-      # las pruebas de sesión: la base de staging no se borra entre corridas y
+      # Sólo las pruebas de sesión: la base de staging no se borra entre corridas y
       # las de cierre y caja central esperan una base vacía (esas corren en el CI).
-      - name: Pruebas end-to-end contra la versión nueva
+      - name: Pruebas end-to-end
         working-directory: e2e
         run: |
           npm ci
           npx playwright install --with-deps chromium
-          E2E_URL=$(../infra/scripts/blue-green.sh url "$APP" verde)
-          ADMIN_PASSWORD=$(az containerapp secret show --name "$APP" --resource-group "$GRUPO" \
+          E2E_URL=$(../infra/scripts/desplegar.sh url "$APP")
+          ADMIN_PASSWORD=$(az containerapp secret show --name "$APP-api" --resource-group "$GRUPO" \
             --secret-name admin-password --query value -o tsv)
           echo "::add-mask::$ADMIN_PASSWORD"
           E2E_URL="$E2E_URL" ADMIN_USUARIO=admin ADMIN_PASSWORD="$ADMIN_PASSWORD" \
@@ -127,13 +129,10 @@ jobs:
           path: e2e/playwright-report
           retention-days: 7
 
-      - name: Pasarle el tráfico
-        run: infra/scripts/blue-green.sh pasar "$APP" "$SHA"
-
       - name: Resumen
         id: final
         run: |
-          url=$(infra/scripts/blue-green.sh url "$APP")
+          url=$(infra/scripts/desplegar.sh url "$APP")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Staging en \`${SHA:0:7}\`: $url" >> "$GITHUB_STEP_SUMMARY"
 
@@ -162,23 +161,28 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Levantar la versión nueva sin tráfico
-        run: infra/scripts/blue-green.sh preparar "$APP" "$SHA"
+      - name: Actualizar backend y pantalla
+        run: infra/scripts/desplegar.sh actualizar "$APP" "$SHA"
 
       # En producción no se cargan datos de prueba: sólo se revisa que conteste
       # con la versión correcta y que la pantalla cargue.
-      - name: Esperar que la versión nueva conteste
+      - name: Esperar que conteste la versión nueva
         run: |
-          infra/scripts/blue-green.sh esperar "$APP" "$SHA"
-          curl -fsS "$(infra/scripts/blue-green.sh url "$APP" verde)/" | grep -q '<div id="root">'
+          infra/scripts/desplegar.sh esperar "$APP" "$SHA"
+          curl -fsS "$(infra/scripts/desplegar.sh url "$APP")/" | grep -q '<div id="root">'
 
-      - name: Pasarle el tráfico
-        run: infra/scripts/blue-green.sh pasar "$APP" "$SHA"
+      - name: Volver a la versión anterior si falló
+        if: failure()
+        run: |
+          anterior=$(infra/scripts/desplegar.sh anterior "$APP")
+          infra/scripts/desplegar.sh actualizar "$APP" "$anterior"
+          infra/scripts/desplegar.sh esperar "$APP" "$anterior"
+          echo "Falló \`${SHA:0:7}\`: producción volvió a \`${anterior:0:7}\`." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Resumen
         id: final
         run: |
-          url=$(infra/scripts/blue-green.sh url "$APP")
+          url=$(infra/scripts/desplegar.sh url "$APP")
           curl -fsS "$url/api/health"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Producción en \`${SHA:0:7}\`: $url" >> "$GITHUB_STEP_SUMMARY"
