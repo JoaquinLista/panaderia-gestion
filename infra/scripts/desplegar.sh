@@ -6,8 +6,9 @@
 #  <ambiente> (la pantalla, pública). El ambiente de la cuenta de estudiante
 #  es "express": una sola versión activa por app. Por eso el cambio es
 #  "rolling": Azure levanta la versión nueva, espera que conteste (readiness)
-#  y recién ahí apaga la vieja, sin cortes. Las versiones viejas quedan
-#  guardadas apagadas y "volver atrás" re-despliega la anterior.
+#  y recién ahí apaga la vieja, sin cortes. Express no guarda las versiones
+#  viejas: el SHA de la anterior queda en la etiqueta "version-anterior" del
+#  backend y "volver atrás" re-despliega esas imágenes.
 #
 #  Uso (lo llaman los workflows desplegar.yml y volver-atras.yml):
 #    desplegar.sh actualizar <ambiente> <sha>  backend y después pantalla con las imágenes del commit
@@ -57,36 +58,41 @@ parchar() {
   done
 }
 
-# Nombre de la versión: SHA corto y la hora. La hora hace falta porque volver
-# atrás crea otra versión con un commit que ya se desplegó, y Azure no acepta
-# repetir el nombre.
-sufijo() { echo "v${1:0:7}-$(date -u +%m%d%H%M%S)"; }
-
 url() {
   echo "https://$(app_json "$1" | jq -r '.properties.configuration.ingress.fqdn')"
 }
 
 # Cambia la imagen del único contenedor de la app. Si ya tiene esa, no hace nada
-# (un reintento del workflow no crea otra versión).
+# (un reintento del workflow no crea otra versión). En el backend, el mismo
+# PATCH anota en la etiqueta version-anterior el SHA que estaba corriendo: o
+# cambian las dos cosas o ninguna.
 cambiar_imagen() {
-  local app=$1 imagen=$2 sha=$3 json plantilla
+  local app=$1 imagen=$2 json plantilla etiquetas previo
   json=$(app_json "$app")
   if jq -e --arg i "$imagen" '.properties.template.containers[0].image == $i' <<<"$json" >/dev/null; then
     log "$app ya tiene $imagen."
     return 0
   fi
-  plantilla=$(jq -c --arg suf "$(sufijo "$sha")" --arg i "$imagen" '
-    .properties.template | .revisionSuffix = $suf | .containers[0].image = $i' <<<"$json")
+  # Sin revisionSuffix: el ambiente express no deja elegir el nombre de la
+  # versión (lo pone Azure). El SHA queda igual en la imagen.
+  plantilla=$(jq -c --arg i "$imagen" '
+    .properties.template | del(.revisionSuffix) | .containers[0].image = $i' <<<"$json")
+  # Las etiquetas van completas (en Azure el PATCH de tags las reemplaza todas).
+  etiquetas=$(jq -c '.tags // {}' <<<"$json")
+  previo=$(jq -r '.properties.template.containers[0].image | split(":") | last' <<<"$json")
+  if [[ "$app" == *-api && "$previo" =~ ^[0-9a-f]{40}$ ]]; then
+    etiquetas=$(jq -c --arg p "$previo" '. + {"version-anterior": $p}' <<<"$etiquetas")
+  fi
   log "$app → $imagen"
-  parchar "$app" "{\"properties\":{\"template\":$plantilla}}"
+  parchar "$app" "{\"tags\":$etiquetas,\"properties\":{\"template\":$plantilla}}"
 }
 
 actualizar() {
   local ambiente=$1 sha=$2
   # Primero el backend: aplica las migraciones (sólo agregan) y la pantalla
   # vieja sigue andando con él. Después la pantalla.
-  cambiar_imagen "$ambiente-api" "$IMAGEN_BACKEND:$sha" "$sha"
-  cambiar_imagen "$ambiente" "$IMAGEN_FRONTEND:$sha" "$sha"
+  cambiar_imagen "$ambiente-api" "$IMAGEN_BACKEND:$sha"
+  cambiar_imagen "$ambiente" "$IMAGEN_FRONTEND:$sha"
 }
 
 esperar() {
@@ -106,18 +112,11 @@ esperar() {
   done
 }
 
-# SHA de la versión anterior del backend: la más nueva de las guardadas cuya
-# imagen es de otro commit que la actual.
+# SHA de la versión que corría antes de la actual (la anota cambiar_imagen).
 anterior() {
-  local api="$1-api" actual sha
-  actual=$(app_json "$api" | jq -r '.properties.template.containers[0].image')
-  sha=$(az rest --method get --url "https://management.azure.com$(id_app "$api")/revisions?$API" |
-    jq -r --arg actual "$actual" '
-      [.value[] | {creada: .properties.createdTime, imagen: .properties.template.containers[0].image}]
-      | sort_by(.creada) | reverse
-      | map(select(.imagen != $actual) | .imagen | split(":") | last)
-      | map(select(test("^[0-9a-f]{40}$"))) | .[0] // empty')
-  [[ -n "$sha" ]] || falla "$1 no tiene una versión anterior a la que volver."
+  local sha
+  sha=$(app_json "$1-api" | jq -r '.tags["version-anterior"] // empty')
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || falla "$1 no tiene una versión anterior a la que volver."
   echo "$sha"
 }
 

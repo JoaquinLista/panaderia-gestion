@@ -33,8 +33,11 @@ resource "azurerm_container_app" "api" {
   # Una versión activa por vez: al cambiar la imagen, Azure levanta la nueva,
   # espera que esté lista (readiness) y recién ahí apaga la vieja.
   revision_mode = "Single"
-  # Versiones viejas que se guardan apagadas: "volver atrás" las usa.
-  max_inactive_revisions = 10
+  # Express no guarda versiones viejas (Azure lo deja en 0) ni deja elegir el
+  # perfil: se escriben como Azure los deja para que el plan no muestre cambios.
+  # "Volver atrás" usa la etiqueta version-anterior (ver desplegar.sh).
+  max_inactive_revisions = 0
+  workload_profile_name  = "Consumption"
 
   tags = var.etiquetas
 
@@ -62,6 +65,7 @@ resource "azurerm_container_app" "api" {
     # clave interna no viaja nunca sin cifrar.
     external_enabled           = false
     target_port                = 3000
+    transport                  = "http"
     allow_insecure_connections = false
 
     traffic_weight {
@@ -151,6 +155,16 @@ resource "azurerm_container_app" "api" {
     ignore_changes = [
       template[0].container[0].image,
       template[0].revision_suffix,
+      # La escribe desplegar.sh en cada despliegue.
+      tags["version-anterior"],
+      # Valores que el ambiente express pone por su cuenta (escalado por
+      # requests, sin reparto de tráfico): Terraform no los pelea.
+      ingress[0].traffic_weight,
+      template[0].cooldown_period_in_seconds,
+      template[0].polling_interval_in_seconds,
+      template[0].http_scale_rule,
+      template[0].container[0].readiness_probe,
+      template[0].container[0].startup_probe,
     ]
   }
 }
@@ -161,7 +175,8 @@ resource "azurerm_container_app" "app" {
   resource_group_name          = var.grupo
 
   revision_mode          = "Single"
-  max_inactive_revisions = 10
+  max_inactive_revisions = 0
+  workload_profile_name  = "Consumption"
 
   tags = var.etiquetas
 
@@ -174,6 +189,7 @@ resource "azurerm_container_app" "app" {
     # Dirección pública con HTTPS (Azure pone el certificado).
     external_enabled           = true
     target_port                = 80
+    transport                  = "http"
     allow_insecure_connections = false
 
     traffic_weight {
@@ -214,6 +230,13 @@ resource "azurerm_container_app" "app" {
     ignore_changes = [
       template[0].container[0].image,
       template[0].revision_suffix,
+      # Valores que el ambiente express pone por su cuenta (escalado por
+      # requests, sin reparto de tráfico): Terraform no los pelea.
+      ingress[0].traffic_weight,
+      template[0].cooldown_period_in_seconds,
+      template[0].polling_interval_in_seconds,
+      template[0].http_scale_rule,
+      template[0].container[0].readiness_probe,
     ]
   }
 }
