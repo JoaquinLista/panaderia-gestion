@@ -47,6 +47,14 @@ resource "azurerm_container_app_environment" "principal" {
   logs_destination           = "log-analytics"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
   tags                       = local.etiquetas
+
+  # Sin perfiles, Azure crea un ambiente "express", que no permite dos
+  # contenedores en la misma app (nginx + backend). Con el perfil Consumption
+  # sí, y se sigue pagando sólo por uso (no hay máquinas dedicadas).
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 # ---- Postgres administrado ----
