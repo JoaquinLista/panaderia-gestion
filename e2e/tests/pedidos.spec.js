@@ -8,7 +8,7 @@ test('Patagonia pide facturas, el chofer las lleva y Patagonia confirma', async 
   page,
   baseURL,
 }) => {
-  const password = 'clave-de-prueba-123';
+  const password = 'clave-de-prueba-e2e'; // gitleaks:allow (usuarios de prueba)
   const empleada = unico('e2e-pide');
   const chofer = unico('e2e-chofer');
   await crearUsuario(baseURL, { usuario: empleada, nombre: 'Empleada', password, rol: 'EMPLEADA' });
