@@ -77,10 +77,21 @@ describe('migraciones sobre una base vacía', () => {
       '0007_medios-y-categorias',
       '0008_caja-central',
       '0009_reportes-problema',
+      '0010_pedidos-por-rubro',
     ]);
     expect(await nombresSucursales(db)).toEqual(SUCURSALES);
     const { rows } = await db.query('SELECT count(*)::int AS n FROM usuarios');
     expect(rows[0].n).toBe(0);
+  });
+
+  it('cargan los rubros de pedidos con el lugar de donde sale cada uno', async () => {
+    const { rows } = await db.query(
+      `SELECT r.nombre, s.nombre AS origen FROM rubros r
+         JOIN sucursales s ON s.id = r.sucursal_origen_id ORDER BY r.orden`
+    );
+    expect(rows[0]).toEqual({ nombre: 'Pan', origen: 'Viedma (Chacra)' });
+    expect(rows).toContainEqual({ nombre: 'Insumos', origen: 'Galpón Central' });
+    expect(rows).toHaveLength(12);
   });
 
   it('no hacen nada si se corren de nuevo', async () => {
@@ -115,7 +126,12 @@ describe('migraciones sobre una base creada con el init.sql del TP2', () => {
     await db.query(await readFile(new URL('./fixtures/esquema-tp2.sql', import.meta.url), 'utf8'));
     // Un pedido cargado antes de la migración, para comprobar que no se pierde.
     await db.query(
-      `INSERT INTO pedidos (sucursal_origen_id, sucursal_destino_id) VALUES (1, 2) RETURNING id`
+      `INSERT INTO pedidos (sucursal_origen_id, sucursal_destino_id, estado)
+       VALUES (1, 2, 'DESPACHADO') RETURNING id`
+    );
+    await db.query(
+      `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad)
+       SELECT 1, id, 12 FROM productos WHERE nombre = 'Medialunas'`
     );
   });
 
@@ -128,6 +144,14 @@ describe('migraciones sobre una base creada con el init.sql del TP2', () => {
     expect(await nombresSucursales(db)).toEqual(SUCURSALES);
     const { rows } = await db.query('SELECT count(*)::int AS n FROM pedidos');
     expect(rows[0].n).toBe(1);
+    // El pedido despachado quedó en camino y su detalle pasó a un renglón de "Otros".
+    const { rows: pedido } = await db.query(
+      `SELECT p.estado, r.nombre AS rubro, i.detalle FROM pedidos p
+         JOIN pedido_items i ON i.pedido_id = p.id JOIN rubros r ON r.id = i.rubro_id`
+    );
+    expect(pedido).toEqual([
+      { estado: 'EN_CAMINO', rubro: 'Otros', detalle: '12 docena de Medialunas' },
+    ]);
     await expect(
       db.query(`UPDATE pedidos SET estado = 'RECIBIDO' WHERE id = 1`)
     ).resolves.toBeDefined();

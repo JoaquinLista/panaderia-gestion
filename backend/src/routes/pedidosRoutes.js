@@ -1,12 +1,23 @@
 import { Router } from 'express';
-import { getPedidos, postPedido, putEstadoPedido } from '../controllers/pedidosController.js';
+import {
+  getPedidos,
+  getRecorrido,
+  getRubros,
+  postPedido,
+  putEstadoPedido,
+  putItemPedido,
+} from '../controllers/pedidosController.js';
 import { ACCIONES } from '../domain/permisos.js';
 import { permitir } from '../middlewares/permisos.js';
 
 const router = Router();
 
 router.get('/', permitir(ACCIONES.VER_PEDIDOS), getPedidos);
+router.get('/rubros', permitir(ACCIONES.VER_PEDIDOS), getRubros);
+router.get('/recorrido', permitir(ACCIONES.CAMBIAR_ESTADO_PEDIDO), getRecorrido);
 router.post('/', permitir(ACCIONES.CREAR_PEDIDO), postPedido);
-router.put('/:id/estado', permitir(ACCIONES.CAMBIAR_ESTADO_PEDIDO), putEstadoPedido);
+// Chofer y sucursal mueven el pedido; el servicio decide qué paso le toca a cada uno.
+router.put('/:id/estado', permitir(ACCIONES.VER_PEDIDOS), putEstadoPedido);
+router.put('/:id/items/:itemId', permitir(ACCIONES.CAMBIAR_ESTADO_PEDIDO), putItemPedido);
 
 export default router;

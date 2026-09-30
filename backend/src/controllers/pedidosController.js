@@ -1,14 +1,43 @@
-import { listarPedidos, crearPedido, cambiarEstadoPedido } from '../services/pedidosService.js';
+import {
+  cambiarEstadoPedido,
+  crearPedidos,
+  listarPedidos,
+  listarRubros,
+  marcarItem,
+  obtenerRecorrido,
+} from '../services/pedidosService.js';
 import { sucursalRestringida } from '../domain/permisos.js';
 
 /**
- * GET /api/pedidos
- * La empleada sólo ve los pedidos de su sucursal del día.
+ * GET /api/pedidos?estado=abiertos
+ * La empleada sólo ve los pedidos de su sucursal del día (los que pide y los
+ * que le piden). Sin filtro, el historial reciente.
  */
 export const getPedidos = async (req, res, next) => {
   try {
-    const pedidos = await listarPedidos({ sucursalId: sucursalRestringida(req.sesion) });
+    const pedidos = await listarPedidos({
+      sucursalId: sucursalRestringida(req.sesion),
+      abiertos: req.query.estado === 'abiertos',
+    });
     res.json(pedidos);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/pedidos/rubros: lo que se puede pedir y de dónde sale. */
+export const getRubros = async (_req, res, next) => {
+  try {
+    res.json(await listarRubros());
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/pedidos/recorrido: qué cargar en cada lugar y una parada por sucursal. */
+export const getRecorrido = async (_req, res, next) => {
+  try {
+    res.json(await obtenerRecorrido());
   } catch (error) {
     next(error);
   }
@@ -16,33 +45,13 @@ export const getPedidos = async (req, res, next) => {
 
 /**
  * POST /api/pedidos
- * La empleada sólo puede crear pedidos con origen en su sucursal del día.
+ * Body: { sucursal_id?, nota?, urgente?, items: [{ rubro_id, detalle }] }.
+ * La empleada pide para su sucursal del día; la dueña, para cualquiera.
+ * Responde con los pedidos creados (uno por lugar de donde sale la mercadería).
  */
 export const postPedido = async (req, res, next) => {
   try {
-    const { sucursal_origen_id, sucursal_destino_id, detalles } = req.body ?? {};
-
-    if (!sucursal_origen_id || !sucursal_destino_id) {
-      return res.status(400).json({
-        error: 'Los campos "sucursal_origen_id" y "sucursal_destino_id" son obligatorios',
-      });
-    }
-    if (!Array.isArray(detalles) || detalles.length === 0) {
-      return res
-        .status(400)
-        .json({ error: 'El pedido debe incluir un arreglo "detalles" con al menos un ítem' });
-    }
-
-    // La empleada pide desde su sucursal del día: no puede cargar pedidos de otra.
-    const sucursalPropia = sucursalRestringida(req.sesion);
-    if (sucursalPropia && Number(sucursal_origen_id) !== sucursalPropia) {
-      return res.status(403).json({
-        error: `Sólo podés crear pedidos desde tu sucursal del día (${req.sesion.sucursal.nombre})`,
-      });
-    }
-
-    const pedido = await crearPedido(req.body);
-    res.status(201).json(pedido);
+    res.status(201).json(await crearPedidos(req.body ?? {}, req.sesion));
   } catch (error) {
     next(error);
   }
@@ -50,18 +59,28 @@ export const postPedido = async (req, res, next) => {
 
 /**
  * PUT /api/pedidos/:id/estado
- * Cambia el estado de un pedido validando la transición.
+ * El chofer lo pone en camino y entregado; la sucursal lo cancela o confirma.
  */
 export const putEstadoPedido = async (req, res, next) => {
   try {
     const { estado } = req.body ?? {};
-
     if (!estado || String(estado).trim() === '') {
       return res.status(400).json({ error: 'El campo "estado" es obligatorio' });
     }
+    res.json(await cambiarEstadoPedido(req.params.id, estado, req.sesion));
+  } catch (error) {
+    next(error);
+  }
+};
 
-    const pedido = await cambiarEstadoPedido(req.params.id, estado);
-    res.json(pedido);
+/** PUT /api/pedidos/:id/items/:itemId: el chofer tilda lo que carga o marca que no había. */
+export const putItemPedido = async (req, res, next) => {
+  try {
+    const { estado } = req.body ?? {};
+    if (!estado || String(estado).trim() === '') {
+      return res.status(400).json({ error: 'El campo "estado" es obligatorio' });
+    }
+    res.json(await marcarItem(req.params.id, req.params.itemId, estado));
   } catch (error) {
     next(error);
   }

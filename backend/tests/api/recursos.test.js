@@ -46,19 +46,34 @@ describe('GET de catálogos', () => {
 });
 
 describe('GET /api/pedidos', () => {
-  it('adjunta el detalle a cada pedido', async () => {
+  it('adjunta los renglones a cada pedido', async () => {
     query
       .mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }] })
-      .mockResolvedValueOnce({ rows: [{ id: 10, pedido_id: 1, producto_id: 3 }] });
+      .mockResolvedValueOnce({ rows: [{ id: 10, pedido_id: 1, rubro_id: 3 }] });
     const res = await request(app).get('/api/pedidos');
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
-      { id: 1, detalles: [{ id: 10, pedido_id: 1, producto_id: 3 }] },
-      { id: 2, detalles: [] },
+      { id: 1, items: [{ id: 10, pedido_id: 1, rubro_id: 3 }] },
+      { id: 2, items: [] },
     ]);
   });
 
-  it('no consulta detalles si no hay pedidos', async () => {
+  it('con ?estado=abiertos pide sólo los pendientes y en camino, sin límite', async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    await request(app).get('/api/pedidos?estado=abiertos');
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/p\.estado = ANY\(\$1::text\[\]\)/);
+    expect(sql).not.toMatch(/LIMIT/);
+    expect(params).toEqual([['PENDIENTE', 'EN_CAMINO']]);
+  });
+
+  it('sin filtro devuelve el historial reciente con un límite', async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    await request(app).get('/api/pedidos');
+    expect(query.mock.calls[0][0]).toMatch(/LIMIT 200/);
+  });
+
+  it('no consulta renglones si no hay pedidos', async () => {
     query.mockResolvedValueOnce({ rows: [] });
     const res = await request(app).get('/api/pedidos');
     expect(res.body).toEqual([]);
