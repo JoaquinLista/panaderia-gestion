@@ -708,3 +708,15 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | Cada renglón se tilda como LLEVADO o NO_HABIA, sólo con el pedido abierto | La sucursal sabe qué no le llegó sin llamar. |
 | El recorrido (`GET /api/pedidos/recorrido`) se arma en una función pura (`domain/recorrido.js`) | Se prueba sin base, y la pantalla del chofer (PR 3) sólo lo dibuja. |
 | Los detalles con producto y cantidad de la primera versión pasan a renglones del rubro "Otros" y se borra `detalles_pedido` | No se pierde nada; el catálogo de productos queda para `/api/productos`, que no se usa para pedir. |
+
+## La Fueguina Stats — Sprint 9 · PR 2: pantalla de pedidos de la sucursal (#77)
+
+| Decisión | Por qué |
+|----------|---------|
+| Se pide tocando un botón por rubro ("+ Facturas"), que agrega un cuadro para escribir el detalle | En el celular es más rápido que elegir de una lista, y cada rubro puede ir con su propia observación. |
+| La sucursal no ve los rubros que salen de ella misma (la fábrica no se pide facturas) | El backend lo rechaza igual; así no aparece un botón que siempre da error. |
+| La empleada pide para su sucursal del día; la dueña elige para cuál | Mismo criterio que el cierre de caja: la sesión dice dónde trabaja hoy. |
+| Al enviar se avisa quién lo prepara ("Lo prepara Viedma (Chacra) y Galpón Central") | Si el pedido se partió en dos, la sucursal sabe que llega de dos lugares. |
+| Una sola pantalla para todos: la sucursal ve "Cancelar" y "Llegó", el chofer "Salió" y "Entregado" | Los botones salen de la misma regla que el backend (`lib/pedidos.js`); la pantalla del recorrido del chofer llega en el PR 3. |
+| Se muestran los pedidos en curso y los últimos 10 terminados | Lo que importa es lo abierto; lo anterior sirve para ver qué pasó ayer sin llenar la pantalla. |
+| El e2e usa Patagonia y un detalle único | No se cruza con las otras pruebas, y staging guarda los pedidos de corridas anteriores. |

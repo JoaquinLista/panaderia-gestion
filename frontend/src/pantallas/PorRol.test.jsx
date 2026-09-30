@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import App from '../App.jsx';
 import {
   apiFalsa,
   sucursales,
-  productos,
   sesionAdmin,
   sesionEmpleada,
   sesionChofer,
@@ -15,20 +14,21 @@ import {
 const pedido = {
   id: 7,
   estado: 'PENDIENTE',
-  sucursal_origen_id: 2,
-  sucursal_destino_id: 1,
-  sucursal_origen_nombre: 'Estrada',
-  sucursal_destino_nombre: 'Viedma (Chacra)',
+  urgente: false,
+  sucursal_origen_id: 1,
+  sucursal_destino_id: 2,
+  sucursal_origen_nombre: 'Viedma (Chacra)',
+  sucursal_destino_nombre: 'Estrada',
   fecha_creacion: '2026-09-28T08:00:00',
-  detalles: [],
+  items: [],
 };
 
 const abrirComo = (sesion) => {
   apiFalsa({
     'GET /api/auth/me': () => [200, sesion],
     'GET /api/sucursales': () => [200, sucursales],
-    'GET /api/productos': () => [200, productos],
     'GET /api/pedidos': () => [200, [pedido]],
+    'GET /api/pedidos/rubros': () => [200, []],
   });
   render(<App />);
 };
@@ -135,38 +135,28 @@ describe('reportar un problema', () => {
   });
 });
 
-describe('tablero de pedidos según el rol', () => {
-  it('la empleada pide desde su sucursal del día, sin poder cambiarla', async () => {
+describe('pedidos según el rol', () => {
+  it('la empleada pide para su sucursal del día, sin poder cambiarla', async () => {
     abrirComo(sesionEmpleada);
-    const origen = await screen.findByLabelText('Sucursal de origen');
-    await within(origen).findByRole('option', { name: 'Estrada (VENTA)' });
-
-    expect(origen).toBeDisabled();
-    await waitFor(() => expect(origen).toHaveValue('2'));
-    expect(screen.getByLabelText('Sucursal de destino')).not.toHaveValue('2');
-    expect(await screen.findByText('1 pedido(s) de Estrada.')).toBeInTheDocument();
+    expect(await screen.findByText('Pedido de Estrada.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('¿Para qué sucursal?')).not.toBeInTheDocument();
   });
 
-  it('la empleada no ve los botones para cambiar el estado', async () => {
+  it('la empleada no ve los botones del reparto', async () => {
     abrirComo(sesionEmpleada);
-    await screen.findByText('1 pedido(s) de Estrada.');
-    expect(screen.queryByRole('columnheader', { name: 'Acciones' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Marcar en preparación' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Salió' })).not.toBeInTheDocument();
   });
 
   it('el chofer mueve los pedidos pero no los crea', async () => {
     abrirComo(sesionChofer);
-    expect(
-      await screen.findByRole('button', { name: 'Marcar en preparación' })
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Nuevo pedido' })).not.toBeInTheDocument();
-    expect(screen.getByText('1 pedido(s) en el sistema.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Salió' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Pedir mercadería' })).not.toBeInTheDocument();
   });
 
-  it('el admin elige cualquier origen', async () => {
+  it('el admin elige para qué sucursal pide', async () => {
     abrirComo(sesionAdmin);
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Pedidos' }));
-    const origen = await screen.findByLabelText('Sucursal de origen');
-    expect(origen).toBeEnabled();
+    expect(await screen.findByLabelText('¿Para qué sucursal?')).toBeEnabled();
   });
 });
