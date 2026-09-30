@@ -16,6 +16,7 @@ import cierresRoutes from './routes/cierresRoutes.js';
 import cajaCentralRoutes from './routes/cajaCentralRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import { requerirSesion } from './middlewares/autenticacion.js';
+import { soloDesdeLaPantalla } from './middlewares/claveInterna.js';
 import { exponerMetricas, medirRequests } from './observabilidad/metricas.js';
 import { registroHttp } from './observabilidad/registroHttp.js';
 import sucursalesRoutes from './routes/sucursalesRoutes.js';
@@ -38,6 +39,8 @@ app.disable('x-powered-by');
 // terminan en un error de los middlewares siguientes.
 app.use(registroHttp());
 app.use(medirRequests);
+// En Azure, sólo le contesta a la pantalla (ver el middleware).
+app.use(soloDesdeLaPantalla());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

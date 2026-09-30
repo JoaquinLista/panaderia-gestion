@@ -74,8 +74,8 @@ run "app_de_un_ambiente" {
   }
 
   assert {
-    condition     = azurerm_container_app.api.ingress[0].external_enabled == false && azurerm_container_app.api.ingress[0].target_port == 3000
-    error_message = "El backend no se publica en internet: sólo lo ve la pantalla."
+    condition     = azurerm_container_app.api.ingress[0].external_enabled == false && azurerm_container_app.api.ingress[0].target_port == 3000 && azurerm_container_app.api.ingress[0].allow_insecure_connections == false
+    error_message = "El backend va con entrada interna y sólo por HTTPS (la clave interna no viaja sin cifrar)."
   }
 
   assert {
@@ -84,14 +84,30 @@ run "app_de_un_ambiente" {
   }
 
   assert {
-    condition     = length(azurerm_container_app.app.secret) == 0
-    error_message = "La pantalla no necesita secretos: todos van en el backend."
+    condition     = [for x in azurerm_container_app.app.secret : x.name] == ["clave-interna"]
+    error_message = "La pantalla sólo conoce la clave interna: el resto de los secretos van en el backend."
+  }
+
+  assert {
+    condition = alltrue([
+      for c in [azurerm_container_app.app.template[0].container[0], azurerm_container_app.api.template[0].container[0]] :
+      anytrue([for e in c.env : e.name == "CLAVE_INTERNA" && e.secret_name == "clave-interna"])
+    ])
+    error_message = "La pantalla y el backend comparten la clave interna, tomada de un secreto."
+  }
+
+  assert {
+    condition = anytrue([
+      for e in azurerm_container_app.app.template[0].container[0].env :
+      e.name == "BACKEND_URL" && startswith(e.value, "https://")
+    ])
+    error_message = "Nginx le habla al backend por HTTPS."
   }
 
   assert {
     condition = alltrue([
       for e in azurerm_container_app.api.template[0].container[0].env :
-      e.value == null if contains(["POSTGRES_PASSWORD", "JWT_SECRET", "ADMIN_PASSWORD"], e.name)
+      e.value == null if contains(["POSTGRES_PASSWORD", "JWT_SECRET", "ADMIN_PASSWORD", "CLAVE_INTERNA"], e.name)
     ])
     error_message = "Las contraseñas tienen que venir de un secreto, nunca escritas en la variable."
   }

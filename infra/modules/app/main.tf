@@ -1,7 +1,8 @@
 # =============================================================
 #  Las dos Container Apps de un ambiente de La Fueguina Stats:
-#   - <nombre>-api: el backend. Entrada interna: sólo la ven las apps del
-#     mismo ambiente, no internet.
+#   - <nombre>-api: el backend. En un ambiente express la entrada "interna"
+#     igual se ve desde internet (probado): por eso sólo contesta a quien trae
+#     la clave interna, que tiene únicamente la pantalla.
 #   - <nombre>: Nginx con la pantalla. Recibe el tráfico y le pasa /api/ al
 #     backend.
 #  Van separadas porque el ambiente de la cuenta de estudiante es "express":
@@ -15,6 +16,12 @@ resource "random_password" "jwt" {
 
 resource "random_password" "admin" {
   length  = 20
+  special = false
+}
+
+# Clave que Nginx le manda al backend en cada request (X-Clave-Interna).
+resource "random_password" "clave_interna" {
+  length  = 48
   special = false
 }
 
@@ -45,13 +52,17 @@ resource "azurerm_container_app" "api" {
     name  = "admin-password"
     value = random_password.admin.result
   }
+  secret {
+    name  = "clave-interna"
+    value = random_password.clave_interna.result
+  }
 
   ingress {
-    # Sólo dentro del ambiente. Entre apps del ambiente se habla por HTTP; el
-    # HTTPS lo pone la entrada pública de la pantalla.
+    # Interna, aunque en express igual tiene dirección pública. Sólo HTTPS: la
+    # clave interna no viaja nunca sin cifrar.
     external_enabled           = false
     target_port                = 3000
-    allow_insecure_connections = true
+    allow_insecure_connections = false
 
     traffic_weight {
       latest_revision = true
@@ -105,6 +116,10 @@ resource "azurerm_container_app" "api" {
         name        = "ADMIN_PASSWORD"
         secret_name = "admin-password"
       }
+      env {
+        name        = "CLAVE_INTERNA"
+        secret_name = "clave-interna"
+      }
       # Adelante hay tres proxies: la entrada pública, el Nginx y la entrada
       # interna del backend.
       env {
@@ -150,6 +165,11 @@ resource "azurerm_container_app" "app" {
 
   tags = var.etiquetas
 
+  secret {
+    name  = "clave-interna"
+    value = random_password.clave_interna.result
+  }
+
   ingress {
     # Dirección pública con HTTPS (Azure pone el certificado).
     external_enabled           = true
@@ -172,10 +192,14 @@ resource "azurerm_container_app" "app" {
       cpu    = 0.25
       memory = "0.5Gi"
 
-      # La dirección interna del backend de este ambiente.
+      # El backend de este ambiente, por HTTPS.
       env {
         name  = "BACKEND_URL"
-        value = "http://${azurerm_container_app.api.ingress[0].fqdn}"
+        value = "https://${azurerm_container_app.api.ingress[0].fqdn}"
+      }
+      env {
+        name        = "CLAVE_INTERNA"
+        secret_name = "clave-interna"
       }
 
       readiness_probe {

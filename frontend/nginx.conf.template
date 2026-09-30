@@ -22,7 +22,7 @@ server {
     # lee de /etc/resolv.conf porque el Dockerfile activa
     # NGINX_ENTRYPOINT_LOCAL_RESOLVERS).
     # - docker compose: http://backend:3000, con el DNS interno de Docker.
-    # - Azure: la dirección interna de la app del backend, con el DNS de Azure.
+    # - Azure: https://<dirección de la app del backend>, con el DNS de Azure.
     # El nombre se resuelve en cada request y no al arrancar: escrito directo en
     # proxy_pass, Nginx se niega a levantar si el backend todavía no existe
     # ("host not found in upstream").
@@ -44,6 +44,13 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         # Id único de cada request: el backend lo pone en sus logs y lo devuelve.
         proxy_set_header X-Request-Id      $request_id;
+        # En Azure el backend tiene dirección pública (la cuenta de estudiante no
+        # deja ocultarlo): sólo contesta si llega esta clave, que conocen las dos
+        # apps. Vacía (docker compose), Nginx no manda la cabecera.
+        proxy_set_header X-Clave-Interna   "${CLAVE_INTERNA}";
+        # Con https, el nombre del backend va en el saludo TLS (SNI): la entrada
+        # de Azure lo necesita para saber a qué app mandarlo.
+        proxy_ssl_server_name on;
         proxy_read_timeout 30s;
     }
 

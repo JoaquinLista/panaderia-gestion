@@ -165,7 +165,8 @@ El `docker compose` de la compu no necesita ninguna de estas. Las usa el desplie
 | `POSTGRES_SSL=true` | backend | Conectar a la base con SSL (Azure lo exige). |
 | `TRUST_PROXY=2` | backend | Cuántos proxies hay adelante, para ver la IP real en el límite de intentos de login. |
 | `APP_VERSION` | los dos | SHA del commit. Lo pone el pipeline al construir la imagen; se ve en `/api/health` y al pie de la pantalla. |
-| `BACKEND_URL` | frontend | Dónde está el backend (por defecto `http://backend:3000`; en Azure la dirección interna de la app `<ambiente>-api`). El DNS para resolverla se toma del contenedor. |
+| `BACKEND_URL` | frontend | Dónde está el backend (por defecto `http://backend:3000`; en Azure `https://` + la dirección de la app `<ambiente>-api`). El DNS para resolverla se toma del contenedor. |
+| `CLAVE_INTERNA` | frontend y backend | Sólo en Azure (la genera Terraform). Nginx la manda en cada request y el backend contesta 404 a quien no la trae, salvo `/api/health`. Vacía, no se usa. |
 
 ## Infraestructura en Azure
 
@@ -183,7 +184,7 @@ Cada merge a `main` con el CI en verde se despliega solo con el workflow **Despl
    Se despliegan exactamente las mismas imágenes. Si la versión nueva no contesta bien, vuelve sola a la anterior.
 
 Cada ambiente son dos apps en Azure: `lafueguina-<ambiente>` (la pantalla, pública) y
-`lafueguina-<ambiente>-api` (el backend, sólo accesible desde adentro de Azure).
+`lafueguina-<ambiente>-api` (el backend, que sólo le contesta a la pantalla).
 
 **Volver atrás:** *Actions → Volver a la versión anterior → Run workflow* y elegir el ambiente. Vuelve a
 desplegar las imágenes de la versión anterior (tarda un par de minutos). Correrlo otra vez deshace la vuelta atrás.

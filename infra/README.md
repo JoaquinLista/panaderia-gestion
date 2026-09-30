@@ -16,7 +16,7 @@ infra/
 | Recurso | Para qué |
 |---------|----------|
 | `lafueguina-staging` y `lafueguina-produccion` (Container Apps) | La pantalla (Nginx). Cada una tiene su dirección `https://…azurecontainerapps.io`. Staging se apaga sola cuando nadie la usa. |
-| `lafueguina-staging-api` y `lafueguina-produccion-api` (Container Apps) | El backend de cada ambiente. Entrada interna: sólo le habla la pantalla, no se ve desde internet. |
+| `lafueguina-staging-api` y `lafueguina-produccion-api` (Container Apps) | El backend de cada ambiente. En express tiene dirección pública igual, así que sólo contesta a la pantalla (clave interna). |
 | `lafueguina-db-xxxxx` (PostgreSQL Flexible Server, B1ms) | Un servidor con dos bases: `staging` y `produccion`. Backup diario, 7 días. |
 | `lafueguina-apps` (ambiente de Container Apps) | Donde corren las cuatro apps. Con la cuenta de estudiante es modo "express": un contenedor y una versión activa por app. |
 | `lafueguina-logs` (Log Analytics) | Los logs de las apps, 30 días. |

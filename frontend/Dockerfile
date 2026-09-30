@@ -25,7 +25,9 @@ COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY cabeceras-seguridad.conf /etc/nginx/cabeceras-seguridad.conf
 # NGINX_ENTRYPOINT_LOCAL_RESOLVERS: la imagen lee el DNS del contenedor y lo
 # deja en NGINX_LOCAL_RESOLVERS (Docker en el compose, Azure en la nube).
+# CLAVE_INTERNA va vacía: en el compose no hace falta (en Azure la pone Terraform).
 ENV BACKEND_URL=http://backend:3000 \
+    CLAVE_INTERNA= \
     NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 COPY --from=build /app/dist /usr/share/nginx/html
 
