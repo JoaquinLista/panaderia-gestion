@@ -22,6 +22,7 @@ apps_recien_creadas() {
   cat >"$ESTADO/$AMB-api.json" <<JSON
 {
   "name": "$AMB-api",
+  "tags": {"ambiente": "staging", "gestion": "terraform"},
   "properties": {
     "provisioningState": "Succeeded",
     "configuration": {
@@ -75,6 +76,8 @@ prueba "primero se actualiza el backend y después la pantalla" \
   "$AMB-api,$AMB"
 prueba "no elige el nombre de la versión (express no lo permite)" \
   "$(grep -c revisionSuffix "$ESTADO/log" || true)" "0"
+prueba "no toca las etiquetas de Terraform" \
+  "$(jq -c '.tags | {ambiente, gestion}' "$ESTADO/$AMB-api.json")" '{"ambiente":"staging","gestion":"terraform"}'
 prueba "no toca las variables ni los secretos" \
   "$(jq -c '[.properties.template.containers[0].env[0].secretRef, .properties.configuration.secrets[0].name]' "$ESTADO/$AMB-api.json")" \
   '["jwt-secret","jwt-secret"]'
