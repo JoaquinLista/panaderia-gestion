@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { crearUsuario, entrar, unico } from './helpers.js';
 
-// Sprint 9 (#77): la sucursal pide por rubro, el chofer lo lleva y la
-// sucursal confirma que le llegó. Se usa Patagonia para no cruzarse con las
-// otras pruebas.
+// Sprint 9 (#77): la sucursal pide por rubro, el chofer lo carga desde su
+// recorrido y lo lleva, y la sucursal confirma que le llegó. Se usa Patagonia
+// para no cruzarse con las otras pruebas.
 test('Patagonia pide facturas, el chofer las lleva y Patagonia confirma', async ({
   page,
   baseURL,
@@ -28,11 +28,17 @@ test('Patagonia pide facturas, el chofer las lleva y Patagonia confirma', async 
   await expect(tarjeta()).toContainText('Urgente');
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
 
+  // El chofer arranca en su recorrido: lo carga en la fábrica, sale y lo entrega.
   await entrar(page, { usuario: chofer, password });
-  await tarjeta().getByRole('button', { name: 'Salió' }).click();
-  await expect(tarjeta()).toContainText('En camino');
+  const paraCargar = page.locator('li.carga-renglon', { hasText: detalle });
+  await expect(paraCargar).toContainText('Patagonia:');
+  await expect(paraCargar).toContainText('Urgente');
+  await paraCargar.getByRole('button', { name: 'Lo llevo' }).click();
+  await expect(paraCargar.locator('.badge', { hasText: 'Lo llevo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Salgo de Viedma (Chacra)' }).click();
+  await expect(page.getByRole('status')).toContainText('Saliste de Viedma (Chacra)');
   await tarjeta().getByRole('button', { name: 'Entregado' }).click();
-  await expect(tarjeta()).toContainText('Entregado');
+  await expect(page.getByRole('status')).toHaveText('Entregado en Patagonia.');
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
 
   await entrar(page, { usuario: empleada, password, sucursal: 'Patagonia' });

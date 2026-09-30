@@ -720,3 +720,14 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | Una sola pantalla para todos: la sucursal ve "Cancelar" y "Llegó", el chofer "Salió" y "Entregado" | Los botones salen de la misma regla que el backend (`lib/pedidos.js`); la pantalla del recorrido del chofer llega en el PR 3. |
 | Se muestran los pedidos en curso y los últimos 10 terminados | Lo que importa es lo abierto; lo anterior sirve para ver qué pasó ayer sin llenar la pantalla. |
 | El e2e usa Patagonia y un detalle único | No se cruza con las otras pruebas, y staging guarda los pedidos de corridas anteriores. |
+
+## La Fueguina Stats — Sprint 9 · PR 3: recorrido del chofer (#77)
+
+| Decisión | Por qué |
+|----------|---------|
+| Sección nueva "Recorrido", primera del chofer (y también para los dueños) | Lo que pidió el PM: que el chofer vea claro qué llevar. La sucursal sigue arrancando en "Pedidos". |
+| Arriba, "Para cargar": por lugar (fábrica, galpón), por rubro, cada renglón con a qué sucursal va | Es el orden en que carga: está en la fábrica y va rubro por rubro. |
+| Cada renglón se tilda "Lo llevo" o "No había", y se puede deshacer | La sucursal ve en su pantalla lo que no había, sin llamar. Un toque equivocado no es para siempre. |
+| "Salgo de Viedma (Chacra)" pone en camino todos los pedidos de ese lugar | Un solo toque al salir, en vez de uno por pedido. |
+| Abajo, "Paradas": una por sucursal, urgentes primero, con la nota y el botón "Entregado" | Lo arma el backend (`domain/recorrido.js`); la pantalla sólo lo dibuja. |
+| Si algo falla a mitad de camino, la pantalla recarga y muestra el error | Salir son varios pedidos: así se ve cuáles salieron y cuáles no. |

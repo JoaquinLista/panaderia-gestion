@@ -1392,3 +1392,58 @@ label.check input {
 .pedidos-anteriores {
   margin-top: 24px;
 }
+
+/* Recorrido del chofer (Sprint 9): qué cargar en cada lugar y las paradas. */
+.recorrido {
+  display: grid;
+  gap: 16px;
+}
+
+.carga-lugar + .carga-lugar {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.carga-lugar h3,
+.parada h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.carga-rubro {
+  margin-bottom: 14px;
+}
+
+.carga-rubro h4 {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.carga-renglon {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--color-surface);
+}
+
+.carga-texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.carga-salir {
+  width: 100%;
+}
+
+.paradas {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 18px;
+}
