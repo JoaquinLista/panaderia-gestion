@@ -335,7 +335,7 @@ por hora por persona.
 Para crear el token: GitHub → Settings → Developer settings → Fine-grained tokens →
 *Generate new token*, sólo el repositorio `panaderia-gestion`, permiso **Issues:
 Read and write**. En la compu va en el `.env`. Para Azure: *Settings → Secrets and variables →
-Actions → New repository secret* con el nombre `GITHUB_TOKEN_REPORTES`; el workflow **Infra** se lo pasa
+Actions → New repository secret* con el nombre `TOKEN_REPORTES` (GitHub no deja que empiece con `GITHUB_`); el workflow **Infra** se lo pasa
 a Terraform, que lo guarda como secreto del backend de staging y de producción.
 
 ## Base de datos y migraciones

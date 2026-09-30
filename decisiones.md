@@ -691,7 +691,7 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 
 | Decisión | Por qué |
 |----------|---------|
-| El token va como secreto del repo (`GITHUB_TOKEN_REPORTES`) y Terraform lo guarda como secreto del backend | Nunca pasa por el código ni por el chat. Si se cargara a mano en Azure, el próximo `terraform apply` lo borraría. |
+| El token va como secreto del repo (`TOKEN_REPORTES`, porque GitHub no acepta nombres que empiecen con `GITHUB_`) y Terraform lo guarda como secreto del backend | Nunca pasa por el código ni por el chat. Si se cargara a mano en Azure, el próximo `terraform apply` lo borraría. |
 | Sin el secreto, la app no lo recibe (bloque `dynamic`) | Azure no acepta secretos vacíos, y los reportes se guardan igual en la base aunque no abran issue. |
 | `APP_ENTORNO` = `staging` o `produccion` | El issue dice de qué ambiente vino el reporte. Los dos usan el mismo token. |
 | Sólo el backend recibe el token | Es el único que habla con GitHub; la pantalla pública no lo necesita. |

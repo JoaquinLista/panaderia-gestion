@@ -43,7 +43,7 @@ secretos de cada app. La del admin se ve en el portal: la app → **Secretos** �
 - Un PR que toca `infra/` muestra el plan como comentario: qué se va a crear, cambiar o borrar.
 - Al mergearlo, el job **Terraform · apply** espera la aprobación del ambiente `infra`.
 - La versión de la app que corre no la maneja Terraform sino el workflow de despliegue (Sprint 6, PR 3).
-- El token de "Reportar un problema" sale del secreto del repo `GITHUB_TOKEN_REPORTES`. Si se cambia, hay que volver a correr *Actions → Infra → Run workflow* para que llegue a Azure.
+- El token de "Reportar un problema" sale del secreto del repo `TOKEN_REPORTES`. Si se cambia, hay que volver a correr *Actions → Infra → Run workflow* para que llegue a Azure.
 
 ## Probar en la compu
 
