@@ -28,10 +28,15 @@ case "$metodo:$ruta" in
     jq 'del(.revisiones)' "$archivo" ;;
   patch:*)
     [[ -z "${FALLA_PATCH:-}" ]] || { echo "error de mentira" >&2; exit 1; }
+    # Como el ambiente express de verdad: no acepta elegir el nombre de la versión.
+    if jq -e '.properties.template | has("revisionSuffix")' <<<"$cuerpo" >/dev/null 2>&1; then
+      echo "ExpressEnvironmentFeatureNotSupported: 'Revision Suffix' is not supported" >&2
+      exit 1
+    fi
     jq --argjson c "$cuerpo" '
       . * $c
       | if $c.properties.template then
-          (.name + "--" + $c.properties.template.revisionSuffix) as $n
+          (.name + "--r" + (.revisiones | length | tostring)) as $n
           | .properties.latestRevisionName = $n
           | .revisiones |= map(.properties.active = false)
           | .revisiones += [{name: $n, properties: {active: true, createdTime: ("2026-01-01T00:00:0" + (.revisiones | length | tostring) + "Z"), template: $c.properties.template}}]

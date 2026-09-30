@@ -57,11 +57,6 @@ parchar() {
   done
 }
 
-# Nombre de la versión: SHA corto y la hora. La hora hace falta porque volver
-# atrás crea otra versión con un commit que ya se desplegó, y Azure no acepta
-# repetir el nombre.
-sufijo() { echo "v${1:0:7}-$(date -u +%m%d%H%M%S)"; }
-
 url() {
   echo "https://$(app_json "$1" | jq -r '.properties.configuration.ingress.fqdn')"
 }
@@ -69,14 +64,16 @@ url() {
 # Cambia la imagen del único contenedor de la app. Si ya tiene esa, no hace nada
 # (un reintento del workflow no crea otra versión).
 cambiar_imagen() {
-  local app=$1 imagen=$2 sha=$3 json plantilla
+  local app=$1 imagen=$2 json plantilla
   json=$(app_json "$app")
   if jq -e --arg i "$imagen" '.properties.template.containers[0].image == $i' <<<"$json" >/dev/null; then
     log "$app ya tiene $imagen."
     return 0
   fi
-  plantilla=$(jq -c --arg suf "$(sufijo "$sha")" --arg i "$imagen" '
-    .properties.template | .revisionSuffix = $suf | .containers[0].image = $i' <<<"$json")
+  # Sin revisionSuffix: el ambiente express no deja elegir el nombre de la
+  # versión (lo pone Azure). El SHA queda igual en la imagen.
+  plantilla=$(jq -c --arg i "$imagen" '
+    .properties.template | del(.revisionSuffix) | .containers[0].image = $i' <<<"$json")
   log "$app → $imagen"
   parchar "$app" "{\"properties\":{\"template\":$plantilla}}"
 }
@@ -85,8 +82,8 @@ actualizar() {
   local ambiente=$1 sha=$2
   # Primero el backend: aplica las migraciones (sólo agregan) y la pantalla
   # vieja sigue andando con él. Después la pantalla.
-  cambiar_imagen "$ambiente-api" "$IMAGEN_BACKEND:$sha" "$sha"
-  cambiar_imagen "$ambiente" "$IMAGEN_FRONTEND:$sha" "$sha"
+  cambiar_imagen "$ambiente-api" "$IMAGEN_BACKEND:$sha"
+  cambiar_imagen "$ambiente" "$IMAGEN_FRONTEND:$sha"
 }
 
 esperar() {

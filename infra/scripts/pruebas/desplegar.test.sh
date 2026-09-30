@@ -73,8 +73,8 @@ prueba "la pantalla queda con la imagen del commit" "$(imagen "$AMB")" "$FRONT:$
 prueba "primero se actualiza el backend y después la pantalla" \
   "$(grep -o 'patch --url [^ ]*' "$ESTADO/log" | sed -E 's|.*/containerApps/([^?]+).*|\1|' | paste -sd,)" \
   "$AMB-api,$AMB"
-prueba "la versión nueva lleva el SHA en el nombre" \
-  "$(jq -r '.properties.latestRevisionName' "$ESTADO/$AMB-api.json" | grep -Eo -- '--v[0-9a-f]{7}-[0-9]{10}$' | cut -c3-10)" "v1111111"
+prueba "no elige el nombre de la versión (express no lo permite)" \
+  "$(grep -c revisionSuffix "$ESTADO/log" || true)" "0"
 prueba "no toca las variables ni los secretos" \
   "$(jq -c '[.properties.template.containers[0].env[0].secretRef, .properties.configuration.secrets[0].name]' "$ESTADO/$AMB-api.json")" \
   '["jwt-secret","jwt-secret"]'
