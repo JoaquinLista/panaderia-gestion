@@ -686,3 +686,12 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | Las versiones no llevan nombre elegido (`revisionSuffix`); el SHA se lee de la imagen | Express rechaza elegir el nombre de la versión (`ExpressEnvironmentFeatureNotSupported`, lo vimos en el primer despliegue). Azure le pone uno solo; el SHA del commit ya está en la etiqueta de la imagen y en `/api/health`. |
 | Terraform escribe lo que express fija por su cuenta (`workload_profile_name`, `max_inactive_revisions = 0`, `transport = "http"`) e ignora lo que ajusta solo (escalado, reparto de tráfico, probes) | Si no, cada plan mostraba 4 apps "por cambiar" que Azure iba a volver a dejar igual. |
 | `desplegar.sh` se prueba en el CI con un `az` de mentira | Orden de actualización, reintentos sin versiones duplicadas, esperar al SHA correcto y volver atrás dos veces, en cada PR y sin cuenta de Azure. |
+
+## La Fueguina Stats — Sprint 8 · PR 6: "Reportar un problema" en Azure (#18)
+
+| Decisión | Por qué |
+|----------|---------|
+| El token va como secreto del repo (`GITHUB_TOKEN_REPORTES`) y Terraform lo guarda como secreto del backend | Nunca pasa por el código ni por el chat. Si se cargara a mano en Azure, el próximo `terraform apply` lo borraría. |
+| Sin el secreto, la app no lo recibe (bloque `dynamic`) | Azure no acepta secretos vacíos, y los reportes se guardan igual en la base aunque no abran issue. |
+| `APP_ENTORNO` = `staging` o `produccion` | El issue dice de qué ambiente vino el reporte. Los dos usan el mismo token. |
+| Sólo el backend recibe el token | Es el único que habla con GitHub; la pantalla pública no lo necesita. |

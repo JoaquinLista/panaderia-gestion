@@ -58,3 +58,15 @@ variable "etiquetas" {
   description = "Etiquetas de Azure."
   type        = map(string)
 }
+
+variable "entorno" {
+  description = "Nombre del ambiente para la app (staging o produccion): va en los reportes de problemas."
+  type        = string
+}
+
+variable "github_token_reportes" {
+  description = "Token de GitHub para que \"Reportar un problema\" abra issues. Vacío: los reportes se guardan igual, sin issue."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

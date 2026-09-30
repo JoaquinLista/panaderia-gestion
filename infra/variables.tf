@@ -33,3 +33,12 @@ variable "postgres_version" {
   type        = string
   default     = "16"
 }
+
+# Viene del secreto GITHUB_TOKEN_REPORTES del repo (workflow Infra). Nunca se
+# escribe en el código.
+variable "github_token_reportes" {
+  description = "Token de GitHub para que \"Reportar un problema\" abra issues."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

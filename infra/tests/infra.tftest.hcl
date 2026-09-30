@@ -54,6 +54,7 @@ run "app_de_un_ambiente" {
     postgres_usuario  = "lafueguina"
     postgres_password = "no-es-real"
     admin_usuario     = "admin"
+    entorno           = "staging"
     replicas_minimas  = 0
     etiquetas         = {}
   }
@@ -118,5 +119,56 @@ run "app_de_un_ambiente" {
       e.name == "POSTGRES_SSL" && e.value == "true"
     ])
     error_message = "Azure exige SSL para conectarse a Postgres."
+  }
+
+  assert {
+    condition     = !contains([for x in azurerm_container_app.api.secret : x.name], "github-token-reportes")
+    error_message = "Sin token no se crea el secreto (Azure no acepta secretos vacíos)."
+  }
+
+  assert {
+    condition = anytrue([
+      for e in azurerm_container_app.api.template[0].container[0].env :
+      e.name == "APP_ENTORNO" && e.value == "staging"
+    ])
+    error_message = "El backend sabe en qué ambiente está (va en los reportes)."
+  }
+}
+
+run "con_token_de_reportes" {
+  command = plan
+
+  module {
+    source = "./modules/app"
+  }
+
+  variables {
+    nombre                = "prueba"
+    grupo                 = "rg-prueba"
+    ambiente_apps_id      = "/subscriptions/0/resourceGroups/rg-prueba/providers/Microsoft.App/managedEnvironments/prueba"
+    imagen_backend        = "ghcr.io/joaquinlista/panaderia-gestion-backend:main"
+    imagen_frontend       = "ghcr.io/joaquinlista/panaderia-gestion-frontend:main"
+    postgres_host         = "prueba.postgres.database.azure.com"
+    postgres_base         = "produccion"
+    postgres_usuario      = "lafueguina"
+    postgres_password     = "no-es-real"
+    admin_usuario         = "admin"
+    entorno               = "produccion"
+    github_token_reportes = "token-de-mentira"
+    replicas_minimas      = 1
+    etiquetas             = {}
+  }
+
+  assert {
+    condition = anytrue([
+      for e in azurerm_container_app.api.template[0].container[0].env :
+      e.name == "GITHUB_TOKEN_REPORTES" && e.secret_name == "github-token-reportes" && e.value == null
+    ])
+    error_message = "El token llega al backend desde un secreto, nunca escrito en la variable."
+  }
+
+  assert {
+    condition     = [for x in azurerm_container_app.app.secret : x.name] == ["clave-interna"]
+    error_message = "El token es sólo del backend: la pantalla no lo recibe."
   }
 }

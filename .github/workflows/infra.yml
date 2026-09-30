@@ -87,6 +87,9 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
+    env:
+      # Secreto del repo; vacío si no existe (los reportes andan igual, sin issue).
+      TF_VAR_github_token_reportes: ${{ secrets.GITHUB_TOKEN_REPORTES }}
     steps:
       - uses: actions/checkout@v7
 
@@ -134,6 +137,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      TF_VAR_github_token_reportes: ${{ secrets.GITHUB_TOKEN_REPORTES }}
     steps:
       - uses: actions/checkout@v7
 

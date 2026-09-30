@@ -132,6 +132,9 @@ module "staging" {
   postgres_usuario  = azurerm_postgresql_flexible_server.principal.administrator_login
   postgres_password = random_password.postgres.result
   admin_usuario     = var.admin_usuario
+  entorno           = "staging"
+  # Mismo token en los dos: el issue dice de qué ambiente vino.
+  github_token_reportes = var.github_token_reportes
   # Se apaga cuando nadie la usa: el primer request tarda unos segundos.
   replicas_minimas = 0
   etiquetas        = merge(local.etiquetas, { ambiente = "staging" })
@@ -140,16 +143,18 @@ module "staging" {
 module "produccion" {
   source = "./modules/app"
 
-  nombre            = "${var.prefijo}-produccion"
-  grupo             = local.grupo
-  ambiente_apps_id  = azurerm_container_app_environment.principal.id
-  imagen_backend    = var.imagen_backend
-  imagen_frontend   = var.imagen_frontend
-  postgres_host     = azurerm_postgresql_flexible_server.principal.fqdn
-  postgres_base     = azurerm_postgresql_flexible_server_database.base["produccion"].name
-  postgres_usuario  = azurerm_postgresql_flexible_server.principal.administrator_login
-  postgres_password = random_password.postgres.result
-  admin_usuario     = var.admin_usuario
+  nombre                = "${var.prefijo}-produccion"
+  grupo                 = local.grupo
+  ambiente_apps_id      = azurerm_container_app_environment.principal.id
+  imagen_backend        = var.imagen_backend
+  imagen_frontend       = var.imagen_frontend
+  postgres_host         = azurerm_postgresql_flexible_server.principal.fqdn
+  postgres_base         = azurerm_postgresql_flexible_server_database.base["produccion"].name
+  postgres_usuario      = azurerm_postgresql_flexible_server.principal.administrator_login
+  postgres_password     = random_password.postgres.result
+  admin_usuario         = var.admin_usuario
+  entorno               = "produccion"
+  github_token_reportes = var.github_token_reportes
   # Siempre prendida: en las sucursales no pueden esperar a que despierte.
   replicas_minimas = 1
   etiquetas        = merge(local.etiquetas, { ambiente = "produccion" })
