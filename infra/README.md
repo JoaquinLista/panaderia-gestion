@@ -20,6 +20,7 @@ infra/
 | `lafueguina-db-xxxxx` (PostgreSQL Flexible Server, B1ms) | Un servidor con dos bases: `staging` y `produccion`. Backup diario, 7 días. |
 | `lafueguina-apps` (ambiente de Container Apps) | Donde corren las cuatro apps. Con la cuenta de estudiante es modo "express": un contenedor y una versión activa por app. |
 | `lafueguina-logs` (Log Analytics) | Los logs de las apps, 30 días. |
+| `lafueguina-produccion-errores` (alerta) y `lafueguina-avisos` (grupo de avisos) | Cada 5 minutos busca errores (500) en los logs del backend de producción y, si hay, manda un mail al dueño de la suscripción. Cuando dejan de aparecer, avisa que se resolvió. |
 
 Las contraseñas (Postgres, firma de sesiones, primer admin) las genera Terraform y quedan como
 secretos de cada app. La del admin se ve en el portal: la app → **Secretos** → `admin-password`.
@@ -43,6 +44,10 @@ secretos de cada app. La del admin se ve en el portal: la app → **Secretos** �
 - Un PR que toca `infra/` muestra el plan como comentario: qué se va a crear, cambiar o borrar.
 - Al mergearlo, el job **Terraform · apply** espera la aprobación del ambiente `infra`.
 - La versión de la app que corre no la maneja Terraform sino el workflow de despliegue (Sprint 6, PR 3).
+- **Avisos de producción.** Los errores 500 los manda Azure por mail (alerta de arriba) a quien sea
+  *Owner* de la suscripción. Que la app no conteste lo vigila el workflow **Vigilancia** cada 15
+  minutos: abre el issue "Producción no contesta" (GitHub manda el mail) y lo cierra cuando vuelve.
+  GitHub apaga los workflows con horario si el repo pasa 60 días sin cambios: en ese caso, *Actions → Vigilancia → Enable*.
 - El token de "Reportar un problema" sale del secreto del repo `TOKEN_REPORTES`. Si se cambia, hay que volver a correr *Actions → Infra → Run workflow* para que llegue a Azure.
 
 ## Probar en la compu

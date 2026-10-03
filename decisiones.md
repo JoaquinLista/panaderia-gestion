@@ -755,3 +755,14 @@ Viene de la revisión externa (punto 3, "offline-first"). En vez de una caja que
 | Si el turno del borrador ya lo cerró otra persona, el borrador se descarta | No tiene sentido recuperar algo que ya no se puede enviar. |
 | Con sólo el cambio sugerido no se guarda nada | Ese campo viene lleno solo; guardarlo mostraría "Recuperamos" sin que nadie haya escrito. |
 | Si el navegador no deja guardar (modo incógnito, sin lugar) la pantalla funciona igual | El borrador es una ayuda, no un requisito. |
+## La Fueguina Stats — Avisos de producción (sugerencia de la revisión externa)
+
+| Decisión | Por qué |
+|----------|---------|
+| Un mail de Azure si el backend de producción tira errores (500), mirando los logs cada 5 minutos | El hueco real que encontramos al revisar la sugerencia de Sentry: Prometheus y sus alertas sólo corren en la compu. Los logs de pino ya marcan los 500 con nivel `error`, así que alcanza con buscarlos en Log Analytics, sin otra herramienta ni otra cuenta. |
+| Sólo producción, no staging | En staging los e2e prueban casos de error a propósito: sería ruido. |
+| El mail va al *Owner* de la suscripción (`arm_role_receiver`) | Ninguna dirección de mail queda escrita en un repo público, y no hace falta otro secreto. |
+| Que la app no conteste lo vigila un workflow de GitHub cada 15 minutos, que abre y cierra un issue | Si el backend está caído no escribe logs, así que la alerta de errores no lo vería. GitHub manda el mail del issue, y el issue queda como registro de cuánto duró la caída. |
+| La dirección de producción la saca de los despliegues de GitHub (el `environment.url` de Desplegar) | Así no hay que cargarla en ningún lado ni darle a la vigilancia acceso a Azure. |
+| Se pregunta 3 veces, con 30 segundos entre cada una, antes de avisar | Un corte de segundos mientras arranca una versión nueva no es una caída. |
+| No se agregan Sentry ni Winston | Pino ya da logs estructurados con el id de cada request, y la alerta de Azure cubre lo que haría Sentry para este tamaño de negocio. |

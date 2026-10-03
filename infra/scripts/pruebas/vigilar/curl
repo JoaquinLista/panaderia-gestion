@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# curl de mentira: /api/health contesta sólo si existe $ESTADO/contesta.
+echo "curl $*" >>"$ESTADO/curl.log"
+[[ -f "$ESTADO/contesta" ]] || exit 7
+echo '{"status":"ok"}'

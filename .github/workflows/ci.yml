@@ -125,11 +125,15 @@ jobs:
 
       # shellcheck ya viene instalado en los runners de GitHub.
       - name: shellcheck
-        run: shellcheck infra/bootstrap/*.sh infra/scripts/*.sh infra/scripts/pruebas/*.sh infra/scripts/pruebas/az infra/scripts/pruebas/curl
+        run: shellcheck infra/bootstrap/*.sh infra/scripts/*.sh infra/scripts/pruebas/*.sh infra/scripts/pruebas/az infra/scripts/pruebas/curl infra/scripts/pruebas/vigilar/*
 
       # desplegar.sh con un `az` de mentira: actualiza, espera y vuelve atrás.
       - name: Pruebas del despliegue
         run: bash infra/scripts/pruebas/desplegar.test.sh
+
+      # vigilar.sh con un `gh` y un `curl` de mentira: abre y cierra el issue de caída.
+      - name: Pruebas de la vigilancia
+        run: bash infra/scripts/pruebas/vigilar.test.sh
 
       # El cálculo de las métricas DORA (herramientas/dora), con datos de mentira.
       - name: Pruebas de las métricas DORA

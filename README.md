@@ -309,6 +309,10 @@ Las alertas están en `monitoreo/prometheus/alertas.yml`:
 | `BackendCaido` | Prometheus no puede leer el backend durante 2 minutos |
 | `MuchosErrores` | Más del 5 % de las respuestas son 5xx durante 5 minutos |
 
+En **producción (Azure)** no corre Prometheus: los avisos los dan Azure (un mail si el backend
+tira errores 500) y el workflow **Vigilancia** (abre un issue si la app no contesta). Ver
+`infra/README.md`.
+
 El CI prueba las alertas con horarios simulados (`promtool test rules
 alertas.test.yml`) y levanta Prometheus y Grafana para verificar que leen al
 backend y cargan el tablero. Para apagar todo: `docker compose --profile monitoreo down`.

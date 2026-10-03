@@ -1,0 +1,36 @@
+# Vigilancia de producción: cada 15 minutos pregunta si la app contesta. Si se
+# cae, abre un issue "Producción no contesta" (GitHub le manda un mail a la
+# dueña del repo) y lo cierra solo cuando vuelve. Los errores 500 con la app
+# andando los avisa Azure por mail (infra/main.tf, alerta de errores).
+name: Vigilancia
+
+on:
+  schedule:
+    # GitHub puede demorar unos minutos los horarios; para esto alcanza.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+# Leer los despliegues (de ahí sale la dirección) y abrir o cerrar el issue.
+permissions:
+  contents: read
+  deployments: read
+  issues: write
+
+# Una a la vez: si una tarda, la siguiente espera en vez de abrir otro issue.
+concurrency:
+  group: vigilancia
+  cancel-in-progress: false
+
+jobs:
+  produccion:
+    name: ¿Contesta producción?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: infra/scripts
+      - name: Preguntar por /api/health
+        run: infra/scripts/vigilar.sh revisar
+        env:
+          GH_TOKEN: ${{ github.token }}

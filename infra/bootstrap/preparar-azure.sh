@@ -51,7 +51,7 @@ echo "Suscripción: $(az account show --query name -o tsv) ($SUSCRIPCION)"
 echo "Región: $UBICACION"
 
 paso "1/4 Registrando los servicios de Azure (puede tardar un par de minutos)"
-for proveedor in Microsoft.App Microsoft.OperationalInsights Microsoft.DBforPostgreSQL \
+for proveedor in Microsoft.App Microsoft.OperationalInsights Microsoft.Insights Microsoft.DBforPostgreSQL \
   Microsoft.Storage Microsoft.ManagedIdentity; do
   az provider register --namespace "$proveedor" --wait
   echo "  $proveedor listo"

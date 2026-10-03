@@ -34,6 +34,22 @@ run "staging_y_produccion" {
     condition     = azurerm_postgresql_flexible_server.principal.location == "brazilsouth"
     error_message = "Todo va en la región del grupo de recursos."
   }
+
+  # Errores en producción: aviso por mail al dueño de la suscripción.
+  assert {
+    condition     = strcontains(azurerm_monitor_scheduled_query_rules_alert_v2.errores_produccion.criteria[0].query, "lafueguina-produccion-api")
+    error_message = "La alerta de errores tiene que mirar el backend de producción (no staging, donde los e2e prueban errores)."
+  }
+
+  assert {
+    condition     = azurerm_monitor_scheduled_query_rules_alert_v2.errores_produccion.evaluation_frequency == "PT5M" && azurerm_monitor_scheduled_query_rules_alert_v2.errores_produccion.auto_mitigation_enabled
+    error_message = "La alerta tiene que revisar cada 5 minutos y cerrarse sola cuando dejan de aparecer errores."
+  }
+
+  assert {
+    condition     = one(azurerm_monitor_action_group.avisos.arm_role_receiver).role_id == "8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
+    error_message = "Los avisos van al dueño (Owner) de la suscripción, sin mails escritos en el repo."
+  }
 }
 
 run "app_de_un_ambiente" {
