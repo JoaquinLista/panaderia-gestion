@@ -208,6 +208,8 @@ describe('revisión de cierres: detalle', () => {
     await user.clear(total);
     await user.type(total, '209.350');
     expect(screen.getByRole('status')).toHaveTextContent('Sin diferencia');
+    const cuenta = corregir().getByText('Total del controlador (Z)', { selector: 'dt' });
+    expect(cuenta.nextSibling.textContent.replace(/\s/g, ' ')).toBe('$ 209.350,00');
     await user.click(corregir().getByRole('button', { name: 'Guardar corrección' }));
 
     expect(await screen.findByText('Corrección guardada.')).toBeInTheDocument();

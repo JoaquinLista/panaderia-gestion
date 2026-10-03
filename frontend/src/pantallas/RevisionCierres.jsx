@@ -14,7 +14,13 @@ import {
 } from '../lib/cierres.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
 import { formatFecha } from '../lib/formato.js';
-import { BadgeDiferencia, CampoMonto, Diferencia, FilaGasto } from './CamposCierre.jsx';
+import {
+  BadgeDiferencia,
+  CampoMonto,
+  CuentaCierre,
+  Diferencia,
+  FilaGasto,
+} from './CamposCierre.jsx';
 import { useCategorias } from '../lib/useCategorias.js';
 
 const MONTOS = [
@@ -284,7 +290,22 @@ function DetalleCierre({ id, alVolver, alCambiar }) {
           </button>
         </fieldset>
 
-        {cuadre && <Diferencia centavos={cuadre.diferencia} />}
+        {cuadre && (
+          <>
+            <Diferencia centavos={cuadre.diferencia} />
+            <CuentaCierre
+              montos={{
+                totalControlador: centavos.total_controlador,
+                efectivoContado: centavos.efectivo_contado,
+                cambioFijo: centavos.cambio_fijo,
+                debito: centavos.debito,
+                credito: centavos.credito,
+                qr: centavos.qr,
+              }}
+              cuadre={cuadre}
+            />
+          </>
+        )}
 
         <label htmlFor="corr-comentario">Comentario</label>
         <textarea

@@ -25,6 +25,39 @@ export function Diferencia({ centavos, aviso }) {
   );
 }
 
+/**
+ * La cuenta del cierre a la vista, renglón por renglón, para que quien carga
+ * vea qué se suma y qué se resta. Es la misma de la planilla "Egresos de caja":
+ * lo vendido en efectivo, las tarjetas, el QR y los gastos tienen que dar la Z.
+ * `montos` en centavos; `cuadre` es lo que devuelve calcularCuadre.
+ */
+export function CuentaCierre({ montos, cuadre }) {
+  const renglones = [
+    ['Efectivo contado', montos.efectivoContado],
+    ['Menos el cambio fijo', montos.cambioFijo],
+    ['Vendido en efectivo', cuadre.efectivoVentas, 'subtotal'],
+    ['Débito', montos.debito],
+    ['Crédito', montos.credito],
+    ['QR', montos.qr],
+    ['Gastos pagados con la caja', cuadre.totalGastos],
+    ['Total', cuadre.totalCargado, 'subtotal'],
+    ['Total del controlador (Z)', montos.totalControlador, 'subtotal'],
+  ];
+  return (
+    <details className="cuenta-cierre">
+      <summary>Ver la cuenta</summary>
+      <dl>
+        {renglones.map(([nombre, valor, clase]) => (
+          <div key={nombre} className={clase}>
+            <dt>{nombre}</dt>
+            <dd>{mostrarPesos(valor)}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
 /** Etiqueta corta del resultado de un cierre. */
 export function BadgeDiferencia({ diferencia }) {
   const centavos = centavosDe(diferencia);

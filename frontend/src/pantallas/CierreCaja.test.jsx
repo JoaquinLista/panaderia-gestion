@@ -123,6 +123,29 @@ describe('cierre de caja: empleada con permiso', () => {
     });
   });
 
+  it('muestra la cuenta renglón por renglón: el cambio se resta del efectivo', async () => {
+    const { user } = await abrir();
+    await cargarEstrada(user);
+    await user.click(screen.getByText('Ver la cuenta'));
+    const renglones = Object.fromEntries(
+      [...document.querySelectorAll('.cuenta-cierre dl > div')].map((d) => [
+        d.querySelector('dt').textContent,
+        d.querySelector('dd').textContent.replace(/\s/g, ' '),
+      ])
+    );
+    expect(renglones).toEqual({
+      'Efectivo contado': '$ 232.500,00',
+      'Menos el cambio fijo': '$ 20.000,00',
+      'Vendido en efectivo': '$ 212.500,00',
+      Débito: '$ 100.000,00',
+      Crédito: '$ 68.900,00',
+      QR: '$ 92.400,00',
+      'Gastos pagados con la caja': '$ 11.500,00',
+      Total: '$ 485.300,00',
+      'Total del controlador (Z)': '$ 485.300,00',
+    });
+  });
+
   it('avisa cuánto falta y deja enviar igual', async () => {
     const { user } = await abrir();
     await cargarEstrada(user, { total: '487300' });

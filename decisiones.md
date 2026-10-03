@@ -755,3 +755,11 @@ Viene de la revisión externa (punto 3, "offline-first"). En vez de una caja que
 | Si el turno del borrador ya lo cerró otra persona, el borrador se descarta | No tiene sentido recuperar algo que ya no se puede enviar. |
 | Con sólo el cambio sugerido no se guarda nada | Ese campo viene lleno solo; guardarlo mostraría "Recuperamos" sin que nadie haya escrito. |
 | Si el navegador no deja guardar (modo incógnito, sin lugar) la pantalla funciona igual | El borrador es una ayuda, no un requisito. |
+
+## La Fueguina Stats — La cuenta del cierre a la vista
+
+| Decisión | Por qué |
+|----------|---------|
+| Debajo de la diferencia, "Ver la cuenta" despliega la cuenta renglón por renglón: efectivo contado, menos el cambio fijo, vendido en efectivo, débito, crédito, QR, gastos, total y Z | Al probar la app el PM pensó que la cuenta estaba mal: no se veía qué se sumaba y qué se restaba. La cuenta es la misma de la planilla "Egresos de caja" (TOTAL = gastos + tarjetas + QR + retiro, comparado con la Z). |
+| Va cerrado por defecto | En el celular, quien carga ve primero si hay diferencia; la cuenta la abre quien quiere entenderla. |
+| Se usa en la carga y en la corrección de la dueña | Las dos pantallas calculan igual; la pieza está en `CamposCierre.jsx`. |
