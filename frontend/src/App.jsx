@@ -5,6 +5,7 @@ import {
   Landmark,
   LayoutDashboard,
   LifeBuoy,
+  ListOrdered,
   Menu,
   Route,
   Store,
@@ -25,6 +26,7 @@ import RevisionCierres from './pantallas/RevisionCierres.jsx';
 import GestionInsumos from './pantallas/GestionInsumos.jsx';
 import Pedidos from './pantallas/Pedidos.jsx';
 import Recorrido from './pantallas/Recorrido.jsx';
+import Rubros from './pantallas/Rubros.jsx';
 import RedSucursales from './pantallas/RedSucursales.jsx';
 import ReportarProblema from './pantallas/ReportarProblema.jsx';
 import Resumen from './pantallas/Resumen.jsx';
@@ -70,6 +72,13 @@ const TABS = [
     permiso: 'pedidos:cambiar-estado',
   },
   { id: 'pedidos', grupo: 'panaderias', Icono: Truck, label: 'Pedidos', permiso: 'pedidos:ver' },
+  {
+    id: 'rubros',
+    grupo: 'panaderias',
+    Icono: ListOrdered,
+    label: 'Rubros',
+    permiso: 'rubros:administrar',
+  },
   {
     id: 'insumos',
     grupo: 'panaderias',
@@ -230,6 +239,7 @@ function Panel() {
             {tab === 'caja-central' && <CajaCentral />}
             {tab === 'recorrido' && <Recorrido />}
             {tab === 'pedidos' && <Pedidos sucursales={sucursales} />}
+            {tab === 'rubros' && <Rubros sucursales={sucursales} />}
             {tab === 'insumos' && <GestionInsumos />}
             {tab === 'red' && <RedSucursales sucursales={sucursales} />}
             {tab === 'usuarios' && <AdminUsuarios />}
