@@ -742,3 +742,16 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | Nombre único sin importar mayúsculas (409 si se repite) | Lo cuida el índice de la base (migración 0010), así dos personas a la vez tampoco pueden duplicarlo. |
 | Subir y bajar renumera de a 10 y guarda sólo los que cambiaron | El orden es el que ven las sucursales al pedir. Sin arrastrar, que en el celular es incómodo. |
 | El e2e desactiva el rubro que crea | Staging no junta rubros de prueba en la lista de las sucursales. |
+## La Fueguina Stats — Borrador del cierre de caja en el celular
+
+Viene de la revisión externa (punto 3, "offline-first"). En vez de una caja que funcione toda sin internet, una versión chica: que no se pierda lo que se está cargando.
+
+| Decisión | Por qué |
+|----------|---------|
+| Lo que se carga en el cierre se guarda en el celular (`localStorage`) a cada cambio, hasta que se envía | Si se corta internet, se cierra la pestaña o se apaga el celular, al volver está todo. Avisa "Recuperamos lo que habías cargado". |
+| Si al enviar no hay conexión, avisa que quedó guardado y que pruebe de nuevo | El envío lo hace la persona cuando vuelve internet; no hay envío automático en segundo plano. Así nunca se manda un cierre que nadie revisó. |
+| No se hace la caja completa sin conexión (IndexedDB, service worker, cola de sincronización) | La API tiene que validar el turno y la diferencia; cerrar sin ella abre el problema de dos cierres del mismo turno desde dos celulares. Para una cadena de 4 sucursales no vale la pena. |
+| Un borrador por persona, sucursal y día; los de días anteriores se borran solos | Un celular compartido no mezcla cierres de dos personas, y ayer no aparece hoy. |
+| Si el turno del borrador ya lo cerró otra persona, el borrador se descarta | No tiene sentido recuperar algo que ya no se puede enviar. |
+| Con sólo el cambio sugerido no se guarda nada | Ese campo viene lleno solo; guardarlo mostraría "Recuperamos" sin que nadie haya escrito. |
+| Si el navegador no deja guardar (modo incógnito, sin lugar) la pantalla funciona igual | El borrador es una ayuda, no un requisito. |

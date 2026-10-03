@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import App from '../App.jsx';
@@ -285,5 +285,93 @@ describe('cierre de caja: la dueña', () => {
       qr: '0.00',
       gastos: [],
     });
+  });
+});
+
+describe('cierre de caja: borrador guardado en el celular', () => {
+  const CLAVE = 'cierre-borrador:2:2:2026-09-28';
+  const borradores = () =>
+    Object.keys(localStorage).filter((k) => k.startsWith('cierre-borrador:'));
+  const sinConexion = () => {
+    throw new TypeError('Failed to fetch');
+  };
+
+  it('si se corta internet al enviar, lo cargado queda y vuelve al abrir otra vez', async () => {
+    const { user } = await abrir({ rutas: { 'POST /api/cierres': sinConexion } });
+    await cargarEstrada(user);
+    await user.type(form().getByLabelText('Comentario (opcional)'), 'Todo bien');
+    await user.click(form().getByRole('button', { name: 'Enviar cierre de la noche' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No hay conexión. Lo que cargaste quedó guardado en este celular'
+    );
+    expect(borradores()).toEqual([CLAVE]);
+
+    // Se cierra la pestaña y se vuelve a abrir.
+    cleanup();
+    await abrir();
+    expect(
+      screen.getByText('Recuperamos lo que habías cargado y todavía no se envió.')
+    ).toBeInTheDocument();
+    expect(form().getByLabelText('Noche')).toBeChecked();
+    expect(form().getByLabelText('Total del controlador (Z)')).toHaveValue('485.300');
+    expect(form().getByLabelText('Detalle del gasto 2')).toHaveValue('Bolsas');
+    expect(form().getByLabelText('Comentario (opcional)')).toHaveValue('Todo bien');
+  });
+
+  it('al enviar bien se borra el borrador', async () => {
+    const { user } = await abrir({
+      rutas: { 'POST /api/cierres': () => [201, cierreNoche] },
+    });
+    await cargarEstrada(user);
+    expect(borradores()).toEqual([CLAVE]);
+    await user.click(form().getByRole('button', { name: 'Enviar cierre de la noche' }));
+    expect(await screen.findByText('Cierre de la noche enviado.')).toBeInTheDocument();
+    expect(borradores()).toEqual([]);
+    expect(screen.queryByText(/Recuperamos/)).not.toBeInTheDocument();
+  });
+
+  it('con sólo el cambio sugerido no guarda nada', async () => {
+    await abrir();
+    expect(form().getByLabelText('Cambio fijo que queda')).toHaveValue('20.000');
+    expect(borradores()).toEqual([]);
+  });
+
+  it('descarta el borrador de un turno que ya cerró otra persona y los de otros días', async () => {
+    localStorage.setItem(
+      CLAVE,
+      JSON.stringify({ turno: 'MEDIODIA', datos: { totalControlador: '999' }, gastos: [] })
+    );
+    localStorage.setItem('cierre-borrador:2:2:2026-09-27', JSON.stringify({ turno: 'NOCHE' }));
+    localStorage.setItem('otra-cosa', 'queda');
+    await abrir({
+      rutas: {
+        'GET /api/cierres/hoy': () => [
+          200,
+          hoyEstrada({
+            turnos_pendientes: ['NOCHE'],
+            cierres: [{ ...cierreNoche, turno: 'MEDIODIA' }],
+          }),
+        ],
+      },
+    });
+    expect(screen.queryByText(/Recuperamos/)).not.toBeInTheDocument();
+    expect(form().getByLabelText('Total del controlador (Z)')).toHaveValue('');
+    expect(borradores()).toEqual([]);
+    expect(localStorage.getItem('otra-cosa')).toBe('queda');
+  });
+
+  it('si el celular no deja guardar, el cierre funciona igual', async () => {
+    for (const metodo of ['getItem', 'setItem', 'removeItem', 'key']) {
+      vi.spyOn(Storage.prototype, metodo).mockImplementation(() => {
+        throw new Error('Sin permiso');
+      });
+    }
+    const { user, fetchMock } = await abrir({
+      rutas: { 'POST /api/cierres': () => [201, cierreNoche] },
+    });
+    await cargarEstrada(user);
+    await user.click(form().getByRole('button', { name: 'Enviar cierre de la noche' }));
+    expect(await screen.findByText('Cierre de la noche enviado.')).toBeInTheDocument();
+    expect(cuerpoDe(fetchMock, 'POST', '/api/cierres')).toMatchObject({ turno: 'NOCHE' });
   });
 });

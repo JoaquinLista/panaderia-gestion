@@ -2,6 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '../auth/contexto.js';
 import { apiGet, apiPost } from '../lib/api.js';
+import {
+  borrarBorrador,
+  borrarBorradoresViejos,
+  claveBorrador,
+  esFaltaDeConexion,
+  guardarBorrador,
+  hayAlgoCargado,
+  leerBorrador,
+} from '../lib/borrador.js';
 import { aPesos, calcularCuadre, leerMonto, mostrarPesos } from '../lib/cuadre.js';
 import {
   aCampo,
@@ -30,6 +39,9 @@ const VACIO = {
 
 const OBLIGATORIOS = ['totalControlador', 'efectivoContado', 'cambioFijo'];
 
+const SIN_CONEXION =
+  'No hay conexión. Lo que cargaste quedó guardado en este celular: probá enviar de nuevo cuando vuelva internet.';
+
 /** Un cierre ya enviado, en una línea. */
 function CierreCargado({ cierre }) {
   return (
@@ -49,7 +61,8 @@ function CierreCargado({ cierre }) {
 /**
  * Cierre de caja pensado para el celular (#8, #9). La empleada cierra su
  * sucursal del día; la dueña elige la sucursal. La diferencia se ve mientras
- * se carga, con la misma cuenta que hace la API.
+ * se carga, con la misma cuenta que hace la API. Lo que se va cargando queda
+ * guardado en el celular hasta que se envía, por si se corta internet.
  */
 export default function CierreCaja({ sucursales }) {
   const { sesion } = useAuth();
@@ -63,28 +76,51 @@ export default function CierreCaja({ sucursales }) {
   const [error, setError] = useState('');
   const [enviado, setEnviado] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [recuperado, setRecuperado] = useState(false);
   const categorias = useCategorias(setError);
+  const usuarioId = sesion.usuario.id;
+  const clave = hoy && claveBorrador(usuarioId, hoy.sucursal.id, hoy.fecha);
 
   const cargarHoy = useCallback(async () => {
     if (!sucursalId) return;
     try {
       const query = sucursalFija ? '' : `?sucursal_id=${sucursalId}`;
       const r = await apiGet(`/cierres/hoy${query}`);
+      borrarBorradoresViejos(r.fecha);
+      const claveHoy = claveBorrador(usuarioId, r.sucursal.id, r.fecha);
+      const borrador = leerBorrador(claveHoy);
+      const sigue = borrador && r.turnos_pendientes.includes(borrador.turno);
+      // Un borrador de un turno que ya se cerró (lo cargó otra persona) no sirve.
+      if (borrador && !sigue) borrarBorrador(claveHoy);
       setHoy(r);
-      setTurno(r.turnos_pendientes[0] ?? '');
-      setDatos({
-        ...VACIO,
-        cambioFijo: r.cambio_sugerido === null ? '' : aCampo(r.cambio_sugerido),
-      });
-      setGastos([]);
+      setRecuperado(Boolean(sigue));
+      if (sigue) {
+        setTurno(borrador.turno);
+        setDatos({ ...VACIO, ...borrador.datos });
+        setGastos(borrador.gastos ?? []);
+      } else {
+        setTurno(r.turnos_pendientes[0] ?? '');
+        setDatos({
+          ...VACIO,
+          cambioFijo: r.cambio_sugerido === null ? '' : aCampo(r.cambio_sugerido),
+        });
+        setGastos([]);
+      }
     } catch (e) {
       setError(e.message);
     }
-  }, [sucursalId, sucursalFija]);
+  }, [sucursalId, sucursalFija, usuarioId]);
 
   useEffect(() => {
     cargarHoy();
   }, [cargarHoy]);
+
+  // Cada cambio queda guardado en el celular hasta que el cierre se envía.
+  useEffect(() => {
+    if (!clave) return;
+    if (hayAlgoCargado(datos, gastos)) guardarBorrador(clave, { turno, datos, gastos });
+    else borrarBorrador(clave);
+  }, [clave, turno, datos, gastos]);
 
   const campo = (nombre) => (e) => setDatos((prev) => ({ ...prev, [nombre]: e.target.value }));
   const monto = (nombre) => (valor) => setDatos((prev) => ({ ...prev, [nombre]: valor }));
@@ -132,10 +168,11 @@ export default function CierreCaja({ sucursales }) {
         gastos: gastos.map((g, i) => gastoParaApi(g, gastosCentavos[i])),
         comentario: datos.comentario,
       });
+      borrarBorrador(clave);
       setEnviado(cierre);
       await cargarHoy();
     } catch (e) {
-      setError(e.message);
+      setError(esFaltaDeConexion(e) ? SIN_CONEXION : e.message);
     } finally {
       setEnviando(false);
     }
@@ -181,6 +218,12 @@ export default function CierreCaja({ sucursales }) {
         {enviado && (
           <div className="alert alert-ok" role="status">
             Cierre {DEL_TURNO[enviado.turno]} enviado.
+          </div>
+        )}
+
+        {recuperado && !error && (
+          <div className="alert alert-info" role="status">
+            Recuperamos lo que habías cargado y todavía no se envió.
           </div>
         )}
 
