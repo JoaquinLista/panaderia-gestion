@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { crearUsuario, entrar, unico } from './helpers.js';
+import { ADMIN, crearUsuario, entrar, irA, unico } from './helpers.js';
 
 // Sprint 9 (#77): la sucursal pide por rubro, el chofer lo carga desde su
 // recorrido y lo lleva, y la sucursal confirma que le llegó. Se usa Patagonia
@@ -44,4 +44,32 @@ test('Patagonia pide facturas, el chofer las lleva y Patagonia confirma', async 
   await entrar(page, { usuario: empleada, password, sucursal: 'Patagonia' });
   await tarjeta().getByRole('button', { name: 'Llegó' }).click();
   await expect(tarjeta()).toContainText('Recibido');
+});
+
+// La dueña agrega un rubro y la sucursal ya lo puede pedir. Al final lo
+// desactiva, para que staging no junte rubros de prueba en la lista.
+test('la dueña agrega un rubro y la sucursal lo ve para pedir', async ({ page, baseURL }) => {
+  const password = 'clave-de-prueba-e2e'; // gitleaks:allow (usuarios de prueba)
+  const empleada = unico('e2e-rubro');
+  const nombre = `Prueba ${unico('rubro')}`;
+  await crearUsuario(baseURL, { usuario: empleada, nombre: 'Empleada', password, rol: 'EMPLEADA' });
+
+  await entrar(page, ADMIN);
+  await irA(page, 'Rubros');
+  await page.getByLabel('Nombre').fill(nombre);
+  await page.getByLabel('¿De dónde sale?').selectOption({ label: 'Galpón Central' });
+  await page.getByRole('button', { name: 'Agregar' }).click();
+  await expect(page.getByRole('status')).toHaveText(
+    `Agregaste ${nombre}. Ya lo pueden pedir las sucursales.`
+  );
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+
+  await entrar(page, { usuario: empleada, password, sucursal: 'Patagonia' });
+  await expect(page.getByRole('button', { name: `+ ${nombre}` })).toBeVisible();
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+
+  await entrar(page, ADMIN);
+  await irA(page, 'Rubros');
+  await page.getByRole('button', { name: `Desactivar ${nombre}` }).click();
+  await expect(page.getByRole('status')).toHaveText(`${nombre} ya no aparece para pedir.`);
 });

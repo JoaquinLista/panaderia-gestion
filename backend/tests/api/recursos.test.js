@@ -81,6 +81,48 @@ describe('GET /api/pedidos', () => {
   });
 });
 
+describe('rubros: la dueña arma la lista', () => {
+  const RUBRO = { id: 13, nombre: 'Prepizzas', sucursal_origen_id: 2, activo: true, orden: 130 };
+  const baseDeRubros = (sql) => {
+    if (sql.startsWith('SELECT id, nombre, tipo FROM sucursales')) {
+      return { rows: [{ id: 2, nombre: 'Viedma (Chacra)', tipo: 'FABRICA' }] };
+    }
+    if (sql.includes('INSERT INTO rubros')) return { rows: [{ id: 13 }] };
+    if (sql.startsWith('UPDATE rubros')) return { rowCount: 1 };
+    return { rows: [RUBRO] };
+  };
+
+  it('POST /api/pedidos/rubros crea y responde 201', async () => {
+    query.mockImplementation(async (sql) => baseDeRubros(sql));
+    const res = await request(app)
+      .post('/api/pedidos/rubros')
+      .send({ nombre: 'Prepizzas', sucursal_origen_id: 2 });
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual(RUBRO);
+  });
+
+  it('PUT /api/pedidos/rubros/:id lo cambia', async () => {
+    query.mockImplementation(async (sql) => baseDeRubros(sql));
+    const res = await request(app).put('/api/pedidos/rubros/13').send({ activo: false });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(RUBRO);
+  });
+
+  it.each([
+    ['post', '/api/pedidos/rubros'],
+    ['put', '/api/pedidos/rubros/13'],
+  ])('%s %s sin datos responde 400', async (metodo, ruta) => {
+    const res = await request(app)[metodo](ruta);
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /api/pedidos/rubros?todos=1 incluye los desactivados para la dueña', async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    await request(app).get('/api/pedidos/rubros?todos=1');
+    expect(query.mock.calls[0][0]).not.toMatch(/WHERE r\.activo/);
+  });
+});
+
 describe('POST /api/insumos', () => {
   it.each([
     [{ stock_actual: 5 }, /nombre/],

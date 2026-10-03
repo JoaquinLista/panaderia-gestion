@@ -732,6 +732,16 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | Abajo, "Paradas": una por sucursal, urgentes primero, con la nota y el botón "Entregado" | Lo arma el backend (`domain/recorrido.js`); la pantalla sólo lo dibuja. |
 | Si algo falla a mitad de camino, la pantalla recarga y muestra el error | Salir son varios pedidos: así se ve cuáles salieron y cuáles no. |
 
+## La Fueguina Stats — Sprint 9 · PR 4: la lista de rubros la arman los dueños (#77)
+
+| Decisión | Por qué |
+|----------|---------|
+| Sección "Rubros" sólo para los dueños (permiso nuevo `rubros:administrar`) | La lista del PM es un punto de partida: si mañana venden prepizzas, lo agregan ellos sin pedirle a nadie. |
+| Un rubro no se borra, se desactiva | Los pedidos viejos lo siguen mostrando con su nombre. La sucursal deja de verlo al pedir. |
+| Sólo la fábrica o el galpón pueden ser "de dónde sale" | Son los únicos lugares que preparan pedidos; el recorrido del chofer arranca ahí. |
+| Nombre único sin importar mayúsculas (409 si se repite) | Lo cuida el índice de la base (migración 0010), así dos personas a la vez tampoco pueden duplicarlo. |
+| Subir y bajar renumera de a 10 y guarda sólo los que cambiaron | El orden es el que ven las sucursales al pedir. Sin arrastrar, que en el celular es incómodo. |
+| El e2e desactiva el rubro que crea | Staging no junta rubros de prueba en la lista de las sucursales. |
 ## La Fueguina Stats — Borrador del cierre de caja en el celular
 
 Viene de la revisión externa (punto 3, "offline-first"). En vez de una caja que funcione toda sin internet, una versión chica: que no se pierda lo que se está cargando.

@@ -64,7 +64,9 @@ Base `/api` — el frontend usa rutas relativas (proxy de Nginx).
 | GET | `/api/insumos` | Insumos con flag `bajo_stock` |
 | POST | `/api/insumos` | Alta o actualización de stock (upsert por nombre) |
 | GET | `/api/pedidos` | Pedidos con sus renglones. `?estado=abiertos`: sólo pendientes y en camino; sin filtro, los últimos 200 |
-| GET | `/api/pedidos/rubros` | Lo que se puede pedir (Pan, Facturas, Insumos…) y de dónde sale |
+| GET | `/api/pedidos/rubros` | Lo que se puede pedir (Pan, Facturas, Insumos…) y de dónde sale. `?todos=1`: los dueños ven también los desactivados |
+| POST | `/api/pedidos/rubros` | Sólo dueños: `{ nombre, sucursal_origen_id, orden? }` (sale de la fábrica o el galpón; sin orden, va al final) |
+| PUT | `/api/pedidos/rubros/:id` | Sólo dueños: cambia `nombre`, `sucursal_origen_id`, `orden` o `activo` |
 | POST | `/api/pedidos` | `{ sucursal_id?, nota?, urgente?, items: [{ rubro_id, detalle }] }`. Crea un pedido por lugar de origen (fábrica, galpón) |
 | PUT | `/api/pedidos/:id/estado` | `PENDIENTE → EN_CAMINO → ENTREGADO` los marca el chofer; `RECIBIDO` y `CANCELADO`, la sucursal que pidió |
 | PUT | `/api/pedidos/:id/items/:itemId` | El chofer tilda un renglón: `{ estado: LLEVADO \| NO_HABIA \| PENDIENTE }` |
