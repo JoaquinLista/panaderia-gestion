@@ -159,3 +159,65 @@ module "produccion" {
   replicas_minimas = 1
   etiquetas        = merge(local.etiquetas, { ambiente = "produccion" })
 }
+
+# ---- Aviso por mail si producción tira errores ----
+# Cada 5 minutos Azure busca en los logs del backend de producción líneas con
+# nivel "error" (los 500: pino las marca con level 50). Si hay alguna, manda un
+# mail; cuando dejan de aparecer, manda otro diciendo que se resolvió. Que la
+# app directamente no conteste lo avisa el workflow Vigilancia.
+
+# Los avisos le llegan a quien es dueño de la suscripción de Azure (el PM): así
+# ninguna dirección de mail queda escrita en el repo.
+resource "azurerm_monitor_action_group" "avisos" {
+  name                = "${var.prefijo}-avisos"
+  resource_group_name = local.grupo
+  short_name          = "LaFueguina"
+  tags                = local.etiquetas
+
+  arm_role_receiver {
+    name = "duenos-de-la-suscripcion"
+    # Rol "Owner" (Propietario), el mismo id en todas las cuentas de Azure.
+    role_id                 = "8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
+    use_common_alert_schema = true
+  }
+}
+
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "errores_produccion" {
+  name                = "${var.prefijo}-produccion-errores"
+  resource_group_name = local.grupo
+  location            = local.ubicacion
+  display_name        = "La Fueguina: errores en producción"
+  description         = "El backend de producción respondió con error (500). Buscá en los logs el id del request (X-Request-Id)."
+  severity            = 1
+  scopes              = [azurerm_log_analytics_workspace.logs.id]
+
+  # Cada 5 minutos, mirando los últimos 5: el aviso llega a lo sumo ~10 minutos después.
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT5M"
+  # Cuando dejan de aparecer errores, la alerta se cierra sola (y avisa).
+  auto_mitigation_enabled = true
+  # La tabla de logs aparece con la primera línea: no validar contra ella al crear.
+  skip_query_validation = true
+  tags                  = local.etiquetas
+
+  criteria {
+    query                   = <<-KQL
+      ContainerAppConsoleLogs_CL
+      | where ContainerAppName_s == "${module.produccion.nombre_api}"
+      | extend linea = parse_json(Log_s)
+      | where toint(linea.level) >= 50
+    KQL
+    time_aggregation_method = "Count"
+    operator                = "GreaterThan"
+    threshold               = 0
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.avisos.id]
+  }
+}

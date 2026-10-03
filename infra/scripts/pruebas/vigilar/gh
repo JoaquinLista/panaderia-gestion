@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# gh de mentira para vigilar.test.sh. Guarda cada llamada en $ESTADO/gh.log.
+#   $ESTADO/despliegues   ids de los despliegues, uno por línea
+#   $ESTADO/url-<id>      dirección del despliegue que salió bien (si no está, no salió bien)
+#   $ESTADO/abierto       número del issue abierto (si no está, no hay)
+echo "gh $*" >>"$ESTADO/gh.log"
+args=("$@")
+[[ ${args[0]} == api ]] || exit 1
+metodo=GET
+ruta=${args[1]}
+if [[ ${args[1]} == -X ]]; then
+  metodo=${args[2]}
+  ruta=${args[3]}
+fi
+case "$metodo $ruta" in
+  "GET repos/"*"/deployments?"*) cat "$ESTADO/despliegues" 2>/dev/null || true ;;
+  "GET repos/"*"/deployments/"*"/statuses")
+    id=${ruta#*/deployments/}
+    id=${id%/statuses}
+    cat "$ESTADO/url-$id" 2>/dev/null || true
+    ;;
+  "GET repos/"*"/issues?state=open"*) cat "$ESTADO/abierto" 2>/dev/null || true ;;
+  "GET repos/"*"/issues") echo nuevo >"$ESTADO/abierto" ;; # POST con -f: gh lo manda como POST
+  "GET repos/"*"/issues/"*"/comments") ;;
+  "PATCH repos/"*"/issues/"*) rm -f "$ESTADO/abierto" ;;
+  *) exit 1 ;;
+esac

@@ -731,3 +731,15 @@ Reemplaza el blue-green del PR 3 y la "app con los dos contenedores juntos" del 
 | "Salgo de Viedma (Chacra)" pone en camino todos los pedidos de ese lugar | Un solo toque al salir, en vez de uno por pedido. |
 | Abajo, "Paradas": una por sucursal, urgentes primero, con la nota y el botón "Entregado" | Lo arma el backend (`domain/recorrido.js`); la pantalla sólo lo dibuja. |
 | Si algo falla a mitad de camino, la pantalla recarga y muestra el error | Salir son varios pedidos: así se ve cuáles salieron y cuáles no. |
+
+## La Fueguina Stats — Avisos de producción (sugerencia de la revisión externa)
+
+| Decisión | Por qué |
+|----------|---------|
+| Un mail de Azure si el backend de producción tira errores (500), mirando los logs cada 5 minutos | El hueco real que encontramos al revisar la sugerencia de Sentry: Prometheus y sus alertas sólo corren en la compu. Los logs de pino ya marcan los 500 con nivel `error`, así que alcanza con buscarlos en Log Analytics, sin otra herramienta ni otra cuenta. |
+| Sólo producción, no staging | En staging los e2e prueban casos de error a propósito: sería ruido. |
+| El mail va al *Owner* de la suscripción (`arm_role_receiver`) | Ninguna dirección de mail queda escrita en un repo público, y no hace falta otro secreto. |
+| Que la app no conteste lo vigila un workflow de GitHub cada 15 minutos, que abre y cierra un issue | Si el backend está caído no escribe logs, así que la alerta de errores no lo vería. GitHub manda el mail del issue, y el issue queda como registro de cuánto duró la caída. |
+| La dirección de producción la saca de los despliegues de GitHub (el `environment.url` de Desplegar) | Así no hay que cargarla en ningún lado ni darle a la vigilancia acceso a Azure. |
+| Se pregunta 3 veces, con 30 segundos entre cada una, antes de avisar | Un corte de segundos mientras arranca una versión nueva no es una caída. |
+| No se agregan Sentry ni Winston | Pino ya da logs estructurados con el id de cada request, y la alerta de Azure cubre lo que haría Sentry para este tamaño de negocio. |
