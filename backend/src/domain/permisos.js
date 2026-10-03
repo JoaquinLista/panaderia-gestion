@@ -25,6 +25,8 @@ export const ACCIONES = Object.freeze({
   ADMINISTRAR_CAJA_CENTRAL: 'caja-central:administrar',
   // Resumen de ventas, gastos y resultado de todo el negocio (Sprint 7).
   VER_DASHBOARD: 'dashboard:ver',
+  // Lista de rubros que piden las sucursales y de dónde sale cada uno (Sprint 9).
+  ADMINISTRAR_RUBROS: 'rubros:administrar',
 });
 
 const MATRIZ = Object.freeze({

@@ -58,6 +58,8 @@ const RUTAS_PROTEGIDAS = [
   ['post', '/api/pedidos'],
   ['put', '/api/pedidos/1/estado'],
   ['get', '/api/pedidos/rubros'],
+  ['post', '/api/pedidos/rubros'],
+  ['put', '/api/pedidos/rubros/1'],
   ['get', '/api/pedidos/recorrido'],
   ['put', '/api/pedidos/1/items/1'],
   ['get', '/api/usuarios'],
@@ -95,6 +97,9 @@ describe('rol incorrecto: 403', () => {
     ['empleada', 'put', '/api/pedidos/1/items/1'],
     ['empleada', 'get', '/api/usuarios'],
     ['empleada', 'put', '/api/usuarios/2/password'],
+    // La lista de rubros la arman los dueños.
+    ['empleada', 'post', '/api/pedidos/rubros'],
+    ['chofer', 'put', '/api/pedidos/rubros/1'],
     ['chofer', 'post', '/api/pedidos'],
     ['chofer', 'get', '/api/usuarios'],
     ['chofer', 'patch', '/api/usuarios/3'],
@@ -148,6 +153,17 @@ describe('la empleada y su sucursal del día', () => {
     const [{ sql, params }] = consultasDeNegocio;
     expect(sql).toMatch(/WHERE \(p\.sucursal_origen_id = \$1 OR p\.sucursal_destino_id = \$1\)/);
     expect(params).toEqual([3]);
+  });
+
+  it('sólo los dueños ven los rubros desactivados', async () => {
+    for (const [quien, ve] of [
+      ['admin', true],
+      ['empleada', false],
+    ]) {
+      consultasDeNegocio = [];
+      await request(app).get('/api/pedidos/rubros?todos=1').set('Cookie', cookies[quien]);
+      expect(/WHERE r\.activo/.test(consultasDeNegocio[0].sql)).toBe(!ve);
+    }
   });
 
   it('admin y chofer ven todos los pedidos', async () => {

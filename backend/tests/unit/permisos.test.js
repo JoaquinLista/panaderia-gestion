@@ -23,6 +23,7 @@ describe('matriz de permisos', () => {
     [ACCIONES.CERRAR_CAJA, true, false, false],
     [ACCIONES.ADMINISTRAR_USUARIOS, true, false, false],
     [ACCIONES.ADMINISTRAR_CAJA_CENTRAL, true, false, false],
+    [ACCIONES.ADMINISTRAR_RUBROS, true, false, false],
   ])('%s → admin %s, empleada %s, chofer %s', (accion, esAdmin, esEmpleada, esChofer) => {
     expect(puede(admin, accion)).toBe(esAdmin);
     expect(puede(empleada, accion)).toBe(esEmpleada);

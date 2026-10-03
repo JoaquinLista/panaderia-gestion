@@ -56,6 +56,7 @@ describe('pestañas según el rol', () => {
         'Caja central',
         'Recorrido',
         'Pedidos',
+        'Rubros',
         'Stock e insumos',
         'Sucursales',
         'Usuarios',

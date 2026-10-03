@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { accionesPedido, lugaresDeOrigen, rubrosParaPedir } from './pedidos.js';
+import { accionesPedido, lugaresDeOrigen, reordenar, rubrosParaPedir } from './pedidos.js';
 import { sesionAdmin, sesionChofer, sesionEmpleada } from '../test/apiFalsa.js';
 
 // Pedido de Estrada (2) a la fábrica (1).
@@ -57,5 +57,33 @@ describe('lugaresDeOrigen', () => {
     ],
   ])('%j → %s', (pedidos, texto) => {
     expect(lugaresDeOrigen(pedidos)).toBe(texto);
+  });
+});
+
+describe('reordenar', () => {
+  const lista = [
+    { id: 1, orden: 10 },
+    { id: 2, orden: 20 },
+    { id: 3, orden: 30 },
+  ];
+
+  it('bajar uno cambia sólo los dos que se cruzan', () => {
+    expect(reordenar(lista, 0, 1)).toEqual([
+      { id: 2, orden: 10 },
+      { id: 1, orden: 20 },
+    ]);
+  });
+
+  it('renumbera de a 10 si la lista venía con órdenes raros', () => {
+    const raros = [
+      { id: 1, orden: 5 },
+      { id: 2, orden: 5 },
+      { id: 3, orden: 120 },
+    ];
+    expect(reordenar(raros, 2, 1)).toEqual([
+      { id: 1, orden: 10 },
+      { id: 3, orden: 20 },
+      { id: 2, orden: 30 },
+    ]);
   });
 });
