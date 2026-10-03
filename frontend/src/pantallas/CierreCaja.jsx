@@ -24,7 +24,13 @@ import {
   valorGasto,
 } from '../lib/cierres.js';
 import { useCategorias } from '../lib/useCategorias.js';
-import { BadgeDiferencia, CampoMonto, Diferencia, FilaGasto } from './CamposCierre.jsx';
+import {
+  BadgeDiferencia,
+  CampoMonto,
+  CuentaCierre,
+  Diferencia,
+  FilaGasto,
+} from './CamposCierre.jsx';
 
 const VACIO = {
   numeroZ: '',
@@ -318,10 +324,13 @@ export default function CierreCaja({ sucursales }) {
             </fieldset>
 
             {cuadre && (
-              <Diferencia
-                centavos={cuadre.diferencia}
-                aviso="Se guarda igual y la dueña lo revisa. Si sabés por qué, dejalo en el comentario."
-              />
+              <>
+                <Diferencia
+                  centavos={cuadre.diferencia}
+                  aviso="Se guarda igual y la dueña lo revisa. Si sabés por qué, dejalo en el comentario."
+                />
+                <CuentaCierre montos={centavos} cuadre={cuadre} />
+              </>
             )}
 
             <label htmlFor="cierre-comentario">Comentario (opcional)</label>

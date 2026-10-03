@@ -800,6 +800,40 @@ label.check input {
   color: var(--color-warn);
 }
 
+.cuenta-cierre {
+  margin: -4px 0 12px;
+  font-size: 0.85rem;
+}
+
+.cuenta-cierre summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.cuenta-cierre dl {
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cuenta-cierre dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cuenta-cierre dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.cuenta-cierre .subtotal {
+  border-top: 1px solid var(--color-border);
+  padding-top: 2px;
+  font-weight: 600;
+}
+
 .boton-enviar {
   width: 100%;
   padding: 14px;
