@@ -17,7 +17,7 @@ ENV VITE_APP_VERSION=$APP_VERSION
 RUN npm run build
 
 # ---- Etapa 2: servidor de producción ----
-FROM nginx:1.29-alpine AS runtime
+FROM nginx:1.31-alpine AS runtime
 LABEL org.opencontainers.image.source="https://github.com/JoaquinLista/panaderia-gestion"
 RUN rm /etc/nginx/conf.d/default.conf
 # Plantilla: al arrancar se completa con estas variables y queda en conf.d.
