@@ -13,7 +13,7 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "prettier": "^3.9.9"
   }
 }
